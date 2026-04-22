@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: edu.ruc.platform.StudentAdminIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.267 s -- in edu.ruc.platform.StudentAdminIntegrationTest

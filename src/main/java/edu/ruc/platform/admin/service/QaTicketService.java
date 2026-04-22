@@ -73,14 +73,7 @@ public class QaTicketService implements QaTicketApplicationService {
     public QaTicketDetailResponse reply(Long id, QaTicketReplyRequest request) {
         KnowledgeQaTicket ticket = ticketRepository.findById(id).orElseThrow(() -> new BusinessException("工单不存在"));
         AuthenticatedUser user = currentUserService.requireCurrentUser();
-
-        KnowledgeQaTicketMessage msg = new KnowledgeQaTicketMessage();
-        msg.setTicketId(ticket.getId());
-        msg.setActorName(user.name());
-        msg.setActorRole(user.role());
-        msg.setMessageText(request.content());
-        msg.setCreatedAt(LocalDateTime.now());
-        messageRepository.save(msg);
+        String actorName = user.name() == null || user.name().isBlank() ? user.username() : user.name();
 
         if (Boolean.TRUE.equals(request.publishAsFaq())) {
             adminService.createKnowledgeItem(new AdminKnowledgeUpsertRequest(
@@ -88,12 +81,20 @@ public class QaTicketService implements QaTicketApplicationService {
                     "FAQ管理",
                     request.content(),
                     null,
-                    null,
+                    "qa-ticket",
                     "全体学生",
-                    user.name(),
+                    actorName,
                     true
             ));
         }
+
+        KnowledgeQaTicketMessage msg = new KnowledgeQaTicketMessage();
+        msg.setTicketId(ticket.getId());
+        msg.setActorName(actorName);
+        msg.setActorRole(user.role());
+        msg.setMessageText(request.content());
+        msg.setCreatedAt(LocalDateTime.now());
+        messageRepository.save(msg);
         ticket.setStatus(Boolean.TRUE.equals(request.closeTicket()) ? "CLOSED" : "IN_PROGRESS");
         ticket.setHandledBy(user.userId());
         ticket.setHandledAt(LocalDateTime.now());
@@ -111,6 +112,18 @@ public class QaTicketService implements QaTicketApplicationService {
         return toDetail(ticket);
     }
 
+    @Override
+    public QaTicketDetailResponse deleteMessage(Long messageId) {
+        KnowledgeQaTicketMessage msg = messageRepository.findById(messageId)
+                .orElseThrow(() -> new BusinessException("处理记录不存在"));
+        Long ticketId = msg.getTicketId();
+        messageRepository.delete(msg);
+        KnowledgeQaTicket ticket = ticketRepository.findById(ticketId).orElseThrow(() -> new BusinessException("工单不存在"));
+        ticket.setUpdatedAt(LocalDateTime.now());
+        ticket = ticketRepository.save(ticket);
+        return toDetail(ticket);
+    }
+
     private QaTicketListItemResponse toListItem(KnowledgeQaTicket t) {
         String name = t.getAskName() == null || t.getAskName().isBlank() ? (t.getAskUsername() == null ? "-" : t.getAskUsername()) : t.getAskName();
         String summary = t.getQuestionText();
@@ -122,7 +135,7 @@ public class QaTicketService implements QaTicketApplicationService {
 
     private QaTicketDetailResponse toDetail(KnowledgeQaTicket t) {
         List<QaTicketMessageResponse> msgs = messageRepository.findByTicketIdOrderByCreatedAtAsc(t.getId()).stream()
-                .map(m -> new QaTicketMessageResponse(m.getActorName(), m.getActorRole(), format(m.getCreatedAt()), m.getMessageText()))
+                .map(m -> new QaTicketMessageResponse(m.getId(), m.getActorName(), m.getActorRole(), format(m.getCreatedAt()), m.getMessageText()))
                 .toList();
         String name = t.getAskName() == null || t.getAskName().isBlank() ? (t.getAskUsername() == null ? "-" : t.getAskUsername()) : t.getAskName();
         return new QaTicketDetailResponse(t.getId(), name, t.getAskUserId(), format(t.getCreatedAt()), t.getStatus(), t.getQuestionText(), msgs);

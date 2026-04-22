@@ -232,6 +232,18 @@ public class MockAdminService implements AdminApplicationService {
     }
 
     @Override
+    public void deleteKnowledgeItem(Long id) {
+        initializeKnowledgeItems();
+        boolean exists = knowledgeItems.stream().anyMatch(item -> item.id().equals(id));
+        if (!exists) {
+            throw new BusinessException("知识条目不存在: " + id);
+        }
+        knowledgeItems.removeIf(item -> item.id().equals(id));
+        knowledgeAttachments.removeIf(item -> item.knowledgeId().equals(id));
+        writeOperationLog("KNOWLEDGE", "DELETE", "knowledge#" + id, "SUCCESS", null);
+    }
+
+    @Override
     public List<KnowledgeAttachmentResponse> listKnowledgeAttachments(Long knowledgeId) {
         initializeKnowledgeItems();
         boolean exists = knowledgeItems.stream().anyMatch(item -> item.id().equals(knowledgeId));
@@ -1085,9 +1097,10 @@ public class MockAdminService implements AdminApplicationService {
 
     private void validateKnowledgeRequest(AdminKnowledgeUpsertRequest request) {
         boolean published = Boolean.TRUE.equals(request.published());
+        boolean isFaq = request.category() != null && "FAQ管理".equalsIgnoreCase(request.category().trim());
         boolean hasOfficialUrl = request.officialUrl() != null && !request.officialUrl().isBlank();
         boolean hasSourceFile = request.sourceFileName() != null && !request.sourceFileName().isBlank();
-        if (published && !hasOfficialUrl && !hasSourceFile) {
+        if (published && !isFaq && !hasOfficialUrl && !hasSourceFile) {
             throw new BusinessException("已发布知识条目必须提供官方链接或来源文件名");
         }
         if (hasOfficialUrl && !(request.officialUrl().startsWith("http://") || request.officialUrl().startsWith("https://"))) {

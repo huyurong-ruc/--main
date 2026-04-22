@@ -144,6 +144,9 @@
     .iconActions { display:flex; gap: 8px; align-items:center; }
     .iconAction { border: 1px solid var(--border); background: rgba(15,23,42,.03); color: var(--text); padding: 6px 8px; border-radius: 10px; cursor: pointer; font-weight: 850; line-height: 1; }
     .iconAction:hover { background: rgba(37,99,235,.06); border-color: rgba(37,99,235,.25); }
+    .linkAction { border: 0; background: transparent; padding: 0; cursor: pointer; font-weight: 850; color: #2563eb; }
+    .linkAction.danger { color: #ef4444; }
+    .linkAction:hover { text-decoration: underline; }
     .statusPill { display:inline-flex; align-items:center; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 850; border: 1px solid var(--border); }
     .statusPill.ok { background: rgba(22,163,74,.10); border-color: rgba(22,163,74,.25); color: #166534; }
     .statusPill.bad { background: rgba(239,68,68,.10); border-color: rgba(239,68,68,.25); color: #b91c1c; }
@@ -261,6 +264,27 @@
     .tabs { display:inline-flex; gap: 6px; padding: 6px; border-radius: 12px; border: 1px solid rgba(15,23,42,.08); background: rgba(15,23,42,.02); }
     .tabBtn { border: 0; background: transparent; padding: 8px 12px; border-radius: 10px; font-weight: 900; cursor: pointer; color: var(--muted); }
     .tabBtn.active { background: #1e5bff; color: #ffffff; }
+    .approvalBoard { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 10px 20px rgba(0,0,0,.05); }
+    .approvalTop { display:flex; align-items:center; justify-content: space-between; gap: 12px; }
+    .approvalFilterRow { display:flex; align-items:center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+    .approvalCards { display:grid; gap: 12px; margin-top: 12px; }
+    .approvalCard { border: 1px solid rgba(15,23,42,.10); border-radius: 14px; background: #ffffff; padding: 14px; display:flex; align-items:flex-start; justify-content: space-between; gap: 12px; }
+    .approvalCard.overdue { background: #fff1f2; border-color: rgba(239,68,68,.30); }
+    .approvalTitleRow { display:flex; align-items:center; gap: 10px; flex-wrap: wrap; }
+    .approvalTitle { font-size: 16px; font-weight: 900; }
+    .slaPill { display:inline-flex; align-items:center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(15,23,42,.10); font-size: 12px; font-weight: 900; }
+    .slaPill.ok { background: rgba(22,163,74,.10); border-color: rgba(22,163,74,.25); color: #166534; }
+    .slaPill.warn { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.28); color: #92400e; }
+    .slaPill.bad { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.28); color: #b91c1c; }
+    .approvalMeta { margin-top: 10px; display:grid; gap: 6px; color: #475569; font-size: 13px; }
+    .approvalBtns { display:flex; gap: 10px; align-items:center; }
+    .approvalBtn { border: 0; padding: 10px 14px; border-radius: 12px; font-weight: 900; cursor: pointer; color: #ffffff; display:inline-flex; align-items:center; gap: 8px; }
+    .approvalBtn.green { background: #16a34a; }
+    .approvalBtn.red { background: #dc2626; }
+    .approvalBtn.blue { background: #2563eb; }
+    .approvalBtn:disabled { opacity: .55; cursor: not-allowed; }
+    .approvalBulkBtn { border: 0; padding: 10px 14px; border-radius: 12px; font-weight: 900; cursor: pointer; color: #ffffff; background: #16a34a; display:inline-flex; align-items:center; gap: 8px; }
+    .approvalBulkBtn:disabled { opacity: .55; cursor: not-allowed; }
     .noticeHeader { display:flex; align-items:flex-start; justify-content: space-between; gap: 14px; margin-bottom: 12px; }
     .noticeHeader h2 { margin: 0; font-size: 22px; font-weight: 900; }
     .noticeHeader .desc { margin-top: 6px; color: var(--muted); font-size: 13px; }
@@ -609,7 +633,10 @@
     }
 
     function el(tag, attrs, children) {
-      const node = document.createElement(tag);
+      const svgTags = new Set(["svg", "g", "path", "circle", "rect", "line", "polyline", "polygon", "text", "defs", "linearGradient", "stop"]);
+      const node = svgTags.has(tag)
+        ? document.createElementNS("http://www.w3.org/2000/svg", tag)
+        : document.createElement(tag);
       if (attrs) {
         Object.entries(attrs).forEach(([k, v]) => {
           if (k === "class") node.className = v;
@@ -821,6 +848,12 @@
     function saveKnowledgeContent(knowledgeId, content) {
       const map = loadKnowledgeContentMap();
       map[String(knowledgeId)] = String(content || "");
+      localStorage.setItem(KNOWLEDGE_CONTENT_KEY, JSON.stringify(map));
+    }
+
+    function deleteKnowledgeContent(knowledgeId) {
+      const map = loadKnowledgeContentMap();
+      delete map[String(knowledgeId)];
       localStorage.setItem(KNOWLEDGE_CONTENT_KEY, JSON.stringify(map));
     }
 
@@ -1462,18 +1495,34 @@
 
       async function openCreatePolicy() {
         showUserOverlay("新建政策");
+        const user = getUser();
+        const updatedBy = user ? (user.name || user.username) : "系统管理员";
         const titleInput = el("input", { placeholder: "政策标题（必填）" });
         const categoryInput = el("input", { value: "政策管理", placeholder: "分类" });
         const contentInput = el("textarea", { placeholder: "政策内容（必填）" });
+        const publishedSelect = el("select", null, [
+          el("option", { value: "false", text: "草稿" }),
+          el("option", { value: "true", text: "已发布" })
+        ]);
+        publishedSelect.value = "false";
+        const officialUrlInput = el("input", { placeholder: "官方链接（可空，http/https）" });
+        const sourceFileInput = el("input", { placeholder: "来源文件名（可空）" });
+        const scopeInput = el("input", { placeholder: "适用人群（可空，如：全体学生）" });
         const msg = el("div", { class: "toast" }, []);
 
         setUserModalContent([
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 260px;" }, [el("label", { text: "标题" }), titleInput]),
-            el("div", { class: "field", style: "min-width: 180px;" }, [el("label", { text: "分类" }), categoryInput])
+            el("div", { class: "field", style: "min-width: 180px;" }, [el("label", { text: "分类" }), categoryInput]),
+            el("div", { class: "field", style: "min-width: 160px;" }, [el("label", { text: "状态" }), publishedSelect])
           ]),
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "内容" }), contentInput])
+          ]),
+          el("div", { class: "row" }, [
+            el("div", { class: "field", style: "flex:1; min-width: 320px;" }, [el("label", { text: "官方链接" }), officialUrlInput]),
+            el("div", { class: "field", style: "flex:1; min-width: 220px;" }, [el("label", { text: "来源文件" }), sourceFileInput]),
+            el("div", { class: "field", style: "flex:1; min-width: 220px;" }, [el("label", { text: "适用人群" }), scopeInput])
           ]),
           msg
         ], [
@@ -1481,21 +1530,30 @@
           el("button", { class: "btn primary", text: "创建", onclick: async () => {
             msg.textContent = "";
             try {
+              const published = publishedSelect.value === "true";
               const body = {
                 title: titleInput.value.trim(),
                 category: categoryInput.value.trim(),
                 content: contentInput.value.trim(),
-                published: false
+                officialUrl: normalizeUrl(officialUrlInput.value),
+                sourceFileName: normalizeText(sourceFileInput.value),
+                audienceScope: normalizeText(scopeInput.value),
+                updatedBy: updatedBy,
+                published: published
               };
+              Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
               if (!body.title || !body.content) {
                 msg.textContent = "标题和内容不能为空";
                 return;
               }
-              await apiJson("/api/v1/admin/knowledge", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body)
-              });
+              if (published && !body.officialUrl && !body.sourceFileName) {
+                msg.textContent = "已发布政策必须提供官方链接或来源文件名";
+                return;
+              }
+              const created = await apiJson("/api/v1/admin/knowledge", { method: "POST", body: JSON.stringify(body) });
+              if (created && created.id != null) {
+                saveKnowledgeContent(created.id, body.content);
+              }
               hideUserOverlay();
               await loadPoliciesList();
             } catch (e) {
@@ -1507,9 +1565,19 @@
 
       async function openEditPolicy(policy) {
         showUserOverlay("编辑政策");
+        const user = getUser();
+        const updatedBy = user ? (user.name || user.username) : "系统管理员";
         const titleInput = el("input", { value: policy.title || "" });
         const categoryInput = el("input", { value: policy.category || "政策管理" });
         const contentInput = el("textarea", { placeholder: "内容" });
+        const publishedSelect = el("select", null, [
+          el("option", { value: "false", text: "草稿" }),
+          el("option", { value: "true", text: "已发布" })
+        ]);
+        publishedSelect.value = policy.published ? "true" : "false";
+        const officialUrlInput = el("input", { value: normalizeUrlForInput(policy.officialUrl), placeholder: "官方链接（可空，http/https）" });
+        const sourceFileInput = el("input", { value: policy.sourceFileName || "", placeholder: "来源文件名（可空）" });
+        const scopeInput = el("input", { value: policy.audienceScope || "", placeholder: "适用人群（可空，如：全体学生）" });
         const msg = el("div", { class: "toast" }, []);
 
         const savedContent = getKnowledgeContent(policy.id);
@@ -1525,10 +1593,16 @@
         setUserModalContent([
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 260px;" }, [el("label", { text: "标题" }), titleInput]),
-            el("div", { class: "field", style: "min-width: 180px;" }, [el("label", { text: "分类" }), categoryInput])
+            el("div", { class: "field", style: "min-width: 180px;" }, [el("label", { text: "分类" }), categoryInput]),
+            el("div", { class: "field", style: "min-width: 160px;" }, [el("label", { text: "状态" }), publishedSelect])
           ]),
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "内容" }), contentInput])
+          ]),
+          el("div", { class: "row" }, [
+            el("div", { class: "field", style: "flex:1; min-width: 320px;" }, [el("label", { text: "官方链接" }), officialUrlInput]),
+            el("div", { class: "field", style: "flex:1; min-width: 220px;" }, [el("label", { text: "来源文件" }), sourceFileInput]),
+            el("div", { class: "field", style: "flex:1; min-width: 220px;" }, [el("label", { text: "适用人群" }), scopeInput])
           ]),
           msg
         ], [
@@ -1536,20 +1610,32 @@
           el("button", { class: "btn primary", text: "保存", onclick: async () => {
             msg.textContent = "";
             try {
+              const published = publishedSelect.value === "true";
               const body = {
                 title: titleInput.value.trim(),
                 category: categoryInput.value.trim(),
-                content: contentInput.value.trim()
+                content: contentInput.value.trim(),
+                officialUrl: normalizeUrl(officialUrlInput.value),
+                sourceFileName: normalizeText(sourceFileInput.value),
+                audienceScope: normalizeText(scopeInput.value),
+                updatedBy: updatedBy,
+                published: published
               };
-              await apiJson("/api/v1/admin/knowledge/" + policy.id, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body)
-              });
+              Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
+              if (!body.title || !body.content) {
+                msg.textContent = "标题和内容不能为空";
+                return;
+              }
+              if (published && !body.officialUrl && !body.sourceFileName) {
+                msg.textContent = "已发布政策必须提供官方链接或来源文件名";
+                return;
+              }
+              await apiJson("/api/v1/admin/knowledge/" + policy.id, { method: "PUT", body: JSON.stringify(body) });
               saveKnowledgeContent(policy.id, body.content);
               hideUserOverlay();
               await loadPoliciesList();
-              await loadPolicyDetail(policy);
+              const updatedItem = (allPolicies || []).find(x => String(x.id) === String(policy.id)) || policy;
+              await loadPolicyDetail(updatedItem);
             } catch (e) {
               msg.textContent = e.message;
             }
@@ -1584,6 +1670,228 @@
       });
 
       await loadPoliciesList();
+    }
+
+    async function loadFaqManage(state) {
+      document.getElementById("pageTitle").textContent = "FAQ管理";
+      const content = document.getElementById("content");
+      content.innerHTML = "";
+
+      const s = Object.assign({ keyword: "", published: "", page: 0, size: 10 }, state || {});
+      const keywordInput = el("input", { value: s.keyword, placeholder: "搜索问题" });
+      const statusSelect = el("select", null, [
+        el("option", { value: "", text: "全部状态" }),
+        el("option", { value: "true", text: "已发布" }),
+        el("option", { value: "false", text: "草稿" })
+      ]);
+      statusSelect.value = s.published;
+      const toast = el("div", { class: "toast" }, []);
+
+      const header = el("div", { class: "pageHeader" }, [
+        el("div", null, [
+          el("h2", { text: "FAQ管理" }),
+          el("div", { class: "desc", text: "维护常见问题，提高学生自助获取效率" })
+        ]),
+        el("button", { class: "btn primary", style: "padding: 8px 14px; font-size: 14px;", text: "+ 新增FAQ", onclick: async () => await openCreateFaq() })
+      ]);
+
+      const filterCard = el("div", { class: "card" }, [
+        el("div", { style: "display:flex; gap: 10px; align-items:center; flex-wrap: wrap;" }, [
+          el("div", { style: "flex: 1; min-width: 320px;" }, [keywordInput]),
+          el("div", { style: "min-width: 140px;" }, [statusSelect]),
+          el("button", { class: "btn primary", text: "搜索", onclick: async () => {
+            await loadFaqManage({ keyword: keywordInput.value.trim(), published: statusSelect.value, page: 0, size: s.size });
+          }})
+        ]),
+        toast
+      ]);
+
+      const tableCard = el("div", { class: "card", style: "margin-top: 12px;" }, [el("div", { text: "加载中..." })]);
+      content.appendChild(header);
+      content.appendChild(filterCard);
+      content.appendChild(tableCard);
+
+      function getUpdatedBy() {
+        const user = getUser();
+        return user ? (user.name || user.username) : "系统管理员";
+      }
+
+      async function tryLoadAnswer(id) {
+        const local = getKnowledgeContent(id);
+        if (local) return local;
+        try {
+          const detail = await apiJson("/api/v1/knowledge/" + id);
+          return detail && detail.answer ? String(detail.answer) : "";
+        } catch (e) {
+          return "";
+        }
+      }
+
+      async function openCreateFaq() {
+        showUserOverlay("新建FAQ");
+        const titleInput = el("input", { placeholder: "问题（必填）" });
+        const answerInput = el("textarea", { placeholder: "答案（必填）" });
+        const publishedSelect = el("select", null, [
+          el("option", { value: "true", text: "已发布" }),
+          el("option", { value: "false", text: "草稿" })
+        ]);
+        publishedSelect.value = "true";
+        const msg = el("div", { class: "toast" }, []);
+
+        setUserModalContent([
+          el("div", { class: "row" }, [
+            el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "问题" }), titleInput]),
+            el("div", { class: "field", style: "min-width: 160px;" }, [el("label", { text: "状态" }), publishedSelect])
+          ]),
+          el("div", { class: "row" }, [
+            el("div", { class: "field", style: "flex:1; min-width: 520px;" }, [el("label", { text: "答案" }), answerInput])
+          ]),
+          msg
+        ], [
+          el("button", { class: "btn", text: "取消", onclick: () => hideUserOverlay() }),
+          el("button", { class: "btn primary", text: "保存", onclick: async () => {
+            msg.textContent = "";
+            const body = {
+              title: titleInput.value.trim(),
+              category: "FAQ管理",
+              content: answerInput.value.trim(),
+              updatedBy: getUpdatedBy(),
+              published: publishedSelect.value === "true"
+            };
+            if (!body.title || !body.content) {
+              msg.textContent = "问题和答案不能为空";
+              return;
+            }
+            try {
+              const created = await apiJson("/api/v1/admin/knowledge", { method: "POST", body: JSON.stringify(body) });
+              if (created && created.id != null) {
+                saveKnowledgeContent(created.id, body.content);
+              }
+              hideUserOverlay();
+              await loadFaqManage(Object.assign({}, s, { page: 0 }));
+            } catch (e) {
+              msg.textContent = e.message;
+            }
+          }})
+        ]);
+      }
+
+      async function openEditFaq(item) {
+        showUserOverlay("编辑FAQ");
+        const titleInput = el("input", { value: item.title || "", placeholder: "问题（必填）" });
+        const answerInput = el("textarea", { placeholder: "答案（必填）" });
+        const publishedSelect = el("select", null, [
+          el("option", { value: "true", text: "已发布" }),
+          el("option", { value: "false", text: "草稿" })
+        ]);
+        publishedSelect.value = item.published ? "true" : "false";
+        const msg = el("div", { class: "toast" }, []);
+        answerInput.value = await tryLoadAnswer(item.id);
+
+        setUserModalContent([
+          el("div", { class: "row" }, [
+            el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "问题" }), titleInput]),
+            el("div", { class: "field", style: "min-width: 160px;" }, [el("label", { text: "状态" }), publishedSelect])
+          ]),
+          el("div", { class: "row" }, [
+            el("div", { class: "field", style: "flex:1; min-width: 520px;" }, [el("label", { text: "答案" }), answerInput])
+          ]),
+          msg
+        ], [
+          el("button", { class: "btn", text: "取消", onclick: () => hideUserOverlay() }),
+          el("button", { class: "btn primary", text: "保存", onclick: async () => {
+            msg.textContent = "";
+            const body = {
+              title: titleInput.value.trim(),
+              category: "FAQ管理",
+              content: answerInput.value.trim(),
+              updatedBy: getUpdatedBy(),
+              published: publishedSelect.value === "true"
+            };
+            if (!body.title || !body.content) {
+              msg.textContent = "问题和答案不能为空";
+              return;
+            }
+            try {
+              await apiJson("/api/v1/admin/knowledge/" + item.id, { method: "PUT", body: JSON.stringify(body) });
+              saveKnowledgeContent(item.id, body.content);
+              hideUserOverlay();
+              await loadFaqManage(Object.assign({}, s, { page: 0 }));
+            } catch (e) {
+              msg.textContent = e.message;
+            }
+          }})
+        ]);
+      }
+
+      async function doDeleteFaq(item) {
+        toast.textContent = "";
+        if (!confirm("确认删除 FAQ：" + (item.title || "-") + " 吗？")) return;
+        try {
+          await apiJson("/api/v1/admin/knowledge/" + item.id, { method: "DELETE" });
+          deleteKnowledgeContent(item.id);
+          await loadFaqManage(Object.assign({}, s, { page: 0 }));
+        } catch (e) {
+          toast.textContent = e.message;
+        }
+      }
+
+      function renderFaqTable(pageData) {
+        const table = el("table", null, []);
+        table.appendChild(el("thead", null, [el("tr", null, [
+          el("th", { text: "问题" }),
+          el("th", { text: "状态" }),
+          el("th", { text: "关联政策" }),
+          el("th", { text: "创建时间" }),
+          el("th", { text: "操作", style: "text-align:right;" })
+        ])]));
+        const tbody = el("tbody", null, []);
+        (pageData.content || []).forEach(item => {
+          const statusText = item.published ? "已发布" : "草稿";
+          const statusSpan = el("span", { class: "statusPill " + (item.published ? "ok" : "warn"), text: statusText });
+          const related = el("a", { href: "#", onclick: (e) => { e.preventDefault(); }, style: "color:#2563eb; text-decoration:none;" }, [item.officialUrl || "-"]);
+          const editBtn = el("button", { class: "iconAction", text: "✎", type: "button", onclick: async () => await openEditFaq(item) });
+          const delBtn = el("button", { class: "iconAction", text: "🗑", type: "button", onclick: async () => await doDeleteFaq(item) });
+          tbody.appendChild(el("tr", null, [
+            el("td", null, [el("div", { style: "font-weight: 800;", text: item.title || "-" })]),
+            el("td", null, [statusSpan]),
+            el("td", null, [related]),
+            el("td", null, [el("div", { class: "mono", text: "-" })]),
+            el("td", null, [el("div", { class: "iconActions", style: "justify-content:flex-end;" }, [editBtn, delBtn])])
+          ]));
+        });
+        table.appendChild(tbody);
+        return table;
+      }
+
+      try {
+        const params = {
+          keyword: s.keyword || null,
+          category: "FAQ管理",
+          published: s.published === "" ? null : s.published,
+          page: s.page,
+          size: s.size
+        };
+        const pageData = await apiJson("/api/v1/admin/knowledge/page?" + buildQuery(params));
+        tableCard.innerHTML = "";
+        tableCard.appendChild(renderFaqTable(pageData));
+        const footer = el("div", { class: "footer" }, [
+          el("div", { text: "共 " + pageData.totalElements + " 条 · 第 " + (pageData.page + 1) + "/" + pageData.totalPages + " 页" }),
+          el("div", { class: "pager" }, [
+            el("button", { class: "btn", text: "上一页", disabled: pageData.page <= 0, onclick: async () => {
+              await loadFaqManage(Object.assign({}, s, { page: Math.max(0, pageData.page - 1) }));
+            }}),
+            el("button", { class: "btn", text: "下一页", disabled: pageData.page >= (pageData.totalPages - 1), onclick: async () => {
+              await loadFaqManage(Object.assign({}, s, { page: pageData.page + 1 }));
+            }})
+          ])
+        ]);
+        tableCard.appendChild(footer);
+      } catch (e) {
+        toast.textContent = e.message;
+        tableCard.innerHTML = "";
+        tableCard.appendChild(el("div", { class: "toast", text: e.message }));
+      }
     }
 
     async function loadKnowledge(state) {
@@ -2411,123 +2719,241 @@
       const content = document.getElementById("content");
       content.innerHTML = "";
 
-      const s = Object.assign({ studentId: "", status: "", certificateType: "", keyword: "", page: 0, size: 10 }, state || {});
-      const studentIdInput = el("input", { value: s.studentId, placeholder: "学生ID（可空）" });
-      const statusSelect = el("select", null, [
-        el("option", { value: "", text: "全部" }),
-        el("option", { value: "PENDING", text: "PENDING" }),
-        el("option", { value: "COUNSELOR_APPROVED", text: "COUNSELOR_APPROVED" }),
-        el("option", { value: "APPROVED", text: "APPROVED" }),
-        el("option", { value: "REJECTED", text: "REJECTED" }),
-        el("option", { value: "WITHDRAWN", text: "WITHDRAWN" })
+      const s = Object.assign({ tab: "TODO", certificateType: "" }, state || {});
+
+      const header = el("div", { class: "pageHeader" }, [
+        el("div", null, [
+          el("h2", { text: "审批任务" }),
+          el("div", { class: "desc", text: "处理具体审批任务" })
+        ])
       ]);
-      statusSelect.value = (s.status || "").toUpperCase();
-      const typeInput = el("input", { value: s.certificateType, placeholder: "证明类型关键词" });
-      const keywordInput = el("input", { value: s.keyword, placeholder: "姓名/关键词" });
-      const sizeSelect = el("select", null, [10, 20, 50].map(n => {
-        const opt = el("option", { value: String(n), text: String(n) });
-        if (n === s.size) opt.selected = true;
-        return opt;
-      }));
+      content.appendChild(header);
 
       const toast = el("div", { class: "toast" }, []);
-      const historyCard = el("div", { class: "card", style: "margin-top: 12px; display:none;" }, []);
+      const board = el("div", { class: "approvalBoard" }, []);
+      content.appendChild(board);
+      content.appendChild(toast);
 
-      const filterCard = el("div", { class: "card" }, [
-        el("div", { class: "row" }, [
-          el("div", { class: "field", style: "min-width: 140px;" }, [el("label", { text: "学生ID studentId" }), studentIdInput]),
-          el("div", { class: "field", style: "min-width: 220px;" }, [el("label", { text: "状态 status" }), statusSelect]),
-          el("div", { class: "field", style: "min-width: 180px;" }, [el("label", { text: "证明类型 certificateType" }), typeInput]),
-          el("div", { class: "field", style: "flex:1; min-width: 220px;" }, [el("label", { text: "关键词 keyword" }), keywordInput]),
-          el("div", { class: "field", style: "min-width: 120px;" }, [el("label", { text: "每页 size" }), sizeSelect]),
-          el("div", { class: "field", style: "justify-content:flex-end; min-width: 120px;" }, [
-            el("label", { text: " " }),
-            el("button", { class: "btn primary", text: "查询", onclick: async () => {
-              historyCard.style.display = "none";
-              await loadApprovals({
-                studentId: studentIdInput.value.trim(),
-                status: statusSelect.value,
-                certificateType: typeInput.value.trim(),
-                keyword: keywordInput.value.trim(),
-                page: 0,
-                size: parseInt(sizeSelect.value, 10)
-              });
-            }})
-          ])
-        ]),
-        toast
+      function parseDt(value) {
+        if (!value) return null;
+        const d = new Date(value);
+        if (!Number.isNaN(d.getTime())) return d;
+        const fixed = String(value).replace(" ", "T");
+        const d2 = new Date(fixed);
+        if (!Number.isNaN(d2.getTime())) return d2;
+        return null;
+      }
+
+      function slaFor(item) {
+        const dt = parseDt(item.submittedAt);
+        if (!dt) return { cls: "ok", text: "正常", overdue: false };
+        const hours = (Date.now() - dt.getTime()) / 3600000;
+        if (hours >= 48) return { cls: "bad", text: "已超时", overdue: true };
+        if (hours >= 36) return { cls: "warn", text: "即将超时", overdue: false };
+        return { cls: "ok", text: "正常", overdue: false };
+      }
+
+      function isTodoStatus(status) {
+        const u = String(status || "").toUpperCase();
+        return u === "PENDING" || u === "COUNSELOR_APPROVED";
+      }
+
+      function isDoneStatus(status) {
+        const u = String(status || "").toUpperCase();
+        return u === "APPROVED" || u === "REJECTED" || u === "WITHDRAWN";
+      }
+
+      let loading = false;
+      let tasks = [];
+      let typeOptions = [];
+
+      const tabs = el("div", { class: "tabs" }, []);
+      const tabTodo = el("button", { class: "tabBtn" + (s.tab === "TODO" ? " active" : ""), type: "button", text: "我的待办" });
+      const tabDone = el("button", { class: "tabBtn" + (s.tab === "DONE" ? " active" : ""), type: "button", text: "我处理过的" });
+      const tabTimeout = el("button", { class: "tabBtn" + (s.tab === "TIMEOUT" ? " active" : ""), type: "button", text: "已超时" });
+      tabs.appendChild(tabTodo);
+      tabs.appendChild(tabDone);
+      tabs.appendChild(tabTimeout);
+
+      const typeSelect = el("select", null, [el("option", { value: "", text: "全部类型" })]);
+      typeSelect.value = s.certificateType || "";
+      const bulkBtn = el("button", { class: "approvalBulkBtn", type: "button" }, [
+        el("span", { text: "✅" }),
+        el("span", { text: "一键全选通过" })
       ]);
 
-      const tableCard = el("div", { class: "card", style: "margin-top: 12px;" }, [el("div", { text: "加载中..." })]);
-      content.appendChild(filterCard);
-      content.appendChild(tableCard);
-      content.appendChild(historyCard);
+      const listWrap = el("div", { class: "approvalCards" }, []);
+
+      board.appendChild(el("div", { class: "approvalTop" }, [tabs]));
+      board.appendChild(el("div", { class: "approvalFilterRow" }, [
+        el("div", { style: "min-width: 160px;" }, [typeSelect]),
+        bulkBtn
+      ]));
+      board.appendChild(listWrap);
+
+      function setTab(next) {
+        s.tab = next;
+        tabTodo.classList.toggle("active", next === "TODO");
+        tabDone.classList.toggle("active", next === "DONE");
+        tabTimeout.classList.toggle("active", next === "TIMEOUT");
+        render();
+      }
+
+      tabTodo.addEventListener("click", () => setTab("TODO"));
+      tabDone.addEventListener("click", () => setTab("DONE"));
+      tabTimeout.addEventListener("click", () => setTab("TIMEOUT"));
+
+      typeSelect.addEventListener("change", () => {
+        s.certificateType = typeSelect.value;
+        render();
+      });
 
       async function onAction(item, action) {
         toast.textContent = "";
         const comment = prompt(action === "approve" ? "通过备注（可空）" : "驳回原因（建议填写）", "") || "";
-        try {
-          await apiJson("/api/v1/admin/approvals/" + item.requestId + "/action", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: action, comment: comment })
-          });
-          historyCard.style.display = "none";
-          await loadApprovals(s);
-        } catch (e) {
-          toast.textContent = e.message;
-        }
+        await apiJson("/api/v1/admin/approvals/" + item.requestId + "/action", {
+          method: "POST",
+          body: JSON.stringify({ action: action, comment: comment })
+        });
       }
 
-      async function onHistory(item) {
+      function render() {
+        const filtered = tasks
+          .filter(t => !s.certificateType || String(t.certificateType || "") === String(s.certificateType))
+          .filter(t => {
+            if (s.tab === "TODO") return isTodoStatus(t.status);
+            if (s.tab === "DONE") return isDoneStatus(t.status);
+            const sla = slaFor(t);
+            return sla.overdue && isTodoStatus(t.status);
+          });
+
+        typeOptions = Array.from(new Set(tasks.map(t => t.certificateType).filter(Boolean))).sort();
+        const old = typeSelect.value;
+        typeSelect.innerHTML = "";
+        typeSelect.appendChild(el("option", { value: "", text: "全部类型" }));
+        typeOptions.forEach(tp => typeSelect.appendChild(el("option", { value: String(tp), text: String(tp) })));
+        typeSelect.value = old;
+
+        bulkBtn.disabled = loading || s.tab !== "TODO" || filtered.filter(t => isTodoStatus(t.status)).length === 0;
+        listWrap.innerHTML = "";
+
+        if (!filtered.length) {
+          listWrap.appendChild(el("div", { style: "color:#94a3b8; padding: 18px 6px; text-align:center;" }, [
+            el("div", { text: "暂无审批任务" })
+          ]));
+          return;
+        }
+
+        filtered.forEach(item => {
+          const sla = slaFor(item);
+          const card = el("div", { class: "approvalCard" + (sla.cls === "bad" ? " overdue" : "") }, []);
+          const left = el("div", null, []);
+          const titleRow = el("div", { class: "approvalTitleRow" }, [
+            el("div", { class: "approvalTitle", text: item.certificateType || "审批任务" }),
+            approvalStatusTag(item.status),
+            el("span", { class: "slaPill " + sla.cls }, [
+              el("span", { text: sla.cls === "ok" ? "✓" : (sla.cls === "warn" ? "⏱" : "⛔") }),
+              el("span", { text: "SLA状态：" + sla.text })
+            ])
+          ]);
+          const meta = el("div", { class: "approvalMeta" }, [
+            el("div", { text: "申请人：" + (item.studentName || "-") }),
+            el("div", { text: "提交时间：" + formatDateTimeText(item.submittedAt) })
+          ]);
+          left.appendChild(titleRow);
+          left.appendChild(meta);
+
+          const disabledOperator = isDoneStatus(item.status);
+          const btnApprove = el("button", { class: "approvalBtn green", type: "button", disabled: disabledOperator || loading }, [
+            el("span", { text: "✅" }),
+            el("span", { text: "通过" })
+          ]);
+          const btnReject = el("button", { class: "approvalBtn red", type: "button", disabled: disabledOperator || loading }, [
+            el("span", { text: "⛔" }),
+            el("span", { text: "驳回" })
+          ]);
+          const btnAssign = el("button", { class: "approvalBtn blue", type: "button", disabled: loading }, [
+            el("span", { text: "✈" }),
+            el("span", { text: "转派" })
+          ]);
+
+          btnApprove.addEventListener("click", async () => {
+            loading = true;
+            render();
+            try {
+              await onAction(item, "approve");
+              await reload();
+            } catch (e) {
+              toast.textContent = e.message;
+            } finally {
+              loading = false;
+              render();
+            }
+          });
+          btnReject.addEventListener("click", async () => {
+            loading = true;
+            render();
+            try {
+              await onAction(item, "reject");
+              await reload();
+            } catch (e) {
+              toast.textContent = e.message;
+            } finally {
+              loading = false;
+              render();
+            }
+          });
+          btnAssign.addEventListener("click", async () => {
+            const to = prompt("转派给（输入老师姓名/账号）", "");
+            if (to == null) return;
+            alert("转派接口暂未接入（已记录输入：" + to + "）");
+          });
+
+          const right = el("div", { class: "approvalBtns" }, [btnApprove, btnReject, btnAssign]);
+          card.appendChild(left);
+          card.appendChild(right);
+          listWrap.appendChild(card);
+        });
+      }
+
+      bulkBtn.addEventListener("click", async () => {
+        if (loading) return;
+        const filtered = tasks
+          .filter(t => !s.certificateType || String(t.certificateType || "") === String(s.certificateType))
+          .filter(t => isTodoStatus(t.status));
+        if (!filtered.length) return;
+        if (!confirm("确认对当前列表 " + filtered.length + " 条任务执行通过吗？")) return;
+        loading = true;
+        render();
+        try {
+          for (const item of filtered) {
+            await apiJson("/api/v1/admin/approvals/" + item.requestId + "/action", {
+              method: "POST",
+              body: JSON.stringify({ action: "approve", comment: "" })
+            });
+          }
+          await reload();
+        } catch (e) {
+          toast.textContent = e.message;
+        } finally {
+          loading = false;
+          render();
+        }
+      });
+
+      async function reload() {
         toast.textContent = "";
         try {
-          const history = await apiJson("/api/v1/admin/approvals/" + item.requestId + "/history");
-          historyCard.innerHTML = "";
-          historyCard.style.display = "block";
-          historyCard.appendChild(el("div", { class: "row", style: "justify-content: space-between; align-items: center;" }, [
-            el("div", { text: "审批历史 · 申请#" + item.requestId }),
-            el("button", { class: "btn", text: "关闭", onclick: () => { historyCard.style.display = "none"; } })
-          ]));
-          const list = el("div", { class: "sub" }, []);
-          (history || []).forEach(h => {
-            list.appendChild(el("div", { class: "mono", text: (h.operatedAt || "-") + " · " + (h.operatorName || "-") + " · " + (h.action || "-") + " · " + (h.fromStatus || "-") + " -> " + (h.toStatus || "-") + (h.comment ? (" · " + h.comment) : "") }));
-          });
-          historyCard.appendChild(list);
+          const pageData = await apiJson("/api/v1/admin/approvals/page?" + buildQuery({ page: 0, size: 50 }));
+          tasks = (pageData && pageData.content) ? pageData.content : [];
         } catch (e) {
           toast.textContent = e.message;
+          tasks = [];
         }
+        render();
       }
 
-      try {
-        const params = {
-          studentId: s.studentId || null,
-          status: s.status || null,
-          certificateType: s.certificateType || null,
-          keyword: s.keyword || null,
-          page: s.page,
-          size: s.size
-        };
-        const pageData = await apiJson("/api/v1/admin/approvals/page?" + buildQuery(params));
-        tableCard.innerHTML = "";
-        tableCard.appendChild(renderApprovalsTable(pageData, onAction, onHistory));
-        const footer = el("div", { class: "footer" }, [
-          el("div", { text: "共 " + pageData.totalElements + " 条 · 第 " + (pageData.page + 1) + "/" + pageData.totalPages + " 页" }),
-          el("div", { class: "pager" }, [
-            el("button", { class: "btn", text: "上一页", disabled: pageData.page <= 0, onclick: async () => {
-              await loadApprovals(Object.assign({}, s, { page: Math.max(0, pageData.page - 1) }));
-            }}),
-            el("button", { class: "btn", text: "下一页", disabled: pageData.page >= (pageData.totalPages - 1), onclick: async () => {
-              await loadApprovals(Object.assign({}, s, { page: pageData.page + 1 }));
-            }})
-          ])
-        ]);
-        tableCard.appendChild(footer);
-      } catch (e) {
-        toast.textContent = e.message;
-        tableCard.innerHTML = "";
-        tableCard.appendChild(el("div", { class: "toast", text: e.message }));
-      }
+      await reload();
     }
 
     let cachedRoles = null;
@@ -3074,31 +3500,34 @@
       (pageData.content || []).forEach(item => {
         const wechatBound = item.wechatBound === true;
         const pwdSet = item.passwordSet === true || (item.rawPassword != null && String(item.rawPassword).trim() !== "");
-        
-        const wechatCheckbox = el("div", { style: "display: inline-flex; align-items: center; font-size: 14px; color: #22c55e; font-weight: 700;" }, [
-          el("span", { text: wechatBound ? "☑" : "☐" }),
-          el("span", { text: " " + (wechatBound ? "已绑定" : "未绑定"), style: "margin-left: 4px;" })
+        const wechatCell = el("div", { style: "display:inline-flex; align-items:center; gap: 8px; font-weight: 850; color: " + (wechatBound ? "#16a34a" : "#94a3b8") + ";" }, [
+          el("span", { text: "📱" }),
+          el("span", { text: wechatBound ? "已绑定" : "未绑定" })
         ]);
-        
-        const passwordCheckbox = el("div", { style: "display: inline-flex; align-items: center; font-size: 14px; color: #2563eb; font-weight: 700;" }, [
-          el("span", { text: pwdSet ? "♂" : "♀" }),
-          el("span", { text: " " + (pwdSet ? "已设置" : "未设置"), style: "margin-left: 4px;" })
+
+        const passwordCell = el("div", { style: "display:inline-flex; align-items:center; gap: 8px; font-weight: 850; color: " + (pwdSet ? "#16a34a" : "#94a3b8") + ";" }, [
+          el("span", { text: "🔑" }),
+          el("span", { text: pwdSet ? "已设置" : "未设置" })
         ]);
-        
-        const resetBtn = el("button", { class: "btn", style: "color: #2563eb;", text: "重置密码", onclick: async () => {
+
+        const resetBtn = el("button", { class: "linkAction", type: "button", text: "重置密码", onclick: async () => {
           if (onResetPassword) await onResetPassword(item);
         }});
-        
-        const unbindBtn = el("button", { class: "btn", style: "color: #ef4444;", text: "解绑微信", onclick: async () => {
-          if (onUnbindWechat) await onUnbindWechat(item);
+
+        const wechatBtn = el("button", { class: "linkAction" + (wechatBound ? " danger" : ""), type: "button", text: wechatBound ? "解绑微信" : "绑定微信", onclick: async () => {
+          if (wechatBound) {
+            if (onUnbindWechat) await onUnbindWechat(item);
+            return;
+          }
+          alert("请在微信小程序端完成绑定，本页面仅展示绑定状态");
         }});
         
         tbody.appendChild(el("tr", null, [
           el("td", null, [el("div", { class: "mono", text: item.studentNo || "-" })]),
           el("td", null, [el("div", { text: item.name || "-" })]),
-          el("td", null, [wechatCheckbox]),
-          el("td", null, [passwordCheckbox]),
-          el("td", null, [el("div", { class: "iconActions" }, [resetBtn, unbindBtn])])
+          el("td", null, [wechatCell]),
+          el("td", null, [passwordCell]),
+          el("td", null, [el("div", { class: "iconActions" }, [resetBtn, wechatBtn])])
         ]));
       });
       table.appendChild(thead);
@@ -3119,22 +3548,15 @@
       const header = el("div", { class: "pageHeader" }, [
         el("div", null, [
           el("h2", { text: "登录认证管理" }),
-          el("div", { class: "desc", text: "管理学生的微信认证和后台 Preview 证" })
+          el("div", { class: "desc", text: "管理学生的微信认证和后台密码认证" })
         ])
       ]);
 
       const filterCard = el("div", { class: "card" }, [
-        el("div", { class: "row", style: "gap: 10px; align-items: flex-end;" }, [
-          el("div", { class: "field", style: "flex:1; min-width: 400px;" }, [
-            el("label", { text: "搜索" }),
-            keywordInput
-          ]),
-          el("button", { class: "btn primary", text: "搜索", onclick: async () => {
-            await loadAuthAudits({
-              keyword: keywordInput.value.trim(),
-              page: 0,
-              size: s.size
-            });
+        el("div", { style: "display:flex; gap: 12px; align-items:center;" }, [
+          el("div", { style: "flex:1;" }, [keywordInput]),
+          el("button", { class: "btn primary", style: "min-width: 100px;", text: "搜索", onclick: async () => {
+            await loadAuthAudits({ keyword: keywordInput.value.trim(), page: 0, size: s.size });
           }})
         ]),
         toast
@@ -3169,7 +3591,7 @@
       async function onUnbindWechat(item) {
         if (!confirm("确认解绑 " + (item.name || item.studentNo) + " 的微信吗？")) return;
         try {
-          await apiJson("/api/v1/platform/users/" + item.userId + "/unbind-wechat", { method: "POST" });
+          await apiJson("/api/v1/platform/users/" + item.userId + "/wechat/unbind", { method: "POST" });
           alert("已解绑微信");
           await loadAuthAudits(Object.assign({}, s));
         } catch (e) {
@@ -3183,7 +3605,7 @@
           page: s.page,
           size: s.size
         };
-        const pageData = await apiJson("/api/v1/platform/users?" + buildQuery(params));
+        const pageData = await apiJson("/api/v1/platform/users/page?" + buildQuery(params));
         tableCard.innerHTML = "";
         tableCard.appendChild(renderAuthenticationTable(pageData, onResetPassword, onUnbindWechat));
         const footer = el("div", { class: "footer" }, [
@@ -4096,8 +4518,7 @@
         zero.slice(0, 3).forEach(it => {
           const link = el("span", { class: "rankLink", text: "创建FAQ" });
           link.addEventListener("click", async () => {
-            const title = "FAQ：" + (it.keyword || "");
-            await switchView("knowledgeFaqs", { presetTitle: title, presetCategory: "FAQ管理" });
+            await switchView("knowledgeFaqs", { keyword: it.keyword || "" });
           });
           zeroBody.appendChild(el("div", { class: "rankRow" }, [
             el("div", null, [
@@ -4227,8 +4648,32 @@
         const questionBox = el("div", { class: "detailBox" }, [d.questionText || "-"]);
         const msgBox = el("div", { class: "detailBox" }, []);
         (d.messages || []).forEach(m => {
+          const delBtn = el("button", { class: "iconAction", text: "🗑", type: "button" });
+          delBtn.addEventListener("click", async (ev) => {
+            ev.stopPropagation();
+            toast.textContent = "";
+            if (!m.id) {
+              toast.textContent = "该记录不支持删除（缺少ID）";
+              return;
+            }
+            if (!confirm("确认删除这条处理记录吗？")) return;
+            delBtn.disabled = true;
+            try {
+              await apiJson("/api/v1/admin/qa-tickets/messages/" + m.id, { method: "DELETE" });
+              await loadDetail(id);
+              await loadList();
+            } catch (e) {
+              toast.textContent = e.message;
+            } finally {
+              delBtn.disabled = false;
+            }
+          });
+
           msgBox.appendChild(el("div", { style: "padding: 8px 0; border-top: 1px solid rgba(15,23,42,.06);" }, [
-            el("div", { style: "font-weight: 900;" }, [(m.actorName || "-") + "  " + (m.createdAt || "")]),
+            el("div", { style: "display:flex; justify-content: space-between; align-items: center; gap: 10px;" }, [
+              el("div", { style: "font-weight: 900;" }, [(m.actorName || "-") + "  " + (m.createdAt || "")]),
+              el("div", { class: "iconActions" }, [delBtn])
+            ]),
             el("div", { style: "margin-top: 6px; color: #374151; font-size: 13px;" }, [m.content || "-"])
           ]));
         });
@@ -4241,27 +4686,56 @@
         const btnPublish = el("button", { class: "replyBtn green", type: "button", text: "回复并作为FAQ发布" });
         const btnClose = el("button", { class: "replyBtn gray", type: "button", text: "关闭工单" });
 
+        let sending = false;
         async function doReply(publish, close) {
+          if (sending) return;
           const text = replyInput.value.trim();
           if (!text) {
             toast.textContent = "请输入回复内容";
             return;
           }
           toast.textContent = "";
-          await apiJson("/api/v1/admin/qa-tickets/" + id + "/reply", {
-            method: "POST",
-            body: JSON.stringify({ content: text, publishAsFaq: !!publish, closeTicket: !!close })
-          });
-          replyInput.value = "";
-          await loadDetail(id);
-          await loadList();
+          sending = true;
+          btnReply.disabled = true;
+          btnPublish.disabled = true;
+          btnClose.disabled = true;
+          try {
+            await apiJson("/api/v1/admin/qa-tickets/" + id + "/reply", {
+              method: "POST",
+              body: JSON.stringify({ content: text, publishAsFaq: !!publish, closeTicket: !!close })
+            });
+            replyInput.value = "";
+            await loadDetail(id);
+            await loadList();
+          } catch (e) {
+            toast.textContent = e.message;
+          } finally {
+            sending = false;
+            btnReply.disabled = false;
+            btnPublish.disabled = false;
+            btnClose.disabled = false;
+          }
         }
         btnReply.addEventListener("click", () => doReply(false, false));
         btnPublish.addEventListener("click", () => doReply(true, false));
         btnClose.addEventListener("click", async () => {
-          await apiJson("/api/v1/admin/qa-tickets/" + id + "/close", { method: "POST" });
-          await loadDetail(id);
-          await loadList();
+          if (sending) return;
+          sending = true;
+          btnReply.disabled = true;
+          btnPublish.disabled = true;
+          btnClose.disabled = true;
+          try {
+            await apiJson("/api/v1/admin/qa-tickets/" + id + "/close", { method: "POST" });
+            await loadDetail(id);
+            await loadList();
+          } catch (e) {
+            toast.textContent = e.message;
+          } finally {
+            sending = false;
+            btnReply.disabled = false;
+            btnPublish.disabled = false;
+            btnClose.disabled = false;
+          }
         });
 
         right.innerHTML = "";
@@ -4301,7 +4775,7 @@
       if (view === "dashboard") return loadDashboard();
       if (view === "operationLogs") return loadOperationLogs();
       if (view === "knowledgePolicies") return loadPolicies(Object.assign({ keyword: "" }, state || {}));
-      if (view === "knowledgeFaqs") return loadKnowledge(Object.assign({ pageTitle: "FAQ管理", category: "FAQ管理" }, state || {}));
+      if (view === "knowledgeFaqs") return loadFaqManage(Object.assign({}, state || {}));
       if (view === "notices") return loadNoticeList(Object.assign({}, state || {}));
       if (view === "noticeList") return loadNoticeList(Object.assign({}, state || {}));
       if (view === "noticePublish") return loadNoticePublish(Object.assign({}, state || {}));

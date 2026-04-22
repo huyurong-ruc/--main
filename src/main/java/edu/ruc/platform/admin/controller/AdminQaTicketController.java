@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 @RestController
 @Validated
@@ -62,5 +63,10 @@ public class AdminQaTicketController {
         currentUserService.requireAnyRole(RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR);
         return ApiResponse.success(service.close(id));
     }
-}
 
+    @DeleteMapping("/messages/{messageId}")
+    public ApiResponse<QaTicketDetailResponse> deleteMessage(@Positive(message = "消息ID必须大于0") @PathVariable Long messageId) {
+        currentUserService.requireAnyRole(RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR);
+        return ApiResponse.success(service.deleteMessage(messageId));
+    }
+}

@@ -27,6 +27,7 @@ public class MockQaTicketService implements QaTicketApplicationService {
 
     private final AdminApplicationService adminService;
     private final AtomicLong idGen = new AtomicLong(100);
+    private final AtomicLong messageIdGen = new AtomicLong(1000);
     private final List<Ticket> tickets = new ArrayList<>();
 
     @Override
@@ -67,19 +68,19 @@ public class MockQaTicketService implements QaTicketApplicationService {
     public QaTicketDetailResponse reply(Long id, QaTicketReplyRequest request) {
         init();
         Ticket t = tickets.stream().filter(x -> x.id.equals(id)).findFirst().orElseThrow(() -> new BusinessException("工单不存在"));
-        t.messages.add(new Msg("赵老师", "COUNSELOR", request.content(), LocalDateTime.now()));
         if (Boolean.TRUE.equals(request.publishAsFaq())) {
             adminService.createKnowledgeItem(new AdminKnowledgeUpsertRequest(
                     "FAQ：" + (t.summary == null ? "" : t.summary),
                     "FAQ管理",
                     request.content(),
                     null,
-                    null,
+                    "qa-ticket",
                     "全体学生",
                     "系统管理员",
                     true
             ));
         }
+        t.messages.add(new Msg(messageIdGen.incrementAndGet(), "赵老师", "COUNSELOR", request.content(), LocalDateTime.now()));
         if (Boolean.TRUE.equals(request.closeTicket())) {
             t.status = "CLOSED";
         } else {
@@ -96,13 +97,24 @@ public class MockQaTicketService implements QaTicketApplicationService {
         return toDetail(t);
     }
 
+    @Override
+    public QaTicketDetailResponse deleteMessage(Long messageId) {
+        init();
+        Ticket ticket = tickets.stream()
+                .filter(t -> t.messages.stream().anyMatch(m -> m.id.equals(messageId)))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("处理记录不存在"));
+        ticket.messages.removeIf(m -> m.id.equals(messageId));
+        return toDetail(ticket);
+    }
+
     private void init() {
         if (!tickets.isEmpty()) {
             return;
         }
         tickets.add(new Ticket(101L, 10001L, "张三", "OPEN", "流程节点如何管理？", "流程节点如何管理？", LocalDateTime.of(2024, 3, 27, 14, 20), new ArrayList<>()));
         Ticket t2 = new Ticket(102L, 10002L, "李明", "IN_PROGRESS", "关于学校专业的要求", "关于学校专业的要求", LocalDateTime.of(2024, 3, 27, 14, 20), new ArrayList<>());
-        t2.messages.add(new Msg("赵老师", "COUNSELOR", "您好，关于专业的要求是…", LocalDateTime.of(2024, 3, 27, 15, 30)));
+        t2.messages.add(new Msg(messageIdGen.incrementAndGet(), "赵老师", "COUNSELOR", "您好，关于专业的要求是…", LocalDateTime.of(2024, 3, 27, 15, 30)));
         tickets.add(t2);
         tickets.add(new Ticket(103L, 10003L, "王五", "CLOSED", "实习证明怎么开", "实习证明怎么开", LocalDateTime.of(2024, 3, 26, 9, 35), new ArrayList<>()));
         idGen.set(200);
@@ -114,7 +126,7 @@ public class MockQaTicketService implements QaTicketApplicationService {
 
     private QaTicketDetailResponse toDetail(Ticket t) {
         List<QaTicketMessageResponse> msgs = t.messages.stream()
-                .map(m -> new QaTicketMessageResponse(m.actorName, m.actorRole, format(m.createdAt), m.content))
+                .map(m -> new QaTicketMessageResponse(m.id, m.actorName, m.actorRole, format(m.createdAt), m.content))
                 .toList();
         return new QaTicketDetailResponse(t.id, t.studentName, t.studentId, format(t.createdAt), t.status, t.questionText, msgs);
     }
@@ -146,6 +158,6 @@ public class MockQaTicketService implements QaTicketApplicationService {
         }
     }
 
-    private record Msg(String actorName, String actorRole, String content, LocalDateTime createdAt) {
+    private record Msg(Long id, String actorName, String actorRole, String content, LocalDateTime createdAt) {
     }
 }

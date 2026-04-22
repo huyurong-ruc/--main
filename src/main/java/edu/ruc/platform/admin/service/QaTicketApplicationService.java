@@ -16,5 +16,6 @@ public interface QaTicketApplicationService {
     QaTicketDetailResponse reply(Long id, QaTicketReplyRequest request);
 
     QaTicketDetailResponse close(Long id);
-}
 
+    QaTicketDetailResponse deleteMessage(Long messageId);
+}
