@@ -11,6 +11,8 @@ import edu.ruc.platform.admin.dto.AdminOperationLogFilterRequest;
 import edu.ruc.platform.admin.dto.AdminOperationLogResponse;
 import edu.ruc.platform.admin.dto.AdminOperationLogStatsResponse;
 import edu.ruc.platform.admin.dto.AdminStatsResponse;
+import edu.ruc.platform.admin.dto.AdminCertTemplateResponse;
+import edu.ruc.platform.admin.dto.AdminCertTemplateUpsertRequest;
 import edu.ruc.platform.admin.dto.AdvisorScopeFilterRequest;
 import edu.ruc.platform.admin.dto.AdvisorScopeBindingResponse;
 import edu.ruc.platform.admin.dto.AdvisorScopeBindingUpsertRequest;
@@ -69,12 +71,14 @@ public class MockAdminService implements AdminApplicationService {
     private final AtomicLong importErrorIdGenerator = new AtomicLong(80);
     private final AtomicLong workflowDefIdGenerator = new AtomicLong(10);
     private final AtomicLong workflowNodeIdGenerator = new AtomicLong(50);
+    private final AtomicLong certTemplateIdGenerator = new AtomicLong(10);
     private final List<TargetedNoticeResponse> notices = new ArrayList<>();
     private final List<AdminKnowledgeItemResponse> knowledgeItems = new ArrayList<>();
     private final List<DataImportTaskResponse> importTasks = new ArrayList<>();
     private final List<AdminOperationLogResponse> operationLogs = new ArrayList<>();
     private final List<WorkflowDefinitionResponse> workflowDefinitions = new ArrayList<>();
     private final List<WorkflowNodeResponse> workflowNodes = new ArrayList<>();
+    private final List<AdminCertTemplateResponse> certTemplates = new ArrayList<>();
     private final List<KnowledgeAttachmentResponse> knowledgeAttachments = new ArrayList<>(List.of(
             new KnowledgeAttachmentResponse(51L, 101L, "party-process.pdf", "application/pdf", 1024L, "/uploads/knowledge/101/party-process.pdf", "胡浩老师", LocalDateTime.of(2026, 3, 22, 11, 0))
     ));
@@ -636,6 +640,7 @@ public class MockAdminService implements AdminApplicationService {
                 request.wfCode().trim(),
                 request.wfName().trim(),
                 request.wfType().trim(),
+                request.businessType() == null ? "" : request.businessType().trim(),
                 0,
                 !Boolean.FALSE.equals(request.active()),
                 LocalDateTime.now()
@@ -657,6 +662,7 @@ public class MockAdminService implements AdminApplicationService {
                 request.wfCode().trim(),
                 request.wfName().trim(),
                 request.wfType().trim(),
+                request.businessType() == null ? "" : request.businessType().trim(),
                 (int) workflowNodes.stream().filter(n -> n.wfId().equals(old.id())).count(),
                 !Boolean.FALSE.equals(request.active()),
                 old.createdAt()
@@ -680,6 +686,7 @@ public class MockAdminService implements AdminApplicationService {
                 newCode,
                 (src.wfName() == null ? "" : src.wfName()) + "（复制）",
                 src.wfType(),
+                src.businessType(),
                 0,
                 src.active(),
                 LocalDateTime.now()
@@ -825,14 +832,110 @@ public class MockAdminService implements AdminApplicationService {
         writeOperationLog("WORKFLOW", "DELETE_NODE", "wf#" + node.wfId(), "SUCCESS", node.nodeName());
     }
 
+    @Override
+    public List<AdminCertTemplateResponse> listCertTemplates() {
+        initializeCertTemplates();
+        return List.copyOf(certTemplates);
+    }
+
+    @Override
+    public AdminCertTemplateResponse createCertTemplate(AdminCertTemplateUpsertRequest request) {
+        initializeCertTemplates();
+        String code = request.templateCode().trim();
+        boolean exists = certTemplates.stream().anyMatch(item -> code.equalsIgnoreCase(item.templateCode()));
+        if (exists) {
+            throw new BusinessException("模板编码已存在");
+        }
+        if (request.fileId() == null) {
+            throw new BusinessException("请先上传/绑定模板文件");
+        }
+        AdminCertTemplateResponse resp = new AdminCertTemplateResponse(
+                certTemplateIdGenerator.incrementAndGet(),
+                code,
+                request.templateName().trim(),
+                request.outputFormat().trim().toUpperCase(Locale.ROOT),
+                !Boolean.FALSE.equals(request.active()),
+                request.keywords() == null ? "" : request.keywords().trim(),
+                request.fileId(),
+                null,
+                LocalDateTime.now()
+        );
+        certTemplates.add(0, resp);
+        writeOperationLog("CERT_TEMPLATE", "CREATE", resp.templateCode(), "SUCCESS", resp.templateName());
+        return resp;
+    }
+
+    @Override
+    public AdminCertTemplateResponse updateCertTemplate(Long id, AdminCertTemplateUpsertRequest request) {
+        initializeCertTemplates();
+        AdminCertTemplateResponse old = certTemplates.stream()
+                .filter(item -> item.id().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("模板不存在"));
+        String code = request.templateCode().trim();
+        boolean exists = certTemplates.stream().anyMatch(item -> !item.id().equals(id) && code.equalsIgnoreCase(item.templateCode()));
+        if (exists) {
+            throw new BusinessException("模板编码已存在");
+        }
+        AdminCertTemplateResponse updated = new AdminCertTemplateResponse(
+                old.id(),
+                code,
+                request.templateName().trim(),
+                request.outputFormat().trim().toUpperCase(Locale.ROOT),
+                !Boolean.FALSE.equals(request.active()),
+                request.keywords() == null ? "" : request.keywords().trim(),
+                request.fileId() == null ? old.fileId() : request.fileId(),
+                old.fileName(),
+                old.createdAt()
+        );
+        certTemplates.replaceAll(item -> item.id().equals(id) ? updated : item);
+        writeOperationLog("CERT_TEMPLATE", "UPDATE", updated.templateCode(), "SUCCESS", updated.templateName());
+        return updated;
+    }
+
+    @Override
+    public AdminCertTemplateResponse copyCertTemplate(Long id) {
+        initializeCertTemplates();
+        AdminCertTemplateResponse src = certTemplates.stream()
+                .filter(item -> item.id().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("模板不存在"));
+        String base = src.templateCode() == null ? "CERT" : src.templateCode();
+        String next = base + "_COPY_" + System.currentTimeMillis();
+        AdminCertTemplateResponse def = new AdminCertTemplateResponse(
+                certTemplateIdGenerator.incrementAndGet(),
+                next,
+                (src.templateName() == null ? "" : src.templateName()) + "（复制）",
+                src.outputFormat(),
+                src.active(),
+                src.keywords(),
+                src.fileId(),
+                src.fileName(),
+                LocalDateTime.now()
+        );
+        certTemplates.add(0, def);
+        writeOperationLog("CERT_TEMPLATE", "COPY", def.templateCode(), "SUCCESS", def.templateName());
+        return def;
+    }
+
+    @Override
+    public void deleteCertTemplate(Long id) {
+        initializeCertTemplates();
+        boolean removed = certTemplates.removeIf(item -> item.id().equals(id));
+        if (!removed) {
+            throw new BusinessException("模板不存在");
+        }
+        writeOperationLog("CERT_TEMPLATE", "DELETE", "template#" + id, "SUCCESS", null);
+    }
+
     private void initializeWorkflowConfigs() {
         if (!workflowDefinitions.isEmpty()) {
             return;
         }
         workflowDefinitions.addAll(List.of(
-                new WorkflowDefinitionResponse(1L, "AFFAIR_READ_CERT", "在读证明申请流", "CERTIFICATE", 4, true, LocalDateTime.of(2023, 9, 1, 0, 0)),
-                new WorkflowDefinitionResponse(2L, "AFFAIR_LEAVE", "请假申请审批流", "AFFAIR", 3, true, LocalDateTime.of(2023, 9, 1, 0, 0)),
-                new WorkflowDefinitionResponse(3L, "AFFAIR_SCHOLARSHIP", "奖学金评审流程", "AFFAIR", 3, true, LocalDateTime.of(2023, 10, 15, 0, 0))
+                new WorkflowDefinitionResponse(1L, "AFFAIR_READ_CERT", "在读证明申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2023, 9, 1, 0, 0)),
+                new WorkflowDefinitionResponse(2L, "AFFAIR_LEAVE", "请假申请审批流", "AFFAIR", "请假管理", 3, true, LocalDateTime.of(2023, 9, 1, 0, 0)),
+                new WorkflowDefinitionResponse(3L, "AFFAIR_SCHOLARSHIP", "奖学金评审流程", "AFFAIR", "奖学金管理", 3, true, LocalDateTime.of(2023, 10, 15, 0, 0))
         ));
         workflowNodes.addAll(List.of(
                 new WorkflowNodeResponse(11L, 1L, 1, "提交申请", "学生", 0, false),
@@ -845,12 +948,25 @@ public class MockAdminService implements AdminApplicationService {
         workflowNodeIdGenerator.set(200);
     }
 
+    private void initializeCertTemplates() {
+        if (!certTemplates.isEmpty()) {
+            return;
+        }
+        certTemplates.addAll(List.of(
+                new AdminCertTemplateResponse(1L, "CERT_001", "在读证明", "PDF", true, "在读,证明,学籍", 5001L, "study-certificate.pdf", LocalDateTime.of(2024, 1, 15, 0, 0)),
+                new AdminCertTemplateResponse(2L, "CERT_002", "成绩单", "PDF", true, "成绩,学业", 5002L, "transcript.pdf", LocalDateTime.of(2024, 1, 10, 0, 0)),
+                new AdminCertTemplateResponse(3L, "CERT_003", "实习证明", "DOCX", false, "实习,证明", 5003L, "internship-certificate.docx", LocalDateTime.of(2023, 12, 20, 0, 0))
+        ));
+        certTemplateIdGenerator.set(100);
+    }
+
     private void refreshWorkflowNodeCounts() {
         workflowDefinitions.replaceAll(def -> new WorkflowDefinitionResponse(
                 def.id(),
                 def.wfCode(),
                 def.wfName(),
                 def.wfType(),
+                def.businessType(),
                 (int) workflowNodes.stream().filter(n -> n.wfId().equals(def.id())).count(),
                 def.active(),
                 def.createdAt()

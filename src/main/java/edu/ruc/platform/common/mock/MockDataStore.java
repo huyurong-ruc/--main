@@ -55,11 +55,14 @@ public class MockDataStore {
     }
 
     public PartyProgressResponse partyProgress() {
+        LocalDate today = LocalDate.now();
+        LocalDate stageStartDate = today.minusDays(30);
+        LocalDate nextDeadline = stageStartDate.plusDays(90);
         return new PartyProgressResponse(
                 "积极分子",
-                LocalDate.of(2026, 2, 15),
+                stageStartDate,
                 39,
-                LocalDate.of(2026, 5, 15),
+                nextDeadline,
                 "已提交入党申请书；已参加党课学习小组；已完成基础培训",
                 "满培养期后进入发展对象推优准备",
                 "积极分子阶段满 3 个月提交思想汇报并准备发展对象材料"
@@ -67,14 +70,15 @@ public class MockDataStore {
     }
 
     public PartyStageTimelineResponse partyTimeline() {
+        PartyProgressResponse progress = partyProgress();
         return new PartyStageTimelineResponse(
                 10001L,
                 "积极分子",
                 List.of(
-                        new PartyStageTimelineResponse.StageNode("入党申请人", true, false, LocalDate.of(2025, 11, 10), LocalDate.of(2025, 12, 10), 30, "提交申请书后完成基础登记", "提交申请书并完成基础登记"),
-                        new PartyStageTimelineResponse.StageNode("党课学习小组", true, false, LocalDate.of(2026, 1, 6), LocalDate.of(2026, 2, 5), 30, "完成党课学习与考核", "完成党课学习小组课程"),
-                        new PartyStageTimelineResponse.StageNode("积极分子", true, true, LocalDate.of(2026, 2, 15), LocalDate.of(2026, 5, 15), 90, "培养期满 3 个月提交思想汇报", "完成培训并进入培养阶段"),
-                        new PartyStageTimelineResponse.StageNode("发展对象", false, false, null, LocalDate.of(2026, 8, 28), 90, "按学期节点完成推优与答辩", "满足培养期后按学期节点推进"),
+                        new PartyStageTimelineResponse.StageNode("入党申请人", true, false, progress.stageStartDate().minusMonths(3), progress.stageStartDate().minusMonths(2), 30, "提交申请书后完成基础登记", "提交申请书并完成基础登记"),
+                        new PartyStageTimelineResponse.StageNode("党课学习小组", true, false, progress.stageStartDate().minusMonths(1), progress.stageStartDate(), 30, "完成党课学习与考核", "完成党课学习小组课程"),
+                        new PartyStageTimelineResponse.StageNode("积极分子", true, true, progress.stageStartDate(), progress.nextDeadline(), 90, "培养期满 3 个月提交思想汇报", "完成培训并进入培养阶段"),
+                        new PartyStageTimelineResponse.StageNode("发展对象", false, false, null, progress.stageStartDate().plusMonths(6), 90, "按学期节点完成推优与答辩", "满足培养期后按学期节点推进"),
                         new PartyStageTimelineResponse.StageNode("预备党员", false, false, null, null, 180, "支部审批通过后进入预备期", "等待支部审批"),
                         new PartyStageTimelineResponse.StageNode("正式党员", false, false, null, null, 365, "预备期满后转正", "转正完成")
                 )
@@ -82,9 +86,10 @@ public class MockDataStore {
     }
 
     public List<ReminderResponse> reminders() {
+        PartyProgressResponse progress = partyProgress();
         return List.of(
-                new ReminderResponse("思想汇报提醒", "积极分子培养期内按要求提交思想汇报，具体时间以学院通知为准。", LocalDate.of(2026, 5, 15), "HIGH", "积极分子", "培养期满 3 个月提交思想汇报", 51, false),
-                new ReminderResponse("发展对象准备提醒", "下学期培养期满后，关注发展对象推优和答辩安排。", LocalDate.of(2026, 8, 28), "MEDIUM", "发展对象", "按学期节点完成推优与答辩", 156, false)
+                new ReminderResponse("思想汇报提醒", "积极分子培养期内按要求提交思想汇报，具体时间以学院通知为准。", progress.nextDeadline(), "HIGH", "积极分子", "培养期满 3 个月提交思想汇报", 0, false),
+                new ReminderResponse("发展对象准备提醒", "下学期培养期满后，关注发展对象推优和答辩安排。", progress.stageStartDate().plusMonths(6), "MEDIUM", "发展对象", "按学期节点完成推优与答辩", 0, false)
         );
     }
 

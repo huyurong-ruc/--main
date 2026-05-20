@@ -28,5 +28,5 @@ platform:
     export-dir: ./data/exports
   upload:
     max-file-size-bytes: 20971520
-    allowed-content-types: application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel
+    allowed-content-types: application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document
     allow-empty-content-type: false

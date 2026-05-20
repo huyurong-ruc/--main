@@ -11,6 +11,8 @@ import edu.ruc.platform.admin.dto.AdminOperationLogFilterRequest;
 import edu.ruc.platform.admin.dto.AdminOperationLogResponse;
 import edu.ruc.platform.admin.dto.AdminOperationLogStatsResponse;
 import edu.ruc.platform.admin.dto.AdminStatsResponse;
+import edu.ruc.platform.admin.dto.AdminCertTemplateResponse;
+import edu.ruc.platform.admin.dto.AdminCertTemplateUpsertRequest;
 import edu.ruc.platform.admin.dto.AdvisorScopeFilterRequest;
 import edu.ruc.platform.admin.dto.AdvisorScopeBindingResponse;
 import edu.ruc.platform.admin.dto.AdvisorScopeBindingUpsertRequest;
@@ -52,6 +54,7 @@ import edu.ruc.platform.common.enums.DataImportTaskStatus;
 import edu.ruc.platform.common.exception.BusinessException;
 import edu.ruc.platform.common.support.QueryFilterSupport;
 import edu.ruc.platform.knowledge.domain.KnowledgeDocument;
+import edu.ruc.platform.knowledge.domain.LatestCertTemplate;
 import edu.ruc.platform.knowledge.domain.LatestFileObject;
 import edu.ruc.platform.knowledge.domain.LatestKnowledgePolicy;
 import edu.ruc.platform.certificate.repository.CertificateRequestRepository;
@@ -60,6 +63,7 @@ import edu.ruc.platform.certificate.domain.LatestWorkflowNode;
 import edu.ruc.platform.certificate.repository.LatestWorkflowDefinitionRepository;
 import edu.ruc.platform.certificate.repository.LatestWorkflowNodeRepository;
 import edu.ruc.platform.knowledge.repository.KnowledgeDocumentRepository;
+import edu.ruc.platform.knowledge.repository.LatestCertTemplateRepository;
 import edu.ruc.platform.knowledge.repository.LatestFileObjectRepository;
 import edu.ruc.platform.knowledge.repository.LatestKnowledgePolicyRepository;
 import edu.ruc.platform.notice.domain.LatestNoticeDelivery;
@@ -117,6 +121,7 @@ public class AdminService implements AdminApplicationService {
     private final Environment environment;
     private final LatestKnowledgePolicyRepository latestKnowledgePolicyRepository;
     private final LatestFileObjectRepository latestFileObjectRepository;
+    private final LatestCertTemplateRepository latestCertTemplateRepository;
     private final LatestAuditImportJobRepository latestAuditImportJobRepository;
     private final LatestSysOperationLogRepository latestSysOperationLogRepository;
     private final LatestUserRepository latestUserRepository;
@@ -837,7 +842,7 @@ public class AdminService implements AdminApplicationService {
                     int nodeCount = latestWorkflowNodeRepository.findByWfIdAndIsDeletedOrderBySeqNoAsc(def.getId(), 0).size();
                     boolean active = def.getIsActive() != null && def.getIsActive() == 1;
                     String wfName = def.getWfName() == null || def.getWfName().isBlank() ? def.getWfCode() : def.getWfName();
-                    return new WorkflowDefinitionResponse(def.getId(), def.getWfCode(), wfName, def.getWfType(), nodeCount, active, def.getCreatedAt());
+                    return new WorkflowDefinitionResponse(def.getId(), def.getWfCode(), wfName, def.getWfType(), def.getBusinessType(), nodeCount, active, def.getCreatedAt());
                 })
                 .toList();
     }
@@ -855,7 +860,7 @@ public class AdminService implements AdminApplicationService {
         def.setUpdatedAt(LocalDateTime.now());
         def = latestWorkflowDefinitionRepository.save(def);
         writeOperationLog("WORKFLOW", "CREATE", def.getWfCode(), "SUCCESS", def.getWfName());
-        return new WorkflowDefinitionResponse(def.getId(), def.getWfCode(), def.getWfName(), def.getWfType(), 0, def.getIsActive() == 1, def.getCreatedAt());
+        return new WorkflowDefinitionResponse(def.getId(), def.getWfCode(), def.getWfName(), def.getWfType(), def.getBusinessType(), 0, def.getIsActive() == 1, def.getCreatedAt());
     }
 
     @Override
@@ -871,7 +876,7 @@ public class AdminService implements AdminApplicationService {
         def = latestWorkflowDefinitionRepository.save(def);
         int nodeCount = latestWorkflowNodeRepository.findByWfIdAndIsDeletedOrderBySeqNoAsc(def.getId(), 0).size();
         writeOperationLog("WORKFLOW", "UPDATE", def.getWfCode(), "SUCCESS", def.getWfName());
-        return new WorkflowDefinitionResponse(def.getId(), def.getWfCode(), def.getWfName(), def.getWfType(), nodeCount, def.getIsActive() == 1, def.getCreatedAt());
+        return new WorkflowDefinitionResponse(def.getId(), def.getWfCode(), def.getWfName(), def.getWfType(), def.getBusinessType(), nodeCount, def.getIsActive() == 1, def.getCreatedAt());
     }
 
     @Override
@@ -906,7 +911,7 @@ public class AdminService implements AdminApplicationService {
             latestWorkflowNodeRepository.save(cp);
         }
         writeOperationLog("WORKFLOW", "COPY", def.getWfCode(), "SUCCESS", def.getWfName());
-        return new WorkflowDefinitionResponse(def.getId(), def.getWfCode(), def.getWfName(), def.getWfType(), nodes.size(), def.getIsActive() == 1, def.getCreatedAt());
+        return new WorkflowDefinitionResponse(def.getId(), def.getWfCode(), def.getWfName(), def.getWfType(), def.getBusinessType(), nodes.size(), def.getIsActive() == 1, def.getCreatedAt());
     }
 
     @Override
@@ -1015,6 +1020,114 @@ public class AdminService implements AdminApplicationService {
         writeOperationLog("WORKFLOW", "DELETE_NODE", "wf#" + node.getWfId(), "SUCCESS", node.getNodeName());
     }
 
+    @Override
+    public List<AdminCertTemplateResponse> listCertTemplates() {
+        if (!isKingbaseProfile()) {
+            throw new BusinessException("当前环境未启用证明模板管理");
+        }
+        return latestCertTemplateRepository.findByIsDeletedOrderByIdAsc(0).stream()
+                .map(this::toAdminCertTemplateResponse)
+                .toList();
+    }
+
+    @Override
+    public AdminCertTemplateResponse createCertTemplate(AdminCertTemplateUpsertRequest request) {
+        if (!isKingbaseProfile()) {
+            throw new BusinessException("当前环境未启用证明模板管理");
+        }
+        String code = request.templateCode().trim();
+        latestCertTemplateRepository.findByTemplateCodeAndIsDeleted(code, 0)
+                .ifPresent(x -> {
+                    throw new BusinessException("模板编码已存在");
+                });
+        if (request.fileId() == null) {
+            throw new BusinessException("请先上传/绑定模板文件");
+        }
+        AuthenticatedUser user = currentUserService.requireCurrentUser();
+        LatestCertTemplate t = new LatestCertTemplate();
+        t.setTemplateCode(code);
+        t.setTemplateName(request.templateName().trim());
+        t.setFileId(request.fileId());
+        t.setOutputFormat(normalizeOutputFormat(request.outputFormat()));
+        t.setIsActive(Boolean.FALSE.equals(request.active()) ? 0 : 1);
+        t.setCreatedBy(user.userId());
+        t.setExtJson(buildTemplateExtJson(request.keywords()));
+        t.setCreatedAt(LocalDateTime.now());
+        t.setUpdatedAt(LocalDateTime.now());
+        t.setIsDeleted(0);
+        t = latestCertTemplateRepository.save(t);
+        writeOperationLog("CERT_TEMPLATE", "CREATE", t.getTemplateCode(), "SUCCESS", t.getTemplateName());
+        return toAdminCertTemplateResponse(t);
+    }
+
+    @Override
+    public AdminCertTemplateResponse updateCertTemplate(Long id, AdminCertTemplateUpsertRequest request) {
+        if (!isKingbaseProfile()) {
+            throw new BusinessException("当前环境未启用证明模板管理");
+        }
+        LatestCertTemplate t = latestCertTemplateRepository.findById(id)
+                .filter(x -> x.getIsDeleted() != null && x.getIsDeleted() == 0)
+                .orElseThrow(() -> new BusinessException("模板不存在"));
+        String code = request.templateCode().trim();
+        latestCertTemplateRepository.findByTemplateCodeAndIsDeleted(code, 0)
+                .filter(x -> !Objects.equals(x.getId(), id))
+                .ifPresent(x -> {
+                    throw new BusinessException("模板编码已存在");
+                });
+        t.setTemplateCode(code);
+        t.setTemplateName(request.templateName().trim());
+        if (request.fileId() != null) {
+            t.setFileId(request.fileId());
+        }
+        t.setOutputFormat(normalizeOutputFormat(request.outputFormat()));
+        t.setIsActive(Boolean.FALSE.equals(request.active()) ? 0 : 1);
+        t.setExtJson(buildTemplateExtJson(request.keywords()));
+        t.setUpdatedAt(LocalDateTime.now());
+        t = latestCertTemplateRepository.save(t);
+        writeOperationLog("CERT_TEMPLATE", "UPDATE", t.getTemplateCode(), "SUCCESS", t.getTemplateName());
+        return toAdminCertTemplateResponse(t);
+    }
+
+    @Override
+    public AdminCertTemplateResponse copyCertTemplate(Long id) {
+        if (!isKingbaseProfile()) {
+            throw new BusinessException("当前环境未启用证明模板管理");
+        }
+        LatestCertTemplate src = latestCertTemplateRepository.findById(id)
+                .filter(x -> x.getIsDeleted() != null && x.getIsDeleted() == 0)
+                .orElseThrow(() -> new BusinessException("模板不存在"));
+        AuthenticatedUser user = currentUserService.requireCurrentUser();
+        LatestCertTemplate cp = new LatestCertTemplate();
+        String base = src.getTemplateCode() == null ? "CERT" : src.getTemplateCode();
+        cp.setTemplateCode(base + "_COPY_" + System.currentTimeMillis());
+        cp.setTemplateName((src.getTemplateName() == null ? base : src.getTemplateName()) + "（复制）");
+        cp.setFileId(src.getFileId());
+        cp.setOutputFormat(src.getOutputFormat());
+        cp.setIsActive(src.getIsActive());
+        cp.setCreatedBy(user.userId());
+        cp.setExtJson(src.getExtJson());
+        cp.setCreatedAt(LocalDateTime.now());
+        cp.setUpdatedAt(LocalDateTime.now());
+        cp.setIsDeleted(0);
+        cp = latestCertTemplateRepository.save(cp);
+        writeOperationLog("CERT_TEMPLATE", "COPY", cp.getTemplateCode(), "SUCCESS", cp.getTemplateName());
+        return toAdminCertTemplateResponse(cp);
+    }
+
+    @Override
+    public void deleteCertTemplate(Long id) {
+        if (!isKingbaseProfile()) {
+            throw new BusinessException("当前环境未启用证明模板管理");
+        }
+        LatestCertTemplate t = latestCertTemplateRepository.findById(id)
+                .filter(x -> x.getIsDeleted() != null && x.getIsDeleted() == 0)
+                .orElseThrow(() -> new BusinessException("模板不存在"));
+        t.setIsDeleted(1);
+        t.setUpdatedAt(LocalDateTime.now());
+        latestCertTemplateRepository.save(t);
+        writeOperationLog("CERT_TEMPLATE", "DELETE", "template#" + id, "SUCCESS", t.getTemplateCode());
+    }
+
     private WorkflowNodeResponse toWorkflowNodeResponse(LatestWorkflowNode node) {
         return new WorkflowNodeResponse(
                 node.getId(),
@@ -1025,6 +1138,62 @@ public class AdminService implements AdminApplicationService {
                 node.getSlaHours() == null ? 0 : node.getSlaHours(),
                 Boolean.TRUE.equals(node.getAllowReject())
         );
+    }
+
+    private AdminCertTemplateResponse toAdminCertTemplateResponse(LatestCertTemplate t) {
+        LatestFileObject file = t.getFileId() == null ? null : latestFileObjectRepository.findById(t.getFileId()).orElse(null);
+        String fileName = file == null ? null : file.getOriginalName();
+        String keywords = extractKeywordsFromExtJson(t.getExtJson());
+        String outputFormat = t.getOutputFormat() == null ? null : t.getOutputFormat().toUpperCase(Locale.ROOT);
+        return new AdminCertTemplateResponse(
+                t.getId(),
+                t.getTemplateCode(),
+                t.getTemplateName(),
+                outputFormat == null || outputFormat.isBlank() ? guessOutputFormatByFileName(fileName) : outputFormat,
+                t.getIsActive() != null && t.getIsActive() == 1,
+                keywords,
+                t.getFileId(),
+                fileName,
+                t.getCreatedAt()
+        );
+    }
+
+    private String guessOutputFormatByFileName(String fileName) {
+        String n = fileName == null ? "" : fileName.toLowerCase(Locale.ROOT);
+        if (n.endsWith(".doc") || n.endsWith(".docx")) {
+            return "DOCX";
+        }
+        return "PDF";
+    }
+
+    private String normalizeOutputFormat(String fmt) {
+        String v = (fmt == null ? "" : fmt.trim()).toLowerCase(Locale.ROOT);
+        if (v.equals("doc") || v.equals("docx")) {
+            return "docx";
+        }
+        return "pdf";
+    }
+
+    private String buildTemplateExtJson(String keywords) {
+        String kw = keywords == null ? "" : keywords.trim();
+        try {
+            return objectMapper.writeValueAsString(Map.of("keywords", kw));
+        } catch (Exception e) {
+            return "{\"keywords\":\"\"}";
+        }
+    }
+
+    private String extractKeywordsFromExtJson(String extJson) {
+        if (extJson == null || extJson.isBlank()) {
+            return "";
+        }
+        try {
+            var node = objectMapper.readTree(extJson);
+            var kw = node.get("keywords");
+            return kw == null || kw.isNull() ? "" : kw.asText("");
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     private void normalizeWorkflowNodeSeq(Long wfId) {

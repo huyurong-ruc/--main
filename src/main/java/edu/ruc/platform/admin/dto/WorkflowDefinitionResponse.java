@@ -7,9 +7,9 @@ public record WorkflowDefinitionResponse(
         String wfCode,
         String wfName,
         String wfType,
+        String businessType,
         Integer nodeCount,
         boolean active,
         LocalDateTime createdAt
 ) {
 }
-

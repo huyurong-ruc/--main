@@ -23,6 +23,7 @@
 /Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/academic/service/MockAcademicWarningService.java
 /Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/admin/controller/AdminAdvisorScopeController.java
 /Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/admin/controller/AdminApprovalController.java
+/Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/admin/controller/AdminCertTemplateController.java
 /Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/admin/controller/AdminImportTaskController.java
 /Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/admin/controller/AdminKnowledgeController.java
 /Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/admin/controller/AdminNoticeController.java
@@ -37,6 +38,8 @@
 /Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/admin/domain/KnowledgeAttachment.java
 /Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/admin/domain/LatestAuditImportJob.java
 /Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/admin/domain/LatestSysOperationLog.java
+/Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/admin/dto/AdminCertTemplateResponse.java
+/Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/admin/dto/AdminCertTemplateUpsertRequest.java
 /Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/admin/dto/AdminKnowledgeFilterRequest.java
 /Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/admin/dto/AdminKnowledgeItemResponse.java
 /Users/yuronghu/Desktop/--main/src/main/java/edu/ruc/platform/admin/dto/AdminKnowledgeStatsResponse.java

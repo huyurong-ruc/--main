@@ -11,6 +11,8 @@ import edu.ruc.platform.admin.dto.AdminOperationLogResponse;
 import edu.ruc.platform.admin.dto.AdminOperationLogStatsResponse;
 import edu.ruc.platform.admin.dto.AdminKnowledgeStatsResponse;
 import edu.ruc.platform.admin.dto.AdminStatsResponse;
+import edu.ruc.platform.admin.dto.AdminCertTemplateResponse;
+import edu.ruc.platform.admin.dto.AdminCertTemplateUpsertRequest;
 import edu.ruc.platform.admin.dto.AdvisorScopeFilterRequest;
 import edu.ruc.platform.admin.dto.AdvisorScopeBindingResponse;
 import edu.ruc.platform.admin.dto.AdvisorScopeBindingUpsertRequest;
@@ -127,4 +129,14 @@ public interface AdminApplicationService {
     List<WorkflowNodeResponse> moveWorkflowNode(Long nodeId, String direction);
 
     void deleteWorkflowNode(Long nodeId);
+
+    List<AdminCertTemplateResponse> listCertTemplates();
+
+    AdminCertTemplateResponse createCertTemplate(AdminCertTemplateUpsertRequest request);
+
+    AdminCertTemplateResponse updateCertTemplate(Long id, AdminCertTemplateUpsertRequest request);
+
+    AdminCertTemplateResponse copyCertTemplate(Long id);
+
+    void deleteCertTemplate(Long id);
 }

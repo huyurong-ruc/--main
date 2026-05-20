@@ -127,13 +127,17 @@
     .opTips { margin-top: 14px; background: #fffbeb; border: 1px solid rgba(245,158,11,.35); border-radius: 12px; padding: 12px; color: #92400e; }
     .opTipsTitle { display:flex; align-items:center; gap: 8px; font-weight: 900; }
     .opTips ul { margin: 8px 0 0 18px; padding: 0; font-size: 12px; line-height: 1.7; }
-    .toast { margin-top: 10px; min-height: 18px; font-size: 13px; color: #fca5a5; }
-    .overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; background: rgba(0,0,0,.55); }
+    .toast { margin-top: 10px; min-height: 18px; font-size: 13px; color: #b91c1c; }
+    .overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; background: radial-gradient(1200px 600px at 50% -10%, rgba(37,99,235,.35), rgba(2,6,23,.75)); backdrop-filter: blur(10px); z-index: 50; overflow: auto; }
     .overlay.show { display: flex; }
-    .login { width: 100%; max-width: 420px; background: rgba(15,23,42,.95); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
-    .login h2 { margin: 0 0 8px; font-size: 16px; font-weight: 760; }
-    .login p { margin: 0 0 14px; font-size: 12px; color: var(--muted); line-height: 1.5; }
-    .login .actions { display:flex; gap: 10px; margin-top: 14px; }
+    .login { width: 100%; max-width: 520px; background: rgba(255,255,255,.96); border: 1px solid rgba(15,23,42,.10); border-radius: 16px; padding: 22px; box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+    .login h2 { margin: 0 0 8px; font-size: 20px; font-weight: 950; color: #0f172a; letter-spacing: .2px; }
+    .login p { margin: 0 0 16px; font-size: 13px; color: #475569; line-height: 1.6; }
+    .login .field label { font-size: 13px; color: #334155; font-weight: 850; }
+    .login .field input { font-size: 16px; padding: 12px 12px; border-radius: 12px; background: #ffffff; }
+    .login .actions { display:flex; gap: 10px; margin-top: 16px; }
+    .login .actions .btn { padding: 10px 12px; border-radius: 12px; font-weight: 900; }
+    .login .toast { margin-top: 12px; color: #b91c1c; font-weight: 800; }
     .pageHeader { display:flex; align-items:flex-start; justify-content: space-between; gap: 14px; margin-bottom: 12px; }
     .pageHeader h2 { margin: 0; font-size: 22px; font-weight: 900; }
     .pageHeader .desc { margin-top: 6px; color: var(--muted); font-size: 13px; }
@@ -338,6 +342,101 @@
     .replyBtn.green:hover { filter: brightness(1.02); }
     .replyBtn.gray { background: rgba(15,23,42,.06); border-color: rgba(15,23,42,.12); color: #374151; }
     .replyBtn.gray:hover { background: rgba(15,23,42,.10); }
+
+    .certTableCard { padding: 0; overflow: hidden; border-radius: 14px; box-shadow: 0 10px 20px rgba(0,0,0,.05); }
+    .certTable { width: 100%; border-collapse: collapse; }
+    .certTable th, .certTable td { padding: 12px 12px; border-bottom: 1px solid rgba(15,23,42,.08); font-size: 13px; vertical-align: middle; }
+    .certTable th { background: rgba(15,23,42,.03); color: var(--muted); font-weight: 800; font-size: 12px; }
+    .certPill { display:inline-flex; align-items:center; padding: 4px 10px; border-radius: 10px; border: 1px solid rgba(15,23,42,.10); font-size: 12px; font-weight: 900; }
+    .certPill.purple { background: rgba(147,51,234,.12); border-color: rgba(147,51,234,.22); color: #7e22ce; }
+    .certPill.green { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.25); color: #166534; }
+    .certPill.gray { background: rgba(15,23,42,.06); border-color: rgba(15,23,42,.12); color: #475569; }
+    .certActions { display:flex; gap: 10px; align-items:center; justify-content: flex-end; }
+    .certIconBtn { width: 30px; height: 30px; border-radius: 10px; border: 1px solid rgba(15,23,42,.10); background: #ffffff; display: inline-flex; align-items:center; justify-content:center; cursor: pointer; padding: 0; }
+    .certIconBtn:hover { background: rgba(15,23,42,.03); border-color: rgba(37,99,235,.25); }
+    .certIconBtn svg { width: 16px; height: 16px; }
+    .certIconBtn.blue { color: #2563eb; }
+    .certIconBtn.green { color: #16a34a; }
+    .certIconBtn.purple { color: #7c3aed; }
+    .certIconBtn.orange { color: #f97316; }
+    .certIconBtn.red { color: #ef4444; }
+    .wfCountPill { display:inline-flex; align-items:center; padding: 4px 10px; border-radius: 10px; border: 1px solid rgba(30,91,255,.25); background: rgba(30,91,255,.10); color: #1e5bff; font-size: 12px; font-weight: 900; }
+    .instFilterBar { display:flex; gap: 10px; align-items:center; flex-wrap: wrap; }
+    .instSearch { flex: 1; min-width: 240px; display:flex; align-items:center; gap: 8px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(15,23,42,.12); background: #ffffff; }
+    .instSearch input { border: 0; outline: none; width: 100%; font-size: 13px; background: transparent; }
+    .instSelect { min-width: 200px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(15,23,42,.12); background: #ffffff; color: var(--text); outline: none; }
+    .instFilterBtn { display:inline-flex; align-items:center; justify-content:center; gap: 8px; padding: 10px 14px; border-radius: 12px; border: 0; background: var(--brand); color: #ffffff; cursor: pointer; font-weight: 850; min-width: 120px; }
+    .instFilterBtn:hover { filter: brightness(1.02); }
+    .instStatusPill { display:inline-flex; align-items:center; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(15,23,42,.10); font-size: 12px; font-weight: 900; }
+    .instStatusPill.running { background: rgba(30,91,255,.12); border-color: rgba(30,91,255,.25); color: #1e5bff; }
+    .instStatusPill.done { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.25); color: #166534; }
+    .instStatusPill.rejected { background: rgba(239,68,68,.10); border-color: rgba(239,68,68,.25); color: #b91c1c; }
+    .instNodeLink { color: #2563eb; font-weight: 850; cursor: pointer; }
+    .instNodeLink:hover { text-decoration: underline; }
+    .instViewLink { display:inline-flex; align-items:center; gap: 6px; color: #2563eb; font-weight: 850; cursor: pointer; }
+    .instViewLink:hover { text-decoration: underline; }
+    .flowBtn.green { background: #16a34a; }
+    .flowBtn.green:hover { filter: brightness(1.02); }
+    .flowBtn.orange { background: #f97316; }
+    .flowBtn.orange:hover { filter: brightness(1.02); }
+    .miniBtn { display:inline-flex; align-items:center; gap: 6px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(15,23,42,.12); background: #ffffff; font-weight: 850; cursor: pointer; color: #475569; }
+    .miniBtn:hover { background: rgba(15,23,42,.03); }
+    .partyTag { display:inline-flex; align-items:center; padding: 3px 10px; border-radius: 10px; background: rgba(239,68,68,.10); border: 1px solid rgba(239,68,68,.22); color: #b91c1c; font-size: 12px; font-weight: 900; }
+    .progressWrap { display:flex; align-items:center; gap: 10px; }
+    .progressBar { width: 120px; height: 8px; background: rgba(15,23,42,.10); border-radius: 999px; overflow: hidden; }
+    .progressFill { height: 100%; background: #ef4444; border-radius: 999px; }
+    .partyStatusPill { display:inline-flex; align-items:center; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(15,23,42,.10); font-size: 12px; font-weight: 900; }
+    .partyStatusPill.ok { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.25); color: #166534; }
+    .partyStatusPill.soon { background: rgba(245,158,11,.16); border-color: rgba(245,158,11,.30); color: #b45309; }
+    .partyStatusPill.paused { background: rgba(15,23,42,.06); border-color: rgba(15,23,42,.12); color: #475569; }
+    .remindChannelPill { display:inline-flex; align-items:center; padding: 3px 10px; border-radius: 10px; border: 1px solid rgba(15,23,42,.10); font-size: 12px; font-weight: 900; }
+    .remindChannelPill.sms { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.25); color: #166534; }
+    .remindChannelPill.email { background: rgba(30,91,255,.12); border-color: rgba(30,91,255,.25); color: #1e5bff; }
+    .remindChannelPill.site { background: rgba(147,51,234,.12); border-color: rgba(147,51,234,.22); color: #7e22ce; }
+    .remindStatusPill { display:inline-flex; align-items:center; padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(15,23,42,.10); font-size: 12px; font-weight: 900; }
+    .remindStatusPill.pending { background: rgba(245,158,11,.16); border-color: rgba(245,158,11,.30); color: #b45309; }
+    .remindStatusPill.sent { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.25); color: #166534; }
+    .remindStatusPill.failed { background: rgba(239,68,68,.10); border-color: rgba(239,68,68,.25); color: #b91c1c; }
+    tr.rowFail { background: rgba(239,68,68,.06); }
+    .courseCodeLink { color: #7c3aed; font-weight: 900; cursor: pointer; }
+    .courseCodeLink:hover { text-decoration: underline; }
+    .courseCreditPill { display:inline-flex; align-items:center; padding: 4px 10px; border-radius: 10px; border: 1px solid rgba(30,91,255,.25); background: rgba(30,91,255,.10); color: #1e5bff; font-size: 12px; font-weight: 900; }
+    .courseTypePill { display:inline-flex; align-items:center; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(15,23,42,.10); font-size: 12px; font-weight: 900; }
+    .courseTypePill.core { background: rgba(147,51,234,.12); border-color: rgba(147,51,234,.22); color: #7e22ce; }
+    .courseTypePill.basic { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.25); color: #166534; }
+    .courseTypePill.general { background: rgba(248,113,113,.14); border-color: rgba(248,113,113,.28); color: #b91c1c; }
+    .refLink { color: #1e5bff; font-weight: 900; cursor: pointer; }
+    .refLink:hover { text-decoration: underline; }
+    .termSeatWrap { display:flex; align-items:center; gap: 10px; }
+    .termSeatBar { width: 130px; height: 8px; background: rgba(15,23,42,.10); border-radius: 999px; overflow: hidden; }
+    .termSeatFill { height: 100%; background: #1e5bff; border-radius: 999px; }
+    .termSeatFill.full { background: #ef4444; }
+    .infoCard { border: 1px solid rgba(30,91,255,.20); background: rgba(30,91,255,.07); border-radius: 14px; padding: 14px; margin-top: 14px; display:flex; gap: 10px; align-items:flex-start; }
+    .infoCardTitle { font-weight: 950; }
+    .infoCardText { margin-top: 4px; color: var(--muted); font-size: 13px; }
+    .programLayout { display:grid; grid-template-columns: 280px 1fr 320px; gap: 14px; }
+    .programHeaderRow { display:flex; align-items:center; justify-content: space-between; gap: 12px; }
+    .programBack { color: #2563eb; font-weight: 900; cursor: pointer; }
+    .programBack:hover { text-decoration: underline; }
+    .moduleList { display:grid; gap: 10px; }
+    .moduleItem { border: 1px solid rgba(15,23,42,.08); border-radius: 12px; padding: 12px; background: #ffffff; cursor: pointer; }
+    .moduleItem.active { border-color: rgba(30,91,255,.25); box-shadow: 0 0 0 3px rgba(30,91,255,.10); }
+    .moduleTop { display:flex; align-items:flex-start; justify-content: space-between; gap: 10px; }
+    .moduleName { font-weight: 950; }
+    .moduleCredits { color: var(--muted); font-size: 12px; font-weight: 900; }
+    .moduleTags { margin-top: 8px; display:flex; gap: 8px; flex-wrap: wrap; }
+    .moduleTag { display:inline-flex; align-items:center; padding: 2px 10px; border-radius: 999px; border: 1px solid rgba(15,23,42,.10); font-size: 12px; font-weight: 900; }
+    .moduleTag.req { background: rgba(248,113,113,.14); border-color: rgba(248,113,113,.28); color: #b91c1c; }
+    .moduleTag.opt { background: rgba(30,91,255,.10); border-color: rgba(30,91,255,.22); color: #1e5bff; }
+    .poolSearch { display:flex; align-items:center; gap: 10px; margin-bottom: 10px; }
+    .poolSearch input { flex: 1; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(15,23,42,.12); outline: none; }
+    .poolList { display:grid; gap: 10px; }
+    .poolItem { display:flex; align-items:flex-start; justify-content: space-between; gap: 10px; border: 1px solid rgba(15,23,42,.08); border-radius: 12px; padding: 10px 12px; background: #ffffff; }
+    .poolMeta { display:grid; gap: 4px; }
+    .poolName { font-weight: 900; }
+    .poolSub { font-size: 12px; color: var(--muted); font-weight: 800; }
+    .poolAdd { width: 30px; height: 30px; border-radius: 10px; border: 1px solid rgba(15,23,42,.10); background: #ffffff; display:flex; align-items:center; justify-content:center; cursor: pointer; color: #16a34a; }
+    .poolAdd:hover { background: rgba(15,23,42,.03); border-color: rgba(22,163,74,.25); }
     @media (max-width: 980px) {
       body { overflow: auto; }
       .header { position: sticky; top: 0; }
@@ -2956,6 +3055,463 @@
       await reload();
     }
 
+    async function loadCertTemplates(state) {
+      document.getElementById("pageTitle").textContent = "证明模板";
+      const content = document.getElementById("content");
+      content.innerHTML = "";
+
+      const STORAGE_KEY = "ssp_cert_templates_demo";
+      const REMOTE_KEY = "ssp_cert_templates_remote";
+
+      function tryParseJson(raw, fallback) {
+        try {
+          const obj = JSON.parse(raw);
+          return obj == null ? fallback : obj;
+        } catch (e) {
+          return fallback;
+        }
+      }
+
+      function loadLocal() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const list = tryParseJson(raw, null);
+        if (Array.isArray(list) && list.length) return list;
+        return [
+          { id: null, code: "CERT_001", name: "在读证明", format: "PDF", active: true, keywords: "在读,证明,学籍", fileId: null, fileName: "" },
+          { id: null, code: "CERT_002", name: "成绩单", format: "PDF", active: true, keywords: "成绩,学业", fileId: null, fileName: "" },
+          { id: null, code: "CERT_003", name: "实习证明", format: "DOCX", active: false, keywords: "实习,证明", fileId: null, fileName: "" }
+        ];
+      }
+
+      function saveLocal(list) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list || []));
+      }
+
+      function saveRemoteCache(list) {
+        localStorage.setItem(REMOTE_KEY, JSON.stringify(list || []));
+      }
+
+      function loadRemoteCache() {
+        const raw = localStorage.getItem(REMOTE_KEY);
+        const list = tryParseJson(raw, null);
+        return Array.isArray(list) ? list : null;
+      }
+
+      function svgIcon(type) {
+        const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" };
+        if (type === "plus") {
+          return el("svg", Object.assign({ width: "14", height: "14" }, common), [
+            el("line", { x1: "12", y1: "5", x2: "12", y2: "19" }),
+            el("line", { x1: "5", y1: "12", x2: "19", y2: "12" })
+          ]);
+        }
+        if (type === "eye") {
+          return el("svg", common, [
+            el("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" }),
+            el("circle", { cx: "12", cy: "12", r: "3" })
+          ]);
+        }
+        if (type === "edit") {
+          return el("svg", common, [
+            el("path", { d: "M12 20h9" }),
+            el("path", { d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" })
+          ]);
+        }
+        if (type === "copy") {
+          return el("svg", common, [
+            el("rect", { x: "9", y: "9", width: "13", height: "13", rx: "2", ry: "2" }),
+            el("path", { d: "M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" })
+          ]);
+        }
+        if (type === "upload") {
+          return el("svg", common, [
+            el("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }),
+            el("polyline", { points: "17 8 12 3 7 8" }),
+            el("line", { x1: "12", y1: "3", x2: "12", y2: "15" })
+          ]);
+        }
+        if (type === "trash") {
+          return el("svg", common, [
+            el("polyline", { points: "3 6 5 6 21 6" }),
+            el("path", { d: "M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" }),
+            el("path", { d: "M10 11v6" }),
+            el("path", { d: "M14 11v6" }),
+            el("path", { d: "M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" })
+          ]);
+        }
+        return el("svg", common, []);
+      }
+
+      function formatPill(text) {
+        return el("span", { class: "certPill purple", text: text || "-" });
+      }
+
+      function statusPill(active) {
+        return el("span", { class: "certPill " + (active ? "green" : "gray"), text: active ? "启用" : "停用" });
+      }
+
+      function normalizeFormatByFileName(fileName, fallbackFormat) {
+        const n = String(fileName || "").trim().toLowerCase();
+        if (n.endsWith(".pdf")) return "PDF";
+        if (n.endsWith(".docx") || n.endsWith(".doc")) return "DOCX";
+        return fallbackFormat || "PDF";
+      }
+
+      let items = [];
+      let remoteOk = false;
+      let lastRemoteErr = null;
+
+      const header = el("div", { class: "pageHeader" }, [
+        el("div", null, [
+          el("h2", { text: "证明模板" }),
+          el("div", { class: "desc", text: "管理各类证明模板" })
+        ]),
+        el("div", { class: "actions" }, [
+          el("button", { class: "flowBtn", type: "button" }, [svgIcon("plus"), el("span", { text: "新建模板" })])
+        ])
+      ]);
+
+      const card = el("div", { class: "card certTableCard" }, []);
+      const toast = el("div", { class: "toast" }, []);
+      content.appendChild(header);
+      content.appendChild(card);
+      content.appendChild(toast);
+
+      let uploadingId = null;
+      const fileInput = el("input", { type: "file", accept: ".pdf,.doc,.docx", style: "display:none;" });
+      content.appendChild(fileInput);
+
+      fileInput.addEventListener("change", async () => {
+        toast.textContent = "";
+        const f = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+        if (!f || uploadingId == null) return;
+        const idx = items.findIndex(x => String(x.id ?? "") === String(uploadingId) || String(x.code ?? "") === String(uploadingId));
+        if (idx < 0) {
+          uploadingId = null;
+          fileInput.value = "";
+          return;
+        }
+        try {
+          const form = new FormData();
+          form.append("bizType", "CERT_TEMPLATE");
+          if (items[idx].id != null) {
+            form.append("bizId", String(items[idx].id));
+          }
+          form.append("file", f);
+          const uploaded = await apiJson("/api/v1/platform/files/upload", { method: "POST", body: form });
+          const fileId = uploaded && uploaded.id != null ? uploaded.id : null;
+          if (!fileId) throw new Error("上传失败：未返回文件ID");
+          const next = Object.assign({}, items[idx], {
+            fileId: fileId,
+            fileName: uploaded.fileName || f.name || "",
+            format: normalizeFormatByFileName(uploaded.fileName || f.name || "", items[idx].format)
+          });
+          if (remoteOk && items[idx].id != null) {
+            await apiJson("/api/v1/admin/cert-templates/" + items[idx].id, {
+              method: "PUT",
+              body: JSON.stringify({
+                templateCode: next.code,
+                templateName: next.name,
+                outputFormat: next.format,
+                keywords: next.keywords || "",
+                fileId: next.fileId,
+                active: !!next.active
+              })
+            });
+            toast.textContent = "已上传并绑定文件：" + (next.fileName || "-");
+            await refresh();
+          } else {
+            items[idx] = next;
+            saveLocal(items);
+            render();
+            toast.textContent = "已上传文件并绑定到本地模板：" + (next.fileName || "-");
+          }
+        } catch (e) {
+          toast.textContent = e.message;
+        }
+        uploadingId = null;
+        fileInput.value = "";
+      });
+
+      function openFormModal(mode, item) {
+        const isEdit = mode === "edit";
+        const isCreate = mode === "create";
+        const isCopy = mode === "copy";
+
+        const codeInput = el("input", { value: item ? (item.code || "") : "" });
+        const nameInput = el("input", { value: item ? (item.name || "") : "" });
+        const keywordInput = el("input", { value: item ? (item.keywords || "") : "" });
+        const formatSelect = el("select", null, [
+          el("option", { value: "PDF", text: "PDF" }),
+          el("option", { value: "DOCX", text: "DOCX" })
+        ]);
+        formatSelect.value = item ? (item.format || "PDF") : "PDF";
+        const statusSelect = el("select", null, [
+          el("option", { value: "1", text: "启用" }),
+          el("option", { value: "0", text: "停用" })
+        ]);
+        statusSelect.value = item && item.active === false ? "0" : "1";
+
+        let fileId = item ? item.fileId : null;
+        let fileName = item ? item.fileName : "";
+        const fileRow = el("div", { style: "display:flex; gap: 10px; align-items:center; flex-wrap: wrap;" }, [
+          el("div", { class: "mono", text: fileName ? ("已绑定：" + fileName) : "未绑定文件" }),
+          el("button", { class: "btn", type: "button", text: "上传/更换文件" })
+        ]);
+        const modalFileInput = el("input", { type: "file", accept: ".pdf,.doc,.docx", style: "display:none;" });
+        fileRow.querySelector("button").addEventListener("click", () => modalFileInput.click());
+        modalFileInput.addEventListener("change", async () => {
+          document.getElementById("userModalMsg").textContent = "";
+          const f = modalFileInput.files && modalFileInput.files[0] ? modalFileInput.files[0] : null;
+          if (!f) return;
+          try {
+            const form = new FormData();
+            form.append("bizType", "CERT_TEMPLATE");
+            form.append("file", f);
+            const uploaded = await apiJson("/api/v1/platform/files/upload", { method: "POST", body: form });
+            const nextId = uploaded && uploaded.id != null ? uploaded.id : null;
+            if (!nextId) throw new Error("上传失败：未返回文件ID");
+            fileId = nextId;
+            fileName = uploaded.fileName || f.name || "";
+            formatSelect.value = normalizeFormatByFileName(fileName, formatSelect.value);
+            fileRow.querySelector(".mono").textContent = "已绑定：" + (fileName || "-");
+          } catch (e) {
+            document.getElementById("userModalMsg").textContent = e.message;
+          } finally {
+            modalFileInput.value = "";
+          }
+        });
+
+        if (isCopy) {
+          const base = String(item && item.code ? item.code : "CERT_");
+          let next = base + "_COPY";
+          let n = 2;
+          while (items.some(x => String(x.code) === String(next))) {
+            next = base + "_COPY" + n;
+            n += 1;
+          }
+          codeInput.value = next;
+          nameInput.value = (item && item.name ? String(item.name) : "") + "（复制）";
+          fileId = item ? item.fileId : null;
+          fileName = item ? item.fileName : "";
+        }
+
+        const body = el("div", { class: "cfgForm" }, [
+          el("div", null, [el("div", { class: "cfgLabel", text: "模板编码" }), codeInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "模板名称" }), nameInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "输出格式" }), formatSelect]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "状态" }), statusSelect]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "关键词" }), keywordInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "模板文件" }), fileRow, modalFileInput])
+        ]);
+
+        const saveBtn = el("button", { class: "btn primary", text: "保存", type: "button" });
+        saveBtn.addEventListener("click", async () => {
+          document.getElementById("userModalMsg").textContent = "";
+          const code = codeInput.value.trim();
+          const name = nameInput.value.trim();
+          const keywords = keywordInput.value.trim();
+          const format = formatSelect.value;
+          const active = statusSelect.value === "1";
+
+          if (!code) {
+            document.getElementById("userModalMsg").textContent = "请填写模板编码";
+            return;
+          }
+          if (!name) {
+            document.getElementById("userModalMsg").textContent = "请填写模板名称";
+            return;
+          }
+          if (!fileId) {
+            document.getElementById("userModalMsg").textContent = "请先上传模板文件";
+            return;
+          }
+
+          try {
+            if (remoteOk) {
+              if (isEdit) {
+                await apiJson("/api/v1/admin/cert-templates/" + item.id, {
+                  method: "PUT",
+                  body: JSON.stringify({ templateCode: code, templateName: name, outputFormat: format, keywords, fileId, active })
+                });
+              } else {
+                await apiJson("/api/v1/admin/cert-templates", {
+                  method: "POST",
+                  body: JSON.stringify({ templateCode: code, templateName: name, outputFormat: format, keywords, fileId, active })
+                });
+              }
+              hideUserOverlay();
+              await refresh();
+              return;
+            }
+            const exists = items.some(x => String(x.code) === String(code) && (!isEdit || String(item.code) !== String(code)));
+            if (exists) {
+              document.getElementById("userModalMsg").textContent = "模板编码已存在";
+              return;
+            }
+            if (isEdit) {
+              const idx = items.findIndex(x => String(x.code) === String(item.code));
+              if (idx >= 0) {
+                items[idx] = Object.assign({}, items[idx], { code, name, keywords, format, active, fileId, fileName });
+              }
+            } else if (isCreate || isCopy) {
+              items = [{ id: null, code, name, keywords, format, active, fileId, fileName }].concat(items);
+            }
+            saveLocal(items);
+            hideUserOverlay();
+            render();
+          } catch (e) {
+            document.getElementById("userModalMsg").textContent = e.message;
+          }
+        });
+
+        showUserOverlay(isEdit ? "编辑模板" : (isCopy ? "复制模板" : "新建模板"));
+        setUserModalContent([body], [saveBtn, el("button", { class: "btn", text: "取消", type: "button", onclick: () => hideUserOverlay() })]);
+      }
+
+      function openViewModal(item) {
+        const rows = [
+          ["模板编码", item.code || "-"],
+          ["模板名称", item.name || "-"],
+          ["输出格式", item.format || "-"],
+          ["状态", item.active ? "启用" : "停用"],
+          ["关键词", item.keywords || "-"],
+          ["绑定文件", item.fileName || "未选择"]
+        ];
+        const body = el("div", { style: "display:grid; gap: 10px;" }, rows.map(([k, v]) => {
+          return el("div", { style: "display:flex; gap: 10px; align-items:flex-start;" }, [
+            el("div", { style: "min-width: 86px; color:#64748b; font-size: 12px; font-weight: 800;", text: k }),
+            el("div", { style: "flex:1; font-weight: 750;", text: v })
+          ]);
+        }));
+        showUserOverlay("查看模板");
+        setUserModalContent([body], [el("button", { class: "btn", text: "关闭", type: "button", onclick: () => hideUserOverlay() })]);
+      }
+
+      function mapRemoteToLocal(item) {
+        return {
+          id: item.id,
+          code: item.templateCode,
+          name: item.templateName,
+          format: (item.outputFormat || "PDF").toUpperCase(),
+          active: !!item.active,
+          keywords: item.keywords || "",
+          fileId: item.fileId || null,
+          fileName: item.fileName || ""
+        };
+      }
+
+      async function refresh() {
+        toast.textContent = "";
+        if (remoteOk) {
+          try {
+            const list = await apiJson("/api/v1/admin/cert-templates");
+            items = Array.isArray(list) ? list.map(mapRemoteToLocal) : [];
+            saveRemoteCache(items);
+            render();
+            return;
+          } catch (e) {
+            toast.textContent = e.message;
+          }
+        }
+        render();
+      }
+
+      function render() {
+        toast.textContent = "";
+        card.innerHTML = "";
+
+        const table = el("table", { class: "certTable" }, []);
+        table.appendChild(el("thead", null, [el("tr", null, [
+          el("th", { text: "模板编码" }),
+          el("th", { text: "模板名称" }),
+          el("th", { text: "输出格式" }),
+          el("th", { text: "状态" }),
+          el("th", { text: "关键词" }),
+          el("th", { text: "操作", style: "text-align:right;" })
+        ])]));
+
+        const tbody = el("tbody", null, []);
+        items.forEach(item => {
+          const viewBtn = el("button", { class: "certIconBtn blue", type: "button", title: "查看" }, [svgIcon("eye")]);
+          const editBtn = el("button", { class: "certIconBtn green", type: "button", title: "编辑" }, [svgIcon("edit")]);
+          const copyBtn = el("button", { class: "certIconBtn purple", type: "button", title: "复制" }, [svgIcon("copy")]);
+          const uploadBtn = el("button", { class: "certIconBtn orange", type: "button", title: "绑定文件" }, [svgIcon("upload")]);
+          const delBtn = el("button", { class: "certIconBtn red", type: "button", title: "删除" }, [svgIcon("trash")]);
+
+          viewBtn.addEventListener("click", () => openViewModal(item));
+          editBtn.addEventListener("click", () => openFormModal("edit", item));
+          copyBtn.addEventListener("click", async () => {
+            toast.textContent = "";
+            if (remoteOk && item.id != null) {
+              try {
+                await apiJson("/api/v1/admin/cert-templates/" + item.id + "/copy", { method: "POST" });
+                await refresh();
+              } catch (e) {
+                toast.textContent = e.message;
+              }
+              return;
+            }
+            openFormModal("copy", item);
+          });
+          uploadBtn.addEventListener("click", () => {
+            if (remoteOk && item.id != null) {
+              uploadingId = item.id;
+            } else {
+              uploadingId = item.code;
+              toast.textContent = lastRemoteErr ? ("后端模板接口不可用：" + lastRemoteErr + "（将先绑定到本地模板）") : "将先绑定到本地模板";
+            }
+            fileInput.click();
+          });
+          delBtn.addEventListener("click", async () => {
+            toast.textContent = "";
+            if (!confirm("确认删除模板 " + (item.name || item.code) + " 吗？")) return;
+            if (remoteOk && item.id != null) {
+              try {
+                await apiJson("/api/v1/admin/cert-templates/" + item.id, { method: "DELETE" });
+                await refresh();
+              } catch (e) {
+                toast.textContent = e.message;
+              }
+              return;
+            }
+            items = items.filter(x => String(x.code) !== String(item.code));
+            saveLocal(items);
+            render();
+          });
+
+          tbody.appendChild(el("tr", null, [
+            el("td", null, [el("div", { class: "mono", text: item.code || "-" })]),
+            el("td", null, [el("div", { text: item.name || "-" })]),
+            el("td", null, [formatPill(item.format || "-")]),
+            el("td", null, [statusPill(!!item.active)]),
+            el("td", null, [el("div", { text: item.keywords || "-" })]),
+            el("td", null, [el("div", { class: "certActions" }, [viewBtn, editBtn, copyBtn, uploadBtn, delBtn])])
+          ]));
+        });
+
+        table.appendChild(tbody);
+        card.appendChild(table);
+      }
+
+      header.querySelector("button").addEventListener("click", () => openFormModal("create", null));
+
+      try {
+        const list = await apiJson("/api/v1/admin/cert-templates");
+        remoteOk = true;
+        lastRemoteErr = null;
+        items = Array.isArray(list) ? list.map(mapRemoteToLocal) : [];
+        saveRemoteCache(items);
+      } catch (e) {
+        remoteOk = false;
+        lastRemoteErr = e.message;
+        toast.textContent = "后端模板接口不可用：" + e.message + "（已切换本地演示）";
+        const cached = loadRemoteCache();
+        items = cached != null ? cached : loadLocal();
+      }
+      render();
+    }
+
     let cachedRoles = null;
 
     async function getPlatformRolesCached() {
@@ -4758,6 +5314,1545 @@
       await loadList();
     }
 
+    async function loadWorkflowDefinitionsPage(state) {
+      document.getElementById("pageTitle").textContent = "工作流定义";
+      const content = document.getElementById("content");
+      content.innerHTML = "";
+
+      function svgIcon(type) {
+        const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" };
+        if (type === "plus") {
+          return el("svg", Object.assign({ width: "14", height: "14" }, common), [
+            el("line", { x1: "12", y1: "5", x2: "12", y2: "19" }),
+            el("line", { x1: "5", y1: "12", x2: "19", y2: "12" })
+          ]);
+        }
+        if (type === "edit") {
+          return el("svg", common, [
+            el("path", { d: "M12 20h9" }),
+            el("path", { d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" })
+          ]);
+        }
+        if (type === "copy") {
+          return el("svg", common, [
+            el("rect", { x: "9", y: "9", width: "13", height: "13", rx: "2", ry: "2" }),
+            el("path", { d: "M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" })
+          ]);
+        }
+        if (type === "pause") {
+          return el("svg", common, [
+            el("rect", { x: "6", y: "5", width: "4", height: "14", rx: "1" }),
+            el("rect", { x: "14", y: "5", width: "4", height: "14", rx: "1" })
+          ]);
+        }
+        if (type === "play") {
+          return el("svg", Object.assign({}, common, { "stroke-width": "0", fill: "currentColor" }), [
+            el("path", { d: "M8 5v14l11-7z" })
+          ]);
+        }
+        if (type === "trash") {
+          return el("svg", common, [
+            el("polyline", { points: "3 6 5 6 21 6" }),
+            el("path", { d: "M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" }),
+            el("path", { d: "M10 11v6" }),
+            el("path", { d: "M14 11v6" }),
+            el("path", { d: "M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" })
+          ]);
+        }
+        return el("svg", common, []);
+      }
+
+      const header = el("div", { class: "pageHeader" }, [
+        el("div", null, [
+          el("h2", { text: "工作流定义" }),
+          el("div", { class: "desc", text: "配置各类办事业务的审批流" })
+        ]),
+        el("div", { class: "actions" }, [
+          el("button", { class: "flowBtn", type: "button" }, [svgIcon("plus"), el("span", { text: "新建工作流" })])
+        ])
+      ]);
+
+      const card = el("div", { class: "card certTableCard" }, []);
+      const toast = el("div", { class: "toast" }, []);
+      content.appendChild(header);
+      content.appendChild(card);
+      content.appendChild(toast);
+
+      function statusPill(active) {
+        return el("span", { class: "certPill " + (active ? "green" : "gray"), text: active ? "启用" : "停用" });
+      }
+
+      function nodeCountPill(n) {
+        const v = (n == null ? 0 : n);
+        return el("span", { class: "wfCountPill", text: v + " 个节点" });
+      }
+
+      function fmtDate(d) {
+        if (!d) return "-";
+        return String(d).slice(0, 10);
+      }
+
+      function openFlowModal(item) {
+        const isEdit = !!item;
+        const codeInput = el("input", { class: "cfgInput", value: item ? (item.wfCode || "") : "" });
+        const nameInput = el("input", { class: "cfgInput", value: item ? (item.wfName || "") : "" });
+        const typeSelect = el("select", { class: "cfgSelect" }, [
+          el("option", { value: "CERTIFICATE", text: "CERTIFICATE" }),
+          el("option", { value: "AFFAIR", text: "AFFAIR" }),
+          el("option", { value: "OTHER", text: "OTHER" })
+        ]);
+        if (item && item.wfType) typeSelect.value = String(item.wfType);
+        const bizInput = el("input", { class: "cfgInput", value: item ? (item.businessType || "") : "", placeholder: "如 证明申请/请假管理/奖学金管理" });
+        const activeSelect = el("select", { class: "cfgSelect" }, [
+          el("option", { value: "1", text: "启用" }),
+          el("option", { value: "0", text: "停用" })
+        ]);
+        activeSelect.value = (item && item.active === false) ? "0" : "1";
+
+        const form = el("div", { class: "cfgForm" }, [
+          el("div", null, [el("div", { class: "cfgLabel", text: "流程编码" }), codeInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "流程名称" }), nameInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "类型" }), typeSelect]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "业务类型" }), bizInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "状态" }), activeSelect])
+        ]);
+
+        const saveBtn = el("button", { class: "btn primary", text: "保存", type: "button" });
+        saveBtn.addEventListener("click", async () => {
+          try {
+            const payload = {
+              wfCode: codeInput.value.trim(),
+              wfName: nameInput.value.trim(),
+              wfType: typeSelect.value,
+              businessType: bizInput.value.trim(),
+              active: activeSelect.value === "1"
+            };
+            if (isEdit) {
+              await apiJson("/api/v1/admin/workflows/" + item.id, { method: "PUT", body: JSON.stringify(payload) });
+            } else {
+              await apiJson("/api/v1/admin/workflows", { method: "POST", body: JSON.stringify(payload) });
+            }
+            hideUserOverlay();
+            await refresh();
+          } catch (e) {
+            document.getElementById("userModalMsg").textContent = e.message;
+          }
+        });
+
+        showUserOverlay(isEdit ? "编辑工作流" : "新建工作流");
+        setUserModalContent([form], [saveBtn, el("button", { class: "btn", text: "取消", type: "button", onclick: () => hideUserOverlay() })]);
+      }
+
+      async function refresh() {
+        toast.textContent = "";
+        card.innerHTML = "";
+        let items = [];
+        try {
+          items = await apiJson("/api/v1/admin/workflows");
+          if (!Array.isArray(items)) items = [];
+        } catch (e) {
+          toast.textContent = e.message;
+          items = [];
+        }
+
+        const table = el("table", { class: "certTable" }, []);
+        table.appendChild(el("thead", null, [el("tr", null, [
+          el("th", { text: "流程名称" }),
+          el("th", { text: "业务类型" }),
+          el("th", { text: "节点数" }),
+          el("th", { text: "状态" }),
+          el("th", { text: "创建时间" }),
+          el("th", { text: "操作", style: "text-align:right;" })
+        ])]));
+
+        const tbody = el("tbody", null, []);
+        items.forEach(item => {
+          const editBtn = el("button", { class: "certIconBtn green", type: "button", title: "编辑" }, [svgIcon("edit")]);
+          const copyBtn = el("button", { class: "certIconBtn purple", type: "button", title: "复制" }, [svgIcon("copy")]);
+          const toggleBtn = el("button", { class: "certIconBtn " + (item.active ? "orange" : "blue"), type: "button", title: item.active ? "停用" : "启用" }, [svgIcon(item.active ? "pause" : "play")]);
+          const delBtn = el("button", { class: "certIconBtn red", type: "button", title: "删除" }, [svgIcon("trash")]);
+
+          editBtn.addEventListener("click", () => openFlowModal(item));
+          copyBtn.addEventListener("click", async () => {
+            toast.textContent = "";
+            try {
+              await apiJson("/api/v1/admin/workflows/" + item.id + "/copy", { method: "POST" });
+              await refresh();
+            } catch (e) {
+              toast.textContent = e.message;
+            }
+          });
+          toggleBtn.addEventListener("click", async () => {
+            toast.textContent = "";
+            try {
+              await apiJson("/api/v1/admin/workflows/" + item.id, {
+                method: "PUT",
+                body: JSON.stringify({
+                  wfCode: item.wfCode || "",
+                  wfName: item.wfName || "",
+                  wfType: item.wfType || "OTHER",
+                  businessType: item.businessType || "",
+                  active: !item.active
+                })
+              });
+              await refresh();
+            } catch (e) {
+              toast.textContent = e.message;
+            }
+          });
+          delBtn.addEventListener("click", async () => {
+            toast.textContent = "";
+            if (!confirm("确认删除工作流 " + (item.wfName || item.wfCode) + " 吗？")) return;
+            try {
+              await apiJson("/api/v1/admin/workflows/" + item.id, { method: "DELETE" });
+              await refresh();
+            } catch (e) {
+              toast.textContent = e.message;
+            }
+          });
+
+          tbody.appendChild(el("tr", null, [
+            el("td", null, [el("div", { text: item.wfName || item.wfCode || "-" })]),
+            el("td", null, [el("div", { text: item.businessType || "-" })]),
+            el("td", null, [nodeCountPill(item.nodeCount)]),
+            el("td", null, [statusPill(!!item.active)]),
+            el("td", null, [el("div", { class: "mono", text: fmtDate(item.createdAt) })]),
+            el("td", null, [el("div", { class: "certActions" }, [editBtn, copyBtn, toggleBtn, delBtn])])
+          ]));
+        });
+        table.appendChild(tbody);
+        card.appendChild(table);
+      }
+
+      header.querySelector("button").addEventListener("click", () => openFlowModal(null));
+      await refresh();
+    }
+
+    async function loadWorkflowInstancesPage(state) {
+      document.getElementById("pageTitle").textContent = "流程实例";
+      const content = document.getElementById("content");
+      content.innerHTML = "";
+
+      const STORAGE_KEY = "ssp_workflow_instances_demo";
+
+      function tryParseJson(raw, fallback) {
+        try {
+          const obj = JSON.parse(raw);
+          return obj == null ? fallback : obj;
+        } catch (e) {
+          return fallback;
+        }
+      }
+
+      function loadLocal() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const list = tryParseJson(raw, null);
+        if (Array.isArray(list) && list.length) return list;
+        return [
+          { bizType: "在读证明", starter: "张三", currentNode: "辅导员审批", status: "RUNNING", startedAt: "2024-03-28", finishedAt: "" },
+          { bizType: "请假申请", starter: "李四", currentNode: "已完成", status: "COMPLETED", startedAt: "2024-03-27", finishedAt: "2024-03-28" },
+          { bizType: "成绩单申请", starter: "王五", currentNode: "教务处审批", status: "RUNNING", startedAt: "2024-03-26", finishedAt: "" },
+          { bizType: "在读证明", starter: "赵六", currentNode: "已驳回", status: "REJECTED", startedAt: "2024-03-25", finishedAt: "2024-03-26" }
+        ];
+      }
+
+      function saveLocal(list) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list || []));
+      }
+
+      function svgIcon(type) {
+        const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" };
+        if (type === "search") {
+          return el("svg", Object.assign({ width: "16", height: "16" }, common), [
+            el("circle", { cx: "11", cy: "11", r: "7" }),
+            el("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })
+          ]);
+        }
+        if (type === "filter") {
+          return el("svg", Object.assign({ width: "16", height: "16" }, common), [
+            el("polygon", { points: "22 3 2 3 10 12 10 19 14 21 14 12 22 3" })
+          ]);
+        }
+        if (type === "eye") {
+          return el("svg", Object.assign({ width: "16", height: "16" }, common), [
+            el("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" }),
+            el("circle", { cx: "12", cy: "12", r: "3" })
+          ]);
+        }
+        return el("svg", common, []);
+      }
+
+      function statusPill(status) {
+        const s = String(status || "").toUpperCase();
+        if (s === "COMPLETED") return el("span", { class: "instStatusPill done", text: "已完成" });
+        if (s === "REJECTED") return el("span", { class: "instStatusPill rejected", text: "已驳回" });
+        return el("span", { class: "instStatusPill running", text: "进行中" });
+      }
+
+      let items = loadLocal();
+      saveLocal(items);
+
+      const header = el("div", { class: "pageHeader" }, [
+        el("div", null, [
+          el("h2", { text: "流程实例" }),
+          el("div", { class: "desc", text: "查看所有业务审批实例的运行状态" })
+        ])
+      ]);
+      content.appendChild(header);
+
+      const searchInput = el("input", { placeholder: "搜索发起人" });
+      const searchWrap = el("div", { class: "instSearch" }, [svgIcon("search"), searchInput]);
+      const bizSelect = el("select", { class: "instSelect" }, [el("option", { value: "", text: "全部业务类型" })]);
+      const statusSelect = el("select", { class: "instSelect" }, [
+        el("option", { value: "", text: "全部状态" }),
+        el("option", { value: "RUNNING", text: "进行中" }),
+        el("option", { value: "COMPLETED", text: "已完成" }),
+        el("option", { value: "REJECTED", text: "已驳回" })
+      ]);
+      const filterBtn = el("button", { class: "instFilterBtn", type: "button" }, [svgIcon("filter"), el("span", { text: "筛选" })]);
+
+      const filterCard = el("div", { class: "card" }, [
+        el("div", { class: "instFilterBar" }, [searchWrap, bizSelect, statusSelect, filterBtn])
+      ]);
+
+      const tableCard = el("div", { class: "card certTableCard", style: "margin-top: 12px;" }, []);
+      const toast = el("div", { class: "toast" }, []);
+      content.appendChild(filterCard);
+      content.appendChild(tableCard);
+      content.appendChild(toast);
+
+      function rebuildBizOptions(source) {
+        const old = bizSelect.value;
+        const opts = Array.from(new Set((source || []).map(x => x.bizType).filter(Boolean))).sort();
+        bizSelect.innerHTML = "";
+        bizSelect.appendChild(el("option", { value: "", text: "全部业务类型" }));
+        opts.forEach(v => bizSelect.appendChild(el("option", { value: v, text: v })));
+        bizSelect.value = old;
+      }
+
+      function openDetail(item) {
+        const rows = [
+          ["业务类型", item.bizType || "-"],
+          ["发起人", item.starter || "-"],
+          ["当前节点", item.currentNode || "-"],
+          ["状态", String(item.status || "").toUpperCase() === "COMPLETED" ? "已完成" : String(item.status || "").toUpperCase() === "REJECTED" ? "已驳回" : "进行中"],
+          ["开始时间", item.startedAt || "-"],
+          ["结束时间", item.finishedAt || "-"]
+        ];
+        const body = el("div", { style: "display:grid; gap: 10px;" }, rows.map(([k, v]) => {
+          return el("div", { style: "display:flex; gap: 10px; align-items:flex-start;" }, [
+            el("div", { style: "min-width: 86px; color:#64748b; font-size: 12px; font-weight: 800;", text: k }),
+            el("div", { style: "flex:1; font-weight: 750;", text: v })
+          ]);
+        }));
+        showUserOverlay("流程详情");
+        setUserModalContent([body], [el("button", { class: "btn", text: "关闭", type: "button", onclick: () => hideUserOverlay() })]);
+      }
+
+      function render(list) {
+        toast.textContent = "";
+        tableCard.innerHTML = "";
+
+        const table = el("table", { class: "certTable" }, []);
+        table.appendChild(el("thead", null, [el("tr", null, [
+          el("th", { text: "业务类型" }),
+          el("th", { text: "发起人" }),
+          el("th", { text: "当前节点" }),
+          el("th", { text: "状态" }),
+          el("th", { text: "开始时间" }),
+          el("th", { text: "结束时间" }),
+          el("th", { text: "操作", style: "text-align:right;" })
+        ])]));
+        const tbody = el("tbody", null, []);
+        (list || []).forEach(it => {
+          const nodeEl = el("span", { class: "instNodeLink", text: it.currentNode || "-" });
+          nodeEl.addEventListener("click", () => openDetail(it));
+          const viewBtn = el("div", { class: "instViewLink" }, [svgIcon("eye"), el("span", { text: "查看详情" })]);
+          viewBtn.addEventListener("click", () => openDetail(it));
+          tbody.appendChild(el("tr", null, [
+            el("td", null, [el("div", { text: it.bizType || "-" })]),
+            el("td", null, [el("div", { text: it.starter || "-" })]),
+            el("td", null, [nodeEl]),
+            el("td", null, [statusPill(it.status)]),
+            el("td", null, [el("div", { class: "mono", text: it.startedAt || "-" })]),
+            el("td", null, [el("div", { class: "mono", text: it.finishedAt || "-" })]),
+            el("td", null, [el("div", { style: "display:flex; justify-content:flex-end;" }, [viewBtn])])
+          ]));
+        });
+        table.appendChild(tbody);
+        tableCard.appendChild(table);
+      }
+
+      function applyFilter() {
+        const kw = searchInput.value.trim();
+        const biz = bizSelect.value;
+        const st = statusSelect.value;
+        const filtered = items
+          .filter(x => !kw || String(x.starter || "").includes(kw))
+          .filter(x => !biz || String(x.bizType || "") === String(biz))
+          .filter(x => !st || String(x.status || "").toUpperCase() === String(st).toUpperCase());
+        render(filtered);
+      }
+
+      rebuildBizOptions(items);
+      filterBtn.addEventListener("click", applyFilter);
+      searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") applyFilter();
+      });
+      bizSelect.addEventListener("change", applyFilter);
+      statusSelect.addEventListener("change", applyFilter);
+
+      render(items);
+    }
+
+    async function loadAcademicProgramsPage(state) {
+      document.getElementById("pageTitle").textContent = "培养方案";
+      const content = document.getElementById("content");
+      content.innerHTML = "";
+
+      const STORAGE_KEY = "ssp_academic_programs_demo";
+
+      function tryParseJson(raw, fallback) {
+        try {
+          const obj = JSON.parse(raw);
+          return obj == null ? fallback : obj;
+        } catch (e) {
+          return fallback;
+        }
+      }
+
+      function loadLocal() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const obj = tryParseJson(raw, null);
+        if (obj && obj.modules && obj.pool) return obj;
+        return {
+          meta: { major: "计算机科学与技术", grade: "2023级", version: "v1.0" },
+          modules: [
+            { id: 1, name: "通识核心必修课", credits: 38, tag: "REQ" },
+            { id: 2, name: "专业基础课", credits: 32, tag: "REQ" },
+            { id: 3, name: "专业核心课", credits: 40, tag: "REQ" },
+            { id: 4, name: "专业选修课", credits: 15, tag: "OPT" }
+          ],
+          moduleCourses: {
+            "1": ["MATH101"],
+            "2": ["CS101", "CS102"],
+            "3": ["CS103", "CS104"],
+            "4": ["CS201"]
+          },
+          pool: [
+            { code: "CS101", name: "数据结构", credits: 4, tag: "REQ" },
+            { code: "CS102", name: "算法设计", credits: 3, tag: "REQ" },
+            { code: "CS103", name: "操作系统", credits: 4, tag: "REQ" },
+            { code: "CS104", name: "计算机网络", credits: 3, tag: "REQ" },
+            { code: "CS201", name: "机器学习", credits: 3, tag: "OPT" }
+          ]
+        };
+      }
+
+      function saveLocal(data) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data || {}));
+      }
+
+      function svgIcon(type) {
+        const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" };
+        if (type === "plus") {
+          return el("svg", Object.assign({ width: "16", height: "16" }, common), [
+            el("line", { x1: "12", y1: "5", x2: "12", y2: "19" }),
+            el("line", { x1: "5", y1: "12", x2: "19", y2: "12" })
+          ]);
+        }
+        if (type === "trash") {
+          return el("svg", Object.assign({ width: "14", height: "14" }, common), [
+            el("polyline", { points: "3 6 5 6 21 6" }),
+            el("path", { d: "M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" })
+          ]);
+        }
+        return el("svg", common, []);
+      }
+
+      let data = loadLocal();
+      let selectedModuleId = data.modules[0] ? data.modules[0].id : null;
+
+      const toast = el("div", { class: "toast" }, []);
+      content.appendChild(el("div", { class: "programBack", text: "← 返回培养方案列表", onclick: () => alert("培养方案列表页暂未接入（当前为详情样式演示）") }));
+
+      const headerRow = el("div", { class: "programHeaderRow" }, [
+        el("div", null, [
+          el("div", { style: "font-size: 18px; font-weight: 950;", text: "培养方案详情" }),
+          el("div", { class: "sub", text: (data.meta.major || "-") + " · " + (data.meta.grade || "-") + " · " + (data.meta.version || "-") })
+        ]),
+        el("button", { class: "flowBtn", type: "button", text: "保存更改" })
+      ]);
+      content.appendChild(el("div", { class: "card" }, [headerRow]));
+
+      const layout = el("div", { class: "programLayout", style: "margin-top: 12px;" }, []);
+      content.appendChild(layout);
+      content.appendChild(toast);
+
+      const moduleCard = el("div", { class: "card" }, []);
+      const moduleHeader = el("div", { style: "display:flex; align-items:center; justify-content: space-between; gap: 10px;" }, [
+        el("div", { style: "font-weight: 950;", text: "模块列表" }),
+        el("button", { class: "certIconBtn green", type: "button", title: "新增模块" }, [svgIcon("plus")])
+      ]);
+      const moduleList = el("div", { class: "moduleList", style: "margin-top: 12px;" }, []);
+      moduleCard.appendChild(moduleHeader);
+      moduleCard.appendChild(moduleList);
+
+      const detailCard = el("div", { class: "card", style: "min-height: 340px;" }, []);
+      const poolCard = el("div", { class: "card" }, []);
+      const poolTitle = el("div", { style: "font-weight: 950; margin-bottom: 10px;", text: "可选课程池" });
+      const poolSearchInput = el("input", { placeholder: "搜索课程…" });
+      const poolSearchWrap = el("div", { class: "poolSearch" }, [poolSearchInput]);
+      const poolList = el("div", { class: "poolList" }, []);
+      poolCard.appendChild(poolTitle);
+      poolCard.appendChild(poolSearchWrap);
+      poolCard.appendChild(poolList);
+
+      layout.appendChild(moduleCard);
+      layout.appendChild(detailCard);
+      layout.appendChild(poolCard);
+
+      function moduleTag(tag) {
+        return el("span", { class: "moduleTag " + (tag === "REQ" ? "req" : "opt"), text: tag === "REQ" ? "必修" : "选修" });
+      }
+
+      function findCourse(code) {
+        return (data.pool || []).find(c => String(c.code) === String(code)) || { code, name: "-", credits: 0, tag: "OPT" };
+      }
+
+      function renderModules() {
+        moduleList.innerHTML = "";
+        (data.modules || []).forEach(m => {
+          const item = el("div", { class: "moduleItem" + (m.id === selectedModuleId ? " active" : "") }, []);
+          item.addEventListener("click", () => {
+            selectedModuleId = m.id;
+            renderAll();
+          });
+          item.appendChild(el("div", { class: "moduleTop" }, [
+            el("div", null, [
+              el("div", { class: "moduleName", text: m.name || "-" }),
+              el("div", { class: "moduleTags" }, [moduleTag(m.tag)])
+            ]),
+            el("div", { class: "moduleCredits", text: (m.credits == null ? 0 : m.credits) + "学分" })
+          ]));
+          moduleList.appendChild(item);
+        });
+      }
+
+      function renderDetail() {
+        detailCard.innerHTML = "";
+        const mod = (data.modules || []).find(x => x.id === selectedModuleId);
+        if (!mod) {
+          detailCard.appendChild(el("div", { style: "color:#94a3b8; padding: 18px 6px; text-align:center;" }, [
+            el("div", { text: "请从左侧选择一个模块查看详情" })
+          ]));
+          return;
+        }
+        const codes = (data.moduleCourses && data.moduleCourses[String(mod.id)]) ? data.moduleCourses[String(mod.id)] : [];
+        const list = el("div", { style: "display:grid; gap: 10px; margin-top: 10px;" }, []);
+        codes.forEach(code => {
+          const c = findCourse(code);
+          const row = el("div", { style: "display:flex; align-items:center; justify-content: space-between; gap: 10px; border: 1px solid rgba(15,23,42,.08); border-radius: 12px; padding: 10px 12px; background:#fff;" }, []);
+          row.appendChild(el("div", null, [
+            el("div", { style: "font-weight: 950;", text: (c.code || "-") + "  " + (c.name || "-") }),
+            el("div", { class: "sub", text: (c.credits == null ? 0 : c.credits) + " 学分" })
+          ]));
+          const del = el("button", { class: "certIconBtn red", type: "button", title: "移除" }, [svgIcon("trash")]);
+          del.addEventListener("click", () => {
+            data.moduleCourses[String(mod.id)] = (data.moduleCourses[String(mod.id)] || []).filter(x => String(x) !== String(code));
+            saveLocal(data);
+            renderAll();
+          });
+          row.appendChild(del);
+          list.appendChild(row);
+        });
+
+        detailCard.appendChild(el("div", { style: "font-weight: 950;", text: mod.name || "-" }));
+        detailCard.appendChild(el("div", { class: "sub", text: "在右侧课程池中点击 + 可将课程加入当前模块" }));
+        if (!codes.length) {
+          detailCard.appendChild(el("div", { style: "color:#94a3b8; padding: 18px 6px; text-align:center;" }, [
+            el("div", { text: "当前模块暂无课程" })
+          ]));
+          return;
+        }
+        detailCard.appendChild(list);
+      }
+
+      function renderPool() {
+        poolList.innerHTML = "";
+        const kw = poolSearchInput.value.trim();
+        const mod = (data.modules || []).find(x => x.id === selectedModuleId);
+        const selected = new Set((data.moduleCourses && mod) ? (data.moduleCourses[String(mod.id)] || []) : []);
+        (data.pool || [])
+          .filter(c => !kw || String(c.code || "").includes(kw) || String(c.name || "").includes(kw))
+          .forEach(c => {
+            const row = el("div", { class: "poolItem" }, []);
+            row.appendChild(el("div", { class: "poolMeta" }, [
+              el("div", { class: "poolName", text: c.code + "  " + c.name }),
+              el("div", { class: "poolSub", text: (c.credits == null ? 0 : c.credits) + " 学分 · " + (c.tag === "REQ" ? "必修" : "选修") })
+            ]));
+            const add = el("button", { class: "poolAdd", type: "button", title: "加入模块", disabled: !mod || selected.has(c.code) }, [svgIcon("plus")]);
+            add.addEventListener("click", () => {
+              if (!mod) return;
+              const arr = data.moduleCourses[String(mod.id)] || [];
+              if (arr.some(x => String(x) === String(c.code))) return;
+              data.moduleCourses[String(mod.id)] = arr.concat([c.code]);
+              saveLocal(data);
+              renderAll();
+            });
+            row.appendChild(add);
+            poolList.appendChild(row);
+          });
+      }
+
+      function renderAll() {
+        renderModules();
+        renderDetail();
+        renderPool();
+      }
+
+      moduleHeader.querySelector("button").addEventListener("click", () => {
+        const name = prompt("模块名称", "");
+        if (name == null) return;
+        const creditsRaw = prompt("模块学分", "0");
+        if (creditsRaw == null) return;
+        const tag = confirm("是否为必修模块？（确定=必修，取消=选修）") ? "REQ" : "OPT";
+        const nextId = Math.max(0, ...(data.modules || []).map(m => m.id || 0)) + 1;
+        const m = { id: nextId, name: name.trim() || ("模块" + nextId), credits: Number(creditsRaw) || 0, tag };
+        data.modules = (data.modules || []).concat([m]);
+        data.moduleCourses[String(nextId)] = [];
+        selectedModuleId = nextId;
+        saveLocal(data);
+        renderAll();
+      });
+
+      headerRow.querySelector("button").addEventListener("click", () => {
+        saveLocal(data);
+        toast.textContent = "已保存（当前为前端演示数据）";
+      });
+
+      poolSearchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") renderPool();
+      });
+      poolSearchInput.addEventListener("input", () => renderPool());
+
+      renderAll();
+    }
+
+    async function loadAcademicCoursesPage(state) {
+      document.getElementById("pageTitle").textContent = "课程字典";
+      const content = document.getElementById("content");
+      content.innerHTML = "";
+
+      const STORAGE_KEY = "ssp_academic_courses_demo";
+
+      function tryParseJson(raw, fallback) {
+        try {
+          const obj = JSON.parse(raw);
+          return obj == null ? fallback : obj;
+        } catch (e) {
+          return fallback;
+        }
+      }
+
+      function loadLocal() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const list = tryParseJson(raw, null);
+        if (Array.isArray(list) && list.length) return list;
+        return [
+          { id: 1, code: "CS101", name: "数据结构", credits: 4, type: "BASIC", hours: 64, refCount: 3 },
+          { id: 2, code: "CS102", name: "算法设计", credits: 3, type: "CORE", hours: 48, refCount: 3 },
+          { id: 3, code: "CS103", name: "操作系统", credits: 4, type: "CORE", hours: 64, refCount: 3 },
+          { id: 4, code: "CS201", name: "机器学习", credits: 3, type: "BASIC", hours: 48, refCount: 2 },
+          { id: 5, code: "MATH101", name: "高等数学", credits: 5, type: "GENERAL", hours: 80, refCount: 5 }
+        ];
+      }
+
+      function saveLocal(list) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list || []));
+      }
+
+      function svgIcon(type) {
+        const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" };
+        if (type === "plus") {
+          return el("svg", Object.assign({ width: "14", height: "14" }, common), [
+            el("line", { x1: "12", y1: "5", x2: "12", y2: "19" }),
+            el("line", { x1: "5", y1: "12", x2: "19", y2: "12" })
+          ]);
+        }
+        if (type === "search") {
+          return el("svg", Object.assign({ width: "16", height: "16" }, common), [
+            el("circle", { cx: "11", cy: "11", r: "7" }),
+            el("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })
+          ]);
+        }
+        if (type === "eye") {
+          return el("svg", Object.assign({ width: "16", height: "16" }, common), [
+            el("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" }),
+            el("circle", { cx: "12", cy: "12", r: "3" })
+          ]);
+        }
+        if (type === "edit") {
+          return el("svg", common, [
+            el("path", { d: "M12 20h9" }),
+            el("path", { d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" })
+          ]);
+        }
+        return el("svg", common, []);
+      }
+
+      function typePill(tp) {
+        const v = String(tp || "").toUpperCase();
+        if (v === "CORE") return el("span", { class: "courseTypePill core", text: "专业核心课" });
+        if (v === "BASIC") return el("span", { class: "courseTypePill basic", text: "专业基础课" });
+        return el("span", { class: "courseTypePill general", text: "通识必修课" });
+      }
+
+      let items = loadLocal();
+      saveLocal(items);
+
+      const toast = el("div", { class: "toast" }, []);
+      const header = el("div", { class: "pageHeader" }, [
+        el("div", null, [
+          el("h2", { text: "课程字典" }),
+          el("div", { class: "desc", text: "维护课程基础信息" }),
+          el("div", { style: "margin-top: 8px;" }, [el("button", { class: "miniBtn", type: "button", text: "Preview" })])
+        ]),
+        el("div", { class: "actions" }, [
+          el("button", { class: "flowBtn", type: "button" }, [svgIcon("plus"), el("span", { text: "新增课程" })])
+        ])
+      ]);
+      content.appendChild(header);
+
+      const kwInput = el("input", { placeholder: "搜索课程编码/名称" });
+      const searchWrap = el("div", { class: "instSearch" }, [svgIcon("search"), kwInput]);
+      const typeSelect = el("select", { class: "instSelect" }, [
+        el("option", { value: "", text: "全部类型" }),
+        el("option", { value: "GENERAL", text: "通识必修课" }),
+        el("option", { value: "BASIC", text: "专业基础课" }),
+        el("option", { value: "CORE", text: "专业核心课" })
+      ]);
+      const searchBtn = el("button", { class: "instFilterBtn", type: "button", text: "搜索" });
+      const filterCard = el("div", { class: "card" }, [
+        el("div", { class: "instFilterBar" }, [searchWrap, typeSelect, searchBtn])
+      ]);
+      const tableCard = el("div", { class: "card certTableCard", style: "margin-top: 12px;" }, []);
+      content.appendChild(filterCard);
+      content.appendChild(tableCard);
+      content.appendChild(toast);
+
+      function openCourseModal(item) {
+        const isEdit = !!item;
+        const codeInput = el("input", { class: "cfgInput", value: item ? item.code : "" });
+        const nameInput = el("input", { class: "cfgInput", value: item ? item.name : "" });
+        const creditsInput = el("input", { class: "cfgInput", value: item ? String(item.credits ?? 0) : "0" });
+        const hoursInput = el("input", { class: "cfgInput", value: item ? String(item.hours ?? 0) : "0" });
+        const typeSel = el("select", { class: "cfgSelect" }, [
+          el("option", { value: "GENERAL", text: "通识必修课" }),
+          el("option", { value: "BASIC", text: "专业基础课" }),
+          el("option", { value: "CORE", text: "专业核心课" })
+        ]);
+        typeSel.value = item ? String(item.type || "GENERAL").toUpperCase() : "GENERAL";
+
+        const form = el("div", { class: "cfgForm" }, [
+          el("div", null, [el("div", { class: "cfgLabel", text: "课程编码" }), codeInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "课程名称" }), nameInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "学分" }), creditsInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "课程类型" }), typeSel]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "学时" }), hoursInput])
+        ]);
+
+        const saveBtn = el("button", { class: "btn primary", type: "button", text: "保存" });
+        saveBtn.addEventListener("click", () => {
+          document.getElementById("userModalMsg").textContent = "";
+          const code = codeInput.value.trim();
+          const name = nameInput.value.trim();
+          if (!code || !name) {
+            document.getElementById("userModalMsg").textContent = "请填写课程编码与名称";
+            return;
+          }
+          const exists = items.some(x => String(x.code).toUpperCase() === String(code).toUpperCase() && (!isEdit || x.id !== item.id));
+          if (exists) {
+            document.getElementById("userModalMsg").textContent = "课程编码已存在";
+            return;
+          }
+          const next = {
+            id: isEdit ? item.id : (Math.max(0, ...items.map(x => x.id || 0)) + 1),
+            code,
+            name,
+            credits: Number(creditsInput.value) || 0,
+            hours: Number(hoursInput.value) || 0,
+            type: typeSel.value,
+            refCount: isEdit ? item.refCount : 0
+          };
+          items = isEdit ? items.map(x => x.id === item.id ? next : x) : [next].concat(items);
+          saveLocal(items);
+          hideUserOverlay();
+          applyFilter();
+        });
+
+        showUserOverlay(isEdit ? "编辑课程" : "新增课程");
+        setUserModalContent([form], [saveBtn, el("button", { class: "btn", type: "button", text: "取消", onclick: () => hideUserOverlay() })]);
+      }
+
+      function render(list) {
+        tableCard.innerHTML = "";
+        const table = el("table", { class: "certTable" }, []);
+        table.appendChild(el("thead", null, [el("tr", null, [
+          el("th", { text: "课程编码" }),
+          el("th", { text: "课程名称" }),
+          el("th", { text: "学分" }),
+          el("th", { text: "课程类型" }),
+          el("th", { text: "学时" }),
+          el("th", { text: "被引用次数" }),
+          el("th", { text: "操作", style: "text-align:right;" })
+        ])]));
+        const tbody = el("tbody", null, []);
+        (list || []).forEach(it => {
+          const codeEl = el("span", { class: "courseCodeLink", text: it.code || "-" });
+          codeEl.addEventListener("click", () => openCourseModal(it));
+          const refEl = el("span", { class: "refLink", text: (it.refCount || 0) + " 个培养方案" });
+          refEl.addEventListener("click", () => alert("培养方案引用列表暂未接入（示例）"));
+          const viewBtn = el("button", { class: "certIconBtn blue", type: "button", title: "查看" }, [svgIcon("eye")]);
+          const editBtn = el("button", { class: "certIconBtn green", type: "button", title: "编辑" }, [svgIcon("edit")]);
+          viewBtn.addEventListener("click", () => openCourseModal(it));
+          editBtn.addEventListener("click", () => openCourseModal(it));
+          tbody.appendChild(el("tr", null, [
+            el("td", null, [codeEl]),
+            el("td", null, [el("div", { text: it.name || "-" })]),
+            el("td", null, [el("span", { class: "courseCreditPill", text: (it.credits == null ? 0 : it.credits) + "学分" })]),
+            el("td", null, [typePill(it.type)]),
+            el("td", null, [el("div", { class: "mono", text: (it.hours == null ? 0 : it.hours) + "学时" })]),
+            el("td", null, [refEl]),
+            el("td", null, [el("div", { class: "certActions" }, [viewBtn, editBtn])])
+          ]));
+        });
+        table.appendChild(tbody);
+        tableCard.appendChild(table);
+      }
+
+      function applyFilter() {
+        const kw = kwInput.value.trim();
+        const tp = typeSelect.value;
+        const filtered = items
+          .filter(x => !kw || String(x.code || "").includes(kw) || String(x.name || "").includes(kw))
+          .filter(x => !tp || String(x.type || "").toUpperCase() === String(tp).toUpperCase());
+        render(filtered);
+      }
+
+      header.querySelector("button").addEventListener("click", () => openCourseModal(null));
+      searchBtn.addEventListener("click", applyFilter);
+      kwInput.addEventListener("keydown", (e) => { if (e.key === "Enter") applyFilter(); });
+      typeSelect.addEventListener("change", applyFilter);
+      applyFilter();
+    }
+
+    async function loadAcademicTermsPage(state) {
+      document.getElementById("pageTitle").textContent = "开课管理";
+      const content = document.getElementById("content");
+      content.innerHTML = "";
+
+      const STORAGE_KEY = "ssp_academic_terms_demo";
+
+      function tryParseJson(raw, fallback) {
+        try {
+          const obj = JSON.parse(raw);
+          return obj == null ? fallback : obj;
+        } catch (e) {
+          return fallback;
+        }
+      }
+
+      function loadLocal() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const list = tryParseJson(raw, null);
+        if (Array.isArray(list) && list.length) return list;
+        return [
+          { id: 1, term: "2024春", courseCode: "CS101", courseName: "数据结构", classCode: "CS101-01", teacher: "张教授", capacity: 60, selected: 58, active: true },
+          { id: 2, term: "2024春", courseCode: "CS102", courseName: "算法设计", classCode: "CS102-01", teacher: "李教授", capacity: 50, selected: 50, active: false },
+          { id: 3, term: "2024春", courseCode: "CS103", courseName: "操作系统", classCode: "CS103-01", teacher: "王教授", capacity: 55, selected: 45, active: true },
+          { id: 4, term: "2024春", courseCode: "CS201", courseName: "机器学习", classCode: "CS201-01", teacher: "赵教授", capacity: 40, selected: 38, active: true }
+        ];
+      }
+
+      function saveLocal(list) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list || []));
+      }
+
+      function svgIcon(type) {
+        const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" };
+        if (type === "upload") {
+          return el("svg", Object.assign({ width: "14", height: "14" }, common), [
+            el("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }),
+            el("polyline", { points: "17 8 12 3 7 8" }),
+            el("line", { x1: "12", y1: "3", x2: "12", y2: "15" })
+          ]);
+        }
+        if (type === "plus") {
+          return el("svg", Object.assign({ width: "14", height: "14" }, common), [
+            el("line", { x1: "12", y1: "5", x2: "12", y2: "19" }),
+            el("line", { x1: "5", y1: "12", x2: "19", y2: "12" })
+          ]);
+        }
+        if (type === "search") {
+          return el("svg", Object.assign({ width: "16", height: "16" }, common), [
+            el("circle", { cx: "11", cy: "11", r: "7" }),
+            el("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })
+          ]);
+        }
+        if (type === "edit") {
+          return el("svg", common, [
+            el("path", { d: "M12 20h9" }),
+            el("path", { d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" })
+          ]);
+        }
+        if (type === "check") {
+          return el("svg", common, [
+            el("path", { d: "M20 6L9 17l-5-5" })
+          ]);
+        }
+        return el("svg", common, []);
+      }
+
+      function statusPill(active) {
+        return el("span", { class: "certPill " + (active ? "green" : "gray"), text: active ? "正常" : "已满" });
+      }
+
+      let items = loadLocal();
+      saveLocal(items);
+
+      const toast = el("div", { class: "toast" }, []);
+      const header = el("div", { class: "pageHeader" }, [
+        el("div", null, [
+          el("h2", { text: "开课管理" }),
+          el("div", { class: "desc", text: "维护学期开课班次，支持课程推荐" })
+        ]),
+        el("div", { class: "actions" }, [
+          el("button", { class: "flowBtn green", type: "button" }, [svgIcon("upload"), el("span", { text: "批量导入" })]),
+          el("button", { class: "flowBtn", type: "button" }, [svgIcon("plus"), el("span", { text: "新增开课" })])
+        ])
+      ]);
+      content.appendChild(header);
+
+      const termSelect = el("select", { class: "instSelect" }, [el("option", { value: "", text: "全部学期" })]);
+      const kwInput = el("input", { placeholder: "搜索课程编码/名称" });
+      const kwWrap = el("div", { class: "instSearch" }, [svgIcon("search"), kwInput]);
+      const teacherInput = el("input", { placeholder: "搜索授课教师" });
+      const teacherWrap = el("div", { class: "instSearch" }, [svgIcon("search"), teacherInput]);
+      const searchBtn = el("button", { class: "instFilterBtn", type: "button", text: "搜索" });
+
+      const filterCard = el("div", { class: "card" }, [
+        el("div", { class: "instFilterBar" }, [termSelect, kwWrap, teacherWrap, searchBtn])
+      ]);
+      const tableCard = el("div", { class: "card certTableCard", style: "margin-top: 12px;" }, []);
+      content.appendChild(filterCard);
+      content.appendChild(tableCard);
+      content.appendChild(el("div", { class: "infoCard" }, [
+        el("div", { style: "color:#1e5bff; font-weight: 950;", text: "✓" }),
+        el("div", null, [
+          el("div", { class: "infoCardTitle", text: "教学班编码唯一性校验" }),
+          el("div", { class: "infoCardText", text: "系统已自动检查所有教学班编码的唯一性，未发现重复编码。" })
+        ])
+      ]));
+      content.appendChild(toast);
+
+      function rebuildTermOptions(source) {
+        const old = termSelect.value;
+        const opts = Array.from(new Set((source || []).map(x => x.term).filter(Boolean))).sort();
+        termSelect.innerHTML = "";
+        termSelect.appendChild(el("option", { value: "", text: "全部学期" }));
+        opts.forEach(v => termSelect.appendChild(el("option", { value: v, text: v })));
+        termSelect.value = old;
+      }
+
+      function openTermModal(item) {
+        const isEdit = !!item;
+        const termInput = el("input", { class: "cfgInput", value: item ? item.term : "2024春" });
+        const courseCodeInput = el("input", { class: "cfgInput", value: item ? item.courseCode : "" });
+        const courseNameInput = el("input", { class: "cfgInput", value: item ? item.courseName : "" });
+        const classCodeInput = el("input", { class: "cfgInput", value: item ? item.classCode : "" });
+        const teacherNameInput = el("input", { class: "cfgInput", value: item ? item.teacher : "" });
+        const capInput = el("input", { class: "cfgInput", value: item ? String(item.capacity ?? 0) : "0" });
+        const selInput = el("input", { class: "cfgInput", value: item ? String(item.selected ?? 0) : "0" });
+        const form = el("div", { class: "cfgForm" }, [
+          el("div", null, [el("div", { class: "cfgLabel", text: "学期" }), termInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "课程编码" }), courseCodeInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "课程名称" }), courseNameInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "教学班编号" }), classCodeInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "授课教师" }), teacherNameInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "容量" }), capInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "已选人数" }), selInput])
+        ]);
+        const saveBtn = el("button", { class: "btn primary", type: "button", text: "保存" });
+        saveBtn.addEventListener("click", () => {
+          document.getElementById("userModalMsg").textContent = "";
+          const classCode = classCodeInput.value.trim();
+          if (!classCode) {
+            document.getElementById("userModalMsg").textContent = "请填写教学班编号";
+            return;
+          }
+          const exists = items.some(x => String(x.classCode).toUpperCase() === String(classCode).toUpperCase() && (!isEdit || x.id !== item.id));
+          if (exists) {
+            document.getElementById("userModalMsg").textContent = "教学班编号已存在";
+            return;
+          }
+          const cap = Number(capInput.value) || 0;
+          const sel = Number(selInput.value) || 0;
+          const next = {
+            id: isEdit ? item.id : (Math.max(0, ...items.map(x => x.id || 0)) + 1),
+            term: termInput.value.trim() || "2024春",
+            courseCode: courseCodeInput.value.trim(),
+            courseName: courseNameInput.value.trim(),
+            classCode,
+            teacher: teacherNameInput.value.trim(),
+            capacity: cap,
+            selected: sel,
+            active: sel < cap
+          };
+          items = isEdit ? items.map(x => x.id === item.id ? next : x) : [next].concat(items);
+          saveLocal(items);
+          hideUserOverlay();
+          applyFilter();
+        });
+        showUserOverlay(isEdit ? "编辑开课" : "新增开课");
+        setUserModalContent([form], [saveBtn, el("button", { class: "btn", type: "button", text: "取消", onclick: () => hideUserOverlay() })]);
+      }
+
+      function render(list) {
+        tableCard.innerHTML = "";
+        const table = el("table", { class: "certTable" }, []);
+        table.appendChild(el("thead", null, [el("tr", null, [
+          el("th", { text: "学期" }),
+          el("th", { text: "课程编码" }),
+          el("th", { text: "课程名称" }),
+          el("th", { text: "教学班编号" }),
+          el("th", { text: "授课教师" }),
+          el("th", { text: "容量" }),
+          el("th", { text: "已选人数" }),
+          el("th", { text: "状态" }),
+          el("th", { text: "操作", style: "text-align:right;" })
+        ])]));
+        const tbody = el("tbody", null, []);
+        (list || []).forEach(it => {
+          const codeEl = el("span", { class: "courseCodeLink", text: it.courseCode || "-" });
+          const classEl = el("span", { class: "courseCodeLink", text: it.classCode || "-" });
+          codeEl.addEventListener("click", () => openTermModal(it));
+          classEl.addEventListener("click", () => openTermModal(it));
+          const pct = it.capacity > 0 ? Math.max(0, Math.min(1, (it.selected || 0) / it.capacity)) : 0;
+          const seatFill = el("div", { class: "termSeatFill" + ((it.selected || 0) >= (it.capacity || 0) ? " full" : ""), style: "width:" + Math.round(pct * 100) + "%;" });
+          const seat = el("div", { class: "termSeatWrap" }, [
+            el("div", { class: "mono", text: String(it.selected || 0) }),
+            el("div", { class: "termSeatBar" }, [seatFill])
+          ]);
+          const editBtn = el("button", { class: "certIconBtn green", type: "button", title: "编辑" }, [svgIcon("edit")]);
+          const okBtn = el("button", { class: "certIconBtn blue", type: "button", title: "检查" }, [svgIcon("check")]);
+          editBtn.addEventListener("click", () => openTermModal(it));
+          okBtn.addEventListener("click", () => { toast.textContent = "已检查（示例）"; });
+          tbody.appendChild(el("tr", null, [
+            el("td", null, [el("div", { class: "mono", text: it.term || "-" })]),
+            el("td", null, [codeEl]),
+            el("td", null, [el("div", { text: it.courseName || "-" })]),
+            el("td", null, [classEl]),
+            el("td", null, [el("div", { text: it.teacher || "-" })]),
+            el("td", null, [el("div", { class: "mono", text: String(it.capacity || 0) })]),
+            el("td", null, [seat]),
+            el("td", null, [statusPill(it.active)]),
+            el("td", null, [el("div", { class: "certActions" }, [editBtn, okBtn])])
+          ]));
+        });
+        table.appendChild(tbody);
+        tableCard.appendChild(table);
+      }
+
+      function applyFilter() {
+        const term = termSelect.value;
+        const kw = kwInput.value.trim();
+        const tkw = teacherInput.value.trim();
+        const filtered = items
+          .filter(x => !term || String(x.term || "") === String(term))
+          .filter(x => !kw || String(x.courseCode || "").includes(kw) || String(x.courseName || "").includes(kw))
+          .filter(x => !tkw || String(x.teacher || "").includes(tkw));
+        rebuildTermOptions(items);
+        render(filtered);
+      }
+
+      header.querySelector(".flowBtn.green").addEventListener("click", () => alert("批量导入暂未接入（示例）"));
+      header.querySelector(".flowBtn:not(.green)").addEventListener("click", () => openTermModal(null));
+      searchBtn.addEventListener("click", applyFilter);
+      termSelect.addEventListener("change", applyFilter);
+      kwInput.addEventListener("keydown", (e) => { if (e.key === "Enter") applyFilter(); });
+      teacherInput.addEventListener("keydown", (e) => { if (e.key === "Enter") applyFilter(); });
+      applyFilter();
+    }
+
+    async function loadPartyRemindersPage(state) {
+      document.getElementById("pageTitle").textContent = "提醒任务";
+      const content = document.getElementById("content");
+      content.innerHTML = "";
+
+      const STORAGE_KEY = "ssp_party_reminder_tasks_demo";
+
+      function tryParseJson(raw, fallback) {
+        try {
+          const obj = JSON.parse(raw);
+          return obj == null ? fallback : obj;
+        } catch (e) {
+          return fallback;
+        }
+      }
+
+      function loadLocal() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const list = tryParseJson(raw, null);
+        if (Array.isArray(list) && list.length) return list;
+        return [
+          { id: 1, student: "张三", content: "入党积极分子培训即将开始", channel: "SMS", status: "PENDING", scheduledAt: "2024-03-29 09:00", failReason: "" },
+          { id: 2, student: "李四", content: "党校培训即将截止报名", channel: "EMAIL", status: "SENT", scheduledAt: "2024-03-28 10:00", failReason: "" },
+          { id: 3, student: "王五", content: "预备党员转正材料准备", channel: "SMS", status: "FAILED", scheduledAt: "2024-03-28 08:00", failReason: "用户未绑定定位" },
+          { id: 4, student: "赵六", content: "入党申请书提交提醒", channel: "SITE", status: "SENT", scheduledAt: "2024-03-27 14:00", failReason: "" }
+        ];
+      }
+
+      function saveLocal(list) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list || []));
+      }
+
+      function svgIcon(type) {
+        const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" };
+        if (type === "send") {
+          return el("svg", Object.assign({ width: "14", height: "14" }, common), [
+            el("line", { x1: "22", y1: "2", x2: "11", y2: "13" }),
+            el("polygon", { points: "22 2 15 22 11 13 2 9 22 2" })
+          ]);
+        }
+        if (type === "x") {
+          return el("svg", Object.assign({ width: "14", height: "14" }, common), [
+            el("line", { x1: "18", y1: "6", x2: "6", y2: "18" }),
+            el("line", { x1: "6", y1: "6", x2: "18", y2: "18" })
+          ]);
+        }
+        if (type === "filter") {
+          return el("svg", Object.assign({ width: "16", height: "16" }, common), [
+            el("polygon", { points: "22 3 2 3 10 12 10 19 14 21 14 12 22 3" })
+          ]);
+        }
+        return el("svg", common, []);
+      }
+
+      function channelPill(ch) {
+        const v = String(ch || "").toUpperCase();
+        if (v === "SMS") return el("span", { class: "remindChannelPill sms", text: "短信" });
+        if (v === "EMAIL") return el("span", { class: "remindChannelPill email", text: "邮件" });
+        return el("span", { class: "remindChannelPill site", text: "站内信" });
+      }
+
+      function statusPill(st) {
+        const v = String(st || "").toUpperCase();
+        if (v === "SENT") return el("span", { class: "remindStatusPill sent", text: "已发送" });
+        if (v === "FAILED") return el("span", { class: "remindStatusPill failed", text: "发送失败" });
+        return el("span", { class: "remindStatusPill pending", text: "待发送" });
+      }
+
+      let items = loadLocal();
+      saveLocal(items);
+
+      const header = el("div", { class: "pageHeader" }, [
+        el("div", null, [
+          el("h2", { text: "提醒任务" }),
+          el("div", { class: "desc", text: "管理待发送、已发送、失败的流程提醒任务" })
+        ]),
+        el("div", { class: "actions" }, [
+          el("button", { class: "flowBtn", type: "button" }, [svgIcon("send"), el("span", { text: "批量发送到期提醒" })])
+        ])
+      ]);
+
+      const channelSelect = el("select", { class: "instSelect" }, [
+        el("option", { value: "", text: "全部渠道" }),
+        el("option", { value: "SMS", text: "短信" }),
+        el("option", { value: "EMAIL", text: "邮件" }),
+        el("option", { value: "SITE", text: "站内信" })
+      ]);
+      const statusSelect = el("select", { class: "instSelect" }, [
+        el("option", { value: "", text: "全部状态" }),
+        el("option", { value: "PENDING", text: "待发送" }),
+        el("option", { value: "SENT", text: "已发送" }),
+        el("option", { value: "FAILED", text: "发送失败" })
+      ]);
+      const filterBtn = el("button", { class: "instFilterBtn", type: "button" }, [svgIcon("filter"), el("span", { text: "筛选" })]);
+
+      const filterCard = el("div", { class: "card" }, [
+        el("div", { class: "instFilterBar" }, [channelSelect, statusSelect, filterBtn])
+      ]);
+
+      const tableCard = el("div", { class: "card certTableCard", style: "margin-top: 12px;" }, []);
+      const toast = el("div", { class: "toast" }, []);
+      content.appendChild(header);
+      content.appendChild(filterCard);
+      content.appendChild(tableCard);
+      content.appendChild(toast);
+
+      function render(list) {
+        toast.textContent = "";
+        tableCard.innerHTML = "";
+        const table = el("table", { class: "certTable" }, []);
+        table.appendChild(el("thead", null, [el("tr", null, [
+          el("th", { text: "学生" }),
+          el("th", { text: "提醒内容" }),
+          el("th", { text: "发送渠道" }),
+          el("th", { text: "状态" }),
+          el("th", { text: "计划时间" }),
+          el("th", { text: "失败原因" }),
+          el("th", { text: "操作", style: "text-align:right;" })
+        ])]));
+        const tbody = el("tbody", null, []);
+        (list || []).forEach(it => {
+          const actions = el("div", { class: "certActions" }, []);
+          const st = String(it.status || "").toUpperCase();
+          if (st === "PENDING") {
+            const sendBtn = el("button", { class: "certIconBtn green", type: "button", title: "发送" }, [svgIcon("send")]);
+            const delBtn = el("button", { class: "certIconBtn red", type: "button", title: "删除" }, [svgIcon("x")]);
+            sendBtn.addEventListener("click", () => {
+              it.status = "SENT";
+              it.failReason = "";
+              items = items.map(x => x.id === it.id ? it : x);
+              saveLocal(items);
+              applyFilter();
+              toast.textContent = "已发送";
+            });
+            delBtn.addEventListener("click", () => {
+              items = items.filter(x => x.id !== it.id);
+              saveLocal(items);
+              applyFilter();
+              toast.textContent = "已删除";
+            });
+            actions.appendChild(sendBtn);
+            actions.appendChild(delBtn);
+          } else if (st === "FAILED") {
+            const retryBtn = el("div", { class: "instViewLink" }, [el("span", { text: "重发" })]);
+            retryBtn.addEventListener("click", () => {
+              it.status = "SENT";
+              it.failReason = "";
+              items = items.map(x => x.id === it.id ? it : x);
+              saveLocal(items);
+              applyFilter();
+              toast.textContent = "已重发";
+            });
+            actions.appendChild(retryBtn);
+          } else {
+            actions.appendChild(el("div", { class: "mono", text: "-" }));
+          }
+
+          const trClass = st === "FAILED" ? "rowFail" : "";
+          tbody.appendChild(el("tr", trClass ? { class: trClass } : null, [
+            el("td", null, [el("div", { text: it.student || "-" })]),
+            el("td", null, [el("div", { text: it.content || "-" })]),
+            el("td", null, [channelPill(it.channel)]),
+            el("td", null, [statusPill(it.status)]),
+            el("td", null, [el("div", { class: "mono", text: it.scheduledAt || "-" })]),
+            el("td", null, [el("div", { style: "color:" + (st === "FAILED" ? "#b91c1c" : "#94a3b8") + "; font-weight: 750;", text: it.failReason || "-" })]),
+            el("td", null, [actions])
+          ]));
+        });
+        table.appendChild(tbody);
+        tableCard.appendChild(table);
+      }
+
+      function applyFilter() {
+        const ch = channelSelect.value;
+        const st = statusSelect.value;
+        const filtered = items
+          .filter(x => !ch || String(x.channel || "").toUpperCase() === String(ch).toUpperCase())
+          .filter(x => !st || String(x.status || "").toUpperCase() === String(st).toUpperCase());
+        render(filtered);
+      }
+
+      header.querySelector("button").addEventListener("click", () => {
+        const pending = items.filter(x => String(x.status || "").toUpperCase() === "PENDING");
+        if (!pending.length) {
+          toast.textContent = "暂无待发送任务";
+          return;
+        }
+        items = items.map(x => (String(x.status || "").toUpperCase() === "PENDING") ? Object.assign({}, x, { status: "SENT", failReason: "" }) : x);
+        saveLocal(items);
+        applyFilter();
+        toast.textContent = "已批量发送";
+      });
+
+      filterBtn.addEventListener("click", applyFilter);
+      channelSelect.addEventListener("change", applyFilter);
+      statusSelect.addEventListener("change", applyFilter);
+      applyFilter();
+    }
+
+    async function loadPartyProgressOverviewPage(state) {
+      document.getElementById("pageTitle").textContent = "学生进度总览";
+      const content = document.getElementById("content");
+      content.innerHTML = "";
+
+      const STORAGE_KEY = "ssp_party_progress_overview_demo";
+
+      function tryParseJson(raw, fallback) {
+        try {
+          const obj = JSON.parse(raw);
+          return obj == null ? fallback : obj;
+        } catch (e) {
+          return fallback;
+        }
+      }
+
+      function loadLocal() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const list = tryParseJson(raw, null);
+        if (Array.isArray(list) && list.length) return list;
+        return [
+          { id: 1, studentNo: "2023001", name: "张三", className: "计算机1班", flow: "入党流程", currentNode: "入党积极分子", progress: 40, status: "OK", deadline: "2024-09-15" },
+          { id: 2, studentNo: "2023002", name: "李四", className: "软件工程2班", flow: "入党流程", currentNode: "党校培训", progress: 60, status: "OK", deadline: "2024-12-20" },
+          { id: 3, studentNo: "2022015", name: "王五", className: "人工智能1班", flow: "党员转正流程", currentNode: "预备党员", progress: 80, status: "SOON", deadline: "2024-04-05" },
+          { id: 4, studentNo: "2023045", name: "赵六", className: "大数据1班", flow: "入党流程", currentNode: "入党积极分子", progress: 40, status: "PAUSED", deadline: "" }
+        ];
+      }
+
+      function saveLocal(list) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list || []));
+      }
+
+      function svgIcon(type) {
+        const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" };
+        if (type === "search") {
+          return el("svg", Object.assign({ width: "16", height: "16" }, common), [
+            el("circle", { cx: "11", cy: "11", r: "7" }),
+            el("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })
+          ]);
+        }
+        if (type === "filter") {
+          return el("svg", Object.assign({ width: "16", height: "16" }, common), [
+            el("polygon", { points: "22 3 2 3 10 12 10 19 14 21 14 12 22 3" })
+          ]);
+        }
+        if (type === "eye") {
+          return el("svg", Object.assign({ width: "16", height: "16" }, common), [
+            el("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" }),
+            el("circle", { cx: "12", cy: "12", r: "3" })
+          ]);
+        }
+        if (type === "pause") {
+          return el("svg", Object.assign({ width: "16", height: "16" }, common), [
+            el("rect", { x: "6", y: "5", width: "4", height: "14", rx: "1" }),
+            el("rect", { x: "14", y: "5", width: "4", height: "14", rx: "1" })
+          ]);
+        }
+        if (type === "play") {
+          return el("svg", Object.assign({}, common, { "stroke-width": "0", fill: "currentColor" }), [
+            el("path", { d: "M8 5v14l11-7z" })
+          ]);
+        }
+        return el("svg", common, []);
+      }
+
+      function statusPill(st) {
+        const v = String(st || "").toUpperCase();
+        if (v === "PAUSED") return el("span", { class: "partyStatusPill paused", text: "已暂停" });
+        if (v === "SOON") return el("span", { class: "partyStatusPill soon", text: "即将到期" });
+        return el("span", { class: "partyStatusPill ok", text: "正常" });
+      }
+
+      let items = loadLocal();
+      saveLocal(items);
+
+      const header = el("div", { class: "pageHeader" }, [
+        el("div", null, [
+          el("h2", { text: "学生进度总览" }),
+          el("div", { class: "desc", text: "查看学生在党团流程中的进度与异常" }),
+          el("div", { style: "margin-top: 8px;" }, [
+            el("button", { class: "miniBtn", type: "button", text: "Preview" })
+          ])
+        ]),
+        el("div", { class: "actions" }, [
+          el("button", { class: "flowBtn green", type: "button", text: "批量推进节点" }),
+          el("button", { class: "flowBtn orange", type: "button", text: "批量暂停" })
+        ])
+      ]);
+
+      content.appendChild(header);
+
+      const searchInput = el("input", { placeholder: "搜索学生姓名/学号" });
+      const searchWrap = el("div", { class: "instSearch" }, [svgIcon("search"), searchInput]);
+      const flowSelect = el("select", { class: "instSelect" }, [el("option", { value: "", text: "全部流程" })]);
+      const statusSelect = el("select", { class: "instSelect" }, [
+        el("option", { value: "", text: "全部状态" }),
+        el("option", { value: "OK", text: "正常" }),
+        el("option", { value: "SOON", text: "即将到期" }),
+        el("option", { value: "PAUSED", text: "已暂停" })
+      ]);
+      const gradeSelect = el("select", { class: "instSelect" }, [
+        el("option", { value: "", text: "全部年级" }),
+        el("option", { value: "2022", text: "2022级" }),
+        el("option", { value: "2023", text: "2023级" }),
+        el("option", { value: "2024", text: "2024级" })
+      ]);
+      const filterBtn = el("button", { class: "instFilterBtn", type: "button" }, [svgIcon("filter"), el("span", { text: "筛选" })]);
+
+      const filterCard = el("div", { class: "card" }, [
+        el("div", { class: "instFilterBar" }, [searchWrap, flowSelect, statusSelect, gradeSelect, filterBtn])
+      ]);
+      const tableCard = el("div", { class: "card certTableCard", style: "margin-top: 12px;" }, []);
+      const toast = el("div", { class: "toast" }, []);
+      content.appendChild(filterCard);
+      content.appendChild(tableCard);
+      content.appendChild(toast);
+
+      let selected = new Set();
+
+      function rebuildFlowOptions(source) {
+        const old = flowSelect.value;
+        const opts = Array.from(new Set((source || []).map(x => x.flow).filter(Boolean))).sort();
+        flowSelect.innerHTML = "";
+        flowSelect.appendChild(el("option", { value: "", text: "全部流程" }));
+        opts.forEach(v => flowSelect.appendChild(el("option", { value: v, text: v })));
+        flowSelect.value = old;
+      }
+
+      function openDetail(item) {
+        const rows = [
+          ["学号", item.studentNo || "-"],
+          ["姓名", item.name || "-"],
+          ["班级", item.className || "-"],
+          ["流程", item.flow || "-"],
+          ["当前节点", item.currentNode || "-"],
+          ["进度", (item.progress == null ? 0 : item.progress) + "%"],
+          ["状态", String(item.status || "").toUpperCase() === "PAUSED" ? "已暂停" : String(item.status || "").toUpperCase() === "SOON" ? "即将到期" : "正常"],
+          ["截止日期", item.deadline || "-"]
+        ];
+        const body = el("div", { style: "display:grid; gap: 10px;" }, rows.map(([k, v]) => {
+          return el("div", { style: "display:flex; gap: 10px; align-items:flex-start;" }, [
+            el("div", { style: "min-width: 86px; color:#64748b; font-size: 12px; font-weight: 800;", text: k }),
+            el("div", { style: "flex:1; font-weight: 750;", text: v })
+          ]);
+        }));
+        showUserOverlay("学生流程详情");
+        setUserModalContent([body], [el("button", { class: "btn", text: "关闭", type: "button", onclick: () => hideUserOverlay() })]);
+      }
+
+      function render(list) {
+        toast.textContent = "";
+        tableCard.innerHTML = "";
+        const table = el("table", { class: "certTable" }, []);
+        const headCheckbox = el("input", { type: "checkbox" });
+        headCheckbox.addEventListener("change", () => {
+          const all = (list || []).map(x => x.id);
+          if (headCheckbox.checked) {
+            selected = new Set(all);
+          } else {
+            selected = new Set();
+          }
+          render(list);
+        });
+
+        table.appendChild(el("thead", null, [el("tr", null, [
+          el("th", null, [headCheckbox]),
+          el("th", { text: "学号" }),
+          el("th", { text: "姓名" }),
+          el("th", { text: "班级" }),
+          el("th", { text: "流程" }),
+          el("th", { text: "当前节点" }),
+          el("th", { text: "进度" }),
+          el("th", { text: "状态" }),
+          el("th", { text: "截止日期" }),
+          el("th", { text: "操作", style: "text-align:right;" })
+        ])]));
+
+        const tbody = el("tbody", null, []);
+        (list || []).forEach(it => {
+          const cb = el("input", { type: "checkbox" });
+          cb.checked = selected.has(it.id);
+          cb.addEventListener("change", () => {
+            if (cb.checked) selected.add(it.id);
+            else selected.delete(it.id);
+          });
+          const noLink = el("span", { class: "instNodeLink", text: it.studentNo || "-" });
+          noLink.addEventListener("click", () => openDetail(it));
+          const p = Math.max(0, Math.min(100, Number(it.progress || 0)));
+          const progress = el("div", { class: "progressWrap" }, [
+            el("div", { class: "progressBar" }, [el("div", { class: "progressFill", style: "width:" + p + "%;" })]),
+            el("div", { class: "mono", text: p + "%" })
+          ]);
+          const viewBtn = el("button", { class: "certIconBtn blue", type: "button", title: "查看" }, [svgIcon("eye")]);
+          const toggleBtn = el("button", { class: "certIconBtn " + (String(it.status).toUpperCase() === "PAUSED" ? "blue" : "orange"), type: "button", title: String(it.status).toUpperCase() === "PAUSED" ? "恢复" : "暂停" }, [svgIcon(String(it.status).toUpperCase() === "PAUSED" ? "play" : "pause")]);
+          viewBtn.addEventListener("click", () => openDetail(it));
+          toggleBtn.addEventListener("click", () => {
+            const nextStatus = String(it.status).toUpperCase() === "PAUSED" ? "OK" : "PAUSED";
+            items = items.map(x => x.id === it.id ? Object.assign({}, x, { status: nextStatus }) : x);
+            saveLocal(items);
+            applyFilter();
+          });
+
+          tbody.appendChild(el("tr", null, [
+            el("td", null, [cb]),
+            el("td", null, [noLink]),
+            el("td", null, [el("div", { text: it.name || "-" })]),
+            el("td", null, [el("div", { text: it.className || "-" })]),
+            el("td", null, [el("span", { class: "partyTag", text: it.flow || "-" })]),
+            el("td", null, [el("div", { text: it.currentNode || "-" })]),
+            el("td", null, [progress]),
+            el("td", null, [statusPill(it.status)]),
+            el("td", null, [el("div", { class: "mono", text: it.deadline || "-" })]),
+            el("td", null, [el("div", { class: "certActions" }, [viewBtn, toggleBtn])])
+          ]));
+        });
+        table.appendChild(tbody);
+        tableCard.appendChild(table);
+      }
+
+      function applyFilter() {
+        const kw = searchInput.value.trim();
+        const flow = flowSelect.value;
+        const st = statusSelect.value;
+        const grade = gradeSelect.value;
+        const filtered = items
+          .filter(x => !kw || String(x.name || "").includes(kw) || String(x.studentNo || "").includes(kw))
+          .filter(x => !flow || String(x.flow || "") === String(flow))
+          .filter(x => !st || String(x.status || "").toUpperCase() === String(st).toUpperCase())
+          .filter(x => {
+            if (!grade) return true;
+            const n = String(x.studentNo || "");
+            return n.startsWith(String(grade));
+          });
+        rebuildFlowOptions(items);
+        render(filtered);
+      }
+
+      header.querySelector(".flowBtn.green").addEventListener("click", () => {
+        if (!selected.size) {
+          toast.textContent = "请先选择学生";
+          return;
+        }
+        items = items.map(x => selected.has(x.id) ? Object.assign({}, x, { progress: Math.min(100, Number(x.progress || 0) + 10) }) : x);
+        saveLocal(items);
+        applyFilter();
+        toast.textContent = "已批量推进";
+      });
+      header.querySelector(".flowBtn.orange").addEventListener("click", () => {
+        if (!selected.size) {
+          toast.textContent = "请先选择学生";
+          return;
+        }
+        items = items.map(x => selected.has(x.id) ? Object.assign({}, x, { status: "PAUSED" }) : x);
+        saveLocal(items);
+        applyFilter();
+        toast.textContent = "已批量暂停";
+      });
+
+      filterBtn.addEventListener("click", applyFilter);
+      searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") applyFilter();
+      });
+      flowSelect.addEventListener("change", applyFilter);
+      statusSelect.addEventListener("change", applyFilter);
+      gradeSelect.addEventListener("change", applyFilter);
+      rebuildFlowOptions(items);
+      applyFilter();
+    }
+
     function renderPlaceholder(title, hint) {
       document.getElementById("pageTitle").textContent = title;
       const content = document.getElementById("content");
@@ -4785,18 +6880,18 @@
       if (view === "authAudits") return loadAuthAudits();
       if (view === "knowledgeAnalytics") return loadSearchAnalytics();
       if (view === "knowledgeTickets") return loadQaTickets(Object.assign({}, state || {}));
-      if (view === "certTemplates") return renderPlaceholder("证明模板", "当前版本证明模板更偏“模板下载/知识库附件”。如需后台维护模板，需要新增对应管理接口。");
-      if (view === "workflowDef") return renderPlaceholder("工作流定义", "当前版本未提供工作流定义/节点配置的管理接口，可先占位。");
+      if (view === "certTemplates") return loadCertTemplates(Object.assign({}, state || {}));
+      if (view === "workflowDef") return loadWorkflowDefinitionsPage(Object.assign({}, state || {}));
       if (view === "workflowNodes") return loadWorkflowNodesConfig(Object.assign({}, state || {}));
-      if (view === "workflowInstances") return renderPlaceholder("流程实例", "当前版本未提供流程实例列表管理接口，可先占位。");
+      if (view === "workflowInstances") return loadWorkflowInstancesPage(Object.assign({}, state || {}));
       if (view === "partyFlowDef") return loadPartyFlowDef(Object.assign({}, state || {}));
       if (view === "partyFlowNodes") return loadPartyFlowNodesConfig(Object.assign({}, state || {}));
-      if (view === "partyProgress") return renderPlaceholder("学生进度总览", "可接入：/api/v1/party-progress/{studentId}、/timeline、/reminders（按学生查询展示）。");
-      if (view === "partyReminders") return renderPlaceholder("提醒任务", "当前版本提醒任务为查询展示型接口（/api/v1/party-progress/{studentId}/reminders），未提供后台维护接口。");
-      if (view === "academicPrograms") return renderPlaceholder("培养方案", "当前版本学业分析仅提供分析查询接口：/api/v1/academic/analysis/{studentId}。培养方案/课程字典/开课管理的后台维护接口需后续补齐。");
-      if (view === "academicCourses") return renderPlaceholder("课程字典", "同上：待补后台维护接口。");
-      if (view === "academicTerms") return renderPlaceholder("开课管理", "同上：待补后台维护接口。");
-      return renderPlaceholder("未实现页面", "该菜单项暂未接入。");
+      if (view === "partyProgress") return loadPartyProgressOverviewPage(Object.assign({}, state || {}));
+      if (view === "partyReminders") return loadPartyRemindersPage(Object.assign({}, state || {}));
+      if (view === "academicPrograms") return loadAcademicProgramsPage(Object.assign({}, state || {}));
+      if (view === "academicCourses") return loadAcademicCoursesPage(Object.assign({}, state || {}));
+      if (view === "academicTerms") return loadAcademicTermsPage(Object.assign({}, state || {}));
+      return renderPlaceholder("未实现页 bb面", "该菜单项暂未接入。");
     }
 
     document.querySelectorAll(".nav button[data-view]").forEach(btn => {
