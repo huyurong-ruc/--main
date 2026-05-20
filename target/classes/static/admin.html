@@ -581,7 +581,6 @@
       </div>
       <div class="actions">
         <button class="btn primary" id="loginBtn">登录</button>
-        <a class="btn" href="/login.html" style="display:inline-flex; align-items:center; justify-content:center;">去登录页</a>
       </div>
       <div class="toast" id="loginMsg"></div>
     </div>
@@ -6957,7 +6956,7 @@
 
     document.getElementById("logoutBtn").addEventListener("click", () => {
       clearAuth();
-      location.replace("/login.html");
+      showLoginOverlay("");
     });
 
     document.getElementById("loginBtn").addEventListener("click", async () => {
