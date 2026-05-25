@@ -437,6 +437,39 @@
     .poolSub { font-size: 12px; color: var(--muted); font-weight: 800; }
     .poolAdd { width: 30px; height: 30px; border-radius: 10px; border: 1px solid rgba(15,23,42,.10); background: #ffffff; display:flex; align-items:center; justify-content:center; cursor: pointer; color: #16a34a; }
     .poolAdd:hover { background: rgba(15,23,42,.03); border-color: rgba(22,163,74,.25); }
+    .honorHero { display:flex; align-items:flex-start; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+    .honorHero h2 { margin: 0; font-size: 22px; font-weight: 900; }
+    .honorHero .desc { margin-top: 6px; color: var(--muted); font-size: 13px; }
+    .honorActions { display:flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .honorFilters { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+    .honorStats { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
+    .honorStat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+    .honorStat .k { color: var(--muted); font-size: 12px; font-weight: 800; }
+    .honorStat .v { margin-top: 8px; font-size: 24px; font-weight: 950; }
+    .honorLayout { display:grid; grid-template-columns: minmax(340px, 430px) minmax(0, 1fr); gap: 14px; align-items:start; }
+    .honorShowcaseList { display:grid; gap: 10px; }
+    .honorShowcaseCard { border: 1px solid rgba(37,99,235,.18); border-radius: 12px; padding: 12px; background: linear-gradient(135deg, rgba(37,99,235,.13), rgba(255,255,255,.95) 54%, rgba(14,165,233,.08)); cursor: pointer; transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease; }
+    .honorShowcaseCard:hover { transform: translateY(-1px); border-color: rgba(37,99,235,.34); box-shadow: 0 10px 24px rgba(37,99,235,.10); }
+    .honorShowcaseCard.active { border-color: rgba(37,99,235,.55); box-shadow: 0 12px 30px rgba(37,99,235,.16); }
+    .honorBlueBlock { display:inline-flex; align-items:center; max-width: 100%; padding: 8px 10px; border-radius: 8px; background: #2563eb; color: #ffffff; font-size: 13px; font-weight: 900; line-height: 1.35; }
+    .honorMeta { display:flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; color: var(--muted); font-size: 12px; }
+    .honorDetailTitle { display:flex; align-items:flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .honorDetailTitle h3 { margin: 0; font-size: 18px; font-weight: 950; }
+    .honorRecipientGrid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .honorRecipientCard { border: 1px solid rgba(15,23,42,.10); border-radius: 12px; padding: 12px; background: #ffffff; cursor: pointer; }
+    .honorRecipientCard:hover { border-color: rgba(37,99,235,.32); background: rgba(37,99,235,.035); }
+    .honorAvatar { width: 46px; height: 46px; border-radius: 12px; background: linear-gradient(135deg, #2563eb, #14b8a6); color: #fff; display:grid; place-items:center; font-weight: 950; flex: 0 0 auto; }
+    .honorRecipientHead { display:flex; gap: 10px; align-items:center; }
+    .honorRecipientName { font-weight: 950; }
+    .honorRecipientSub { margin-top: 3px; font-size: 12px; color: var(--muted); }
+    .honorExcerpt { margin-top: 10px; color: #334155; font-size: 12px; line-height: 1.6; }
+    .honorEmpty { padding: 26px; text-align:center; color: var(--muted); border: 1px dashed rgba(15,23,42,.18); border-radius: 12px; background: rgba(255,255,255,.64); }
+    .honorPreviewPhoto { width: 100%; max-height: 190px; object-fit: cover; border-radius: 12px; border: 1px solid rgba(15,23,42,.10); background: #f8fafc; }
+    .honorImportHelp { font-size: 12px; color: var(--muted); line-height: 1.7; }
+    @media (max-width: 1180px) {
+      .honorLayout { grid-template-columns: 1fr; }
+      .honorRecipientGrid { grid-template-columns: 1fr; }
+    }
     @media (max-width: 980px) {
       body { overflow: auto; }
       .header { position: sticky; top: 0; }
@@ -448,6 +481,7 @@
       .todoGrid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
       .actionGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .kpiGrid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+      .honorStats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   </style>
 </head>
@@ -538,6 +572,13 @@
           <div class="groupItems">
             <button data-view="noticeList" class="sub">通知列表</button>
             <button data-view="noticePublish" class="sub">发布通知</button>
+          </div>
+        </div>
+
+        <div class="group" data-group="honor">
+          <button class="groupHeader" type="button"><span>奖助信息</span><span class="groupChevron">▾</span></button>
+          <div class="groupItems">
+            <button data-view="honorScholarships" class="sub">奖助信息</button>
           </div>
         </div>
 
@@ -6862,6 +6903,513 @@
       ]));
     }
 
+    async function loadHonorScholarships(state) {
+      document.getElementById("pageTitle").textContent = "奖助信息";
+      const content = document.getElementById("content");
+      content.innerHTML = "";
+      const s = Object.assign({ keyword: "", awardYear: "", honorCategory: "", recipientType: "", publicVisible: "", selectedId: null }, state || {});
+      const LOCAL_KEY = "ssp_admin_honor_showcases";
+      let apiReady = true;
+
+      function seedData() {
+        return [
+          {
+            id: 202401,
+            awardYear: 2024,
+            honorCategory: "信息学院国家奖学金",
+            recipientType: "PERSONAL",
+            title: "2024年信息学院国家奖学金",
+            description: "展示信息学院国家奖学金获得者风采。",
+            publicVisible: true,
+            displayOrder: 1,
+            displayStartAt: "2024-10-01T08:00:00",
+            displayEndAt: "2027-10-01T08:00:00",
+            recipientCount: 2,
+            recipients: [
+              { id: 9001, showcaseId: 202401, recipientType: "PERSONAL", studentNo: "2021201001", recipientName: "张同学", major: "计算机科学与技术", grade: "2021级", className: "计科1班", awardIntro: "综合测评排名专业前列，科研训练与志愿服务表现突出。", advancedDeeds: "主动参与学院朋辈辅导和课程助教工作，带动班级形成互助学习氛围。", photoUrl: "", publicVisible: true, displayOrder: 1, displayStartAt: "2024-10-01T08:00:00", displayEndAt: "2027-10-01T08:00:00", attachments: [] },
+              { id: 9002, showcaseId: 202401, recipientType: "PERSONAL", studentNo: "2021201027", recipientName: "李同学", major: "数据科学与大数据技术", grade: "2021级", className: "数据1班", awardIntro: "学业成绩优异，多次参与学科竞赛并获奖。", advancedDeeds: "长期参与技术志愿服务，协助学院完成数据治理实践项目。", photoUrl: "", publicVisible: true, displayOrder: 2, displayStartAt: "2024-10-01T08:00:00", displayEndAt: "2027-10-01T08:00:00", attachments: [] }
+            ]
+          },
+          {
+            id: 202402,
+            awardYear: 2024,
+            honorCategory: "信息学院优秀学生集体",
+            recipientType: "COLLECTIVE",
+            title: "2024年信息学院优秀学生集体",
+            description: "展示优秀班集体、科研团队、志愿服务团队。",
+            publicVisible: true,
+            displayOrder: 2,
+            displayStartAt: "",
+            displayEndAt: "",
+            recipientCount: 1,
+            recipients: [
+              { id: 9101, showcaseId: 202402, recipientType: "COLLECTIVE", studentNo: "", recipientName: "2021级计算机科学与技术1班", major: "计算机科学与技术", grade: "2021级", className: "计科1班", awardIntro: "班级学风扎实，集体活动参与度高。", advancedDeeds: "班级建立课程互助小组与竞赛训练小组，形成稳定的朋辈支持机制。", photoUrl: "", publicVisible: true, displayOrder: 1, displayStartAt: "", displayEndAt: "", attachments: [] }
+            ]
+          }
+        ];
+      }
+
+      function loadLocal() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
+          if (Array.isArray(parsed)) return parsed;
+        } catch (e) {}
+        const data = seedData();
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
+        return data;
+      }
+
+      function saveLocal(items) {
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(items || []));
+      }
+
+      function normalizePage(pageData) {
+        if (Array.isArray(pageData)) return pageData;
+        if (pageData && Array.isArray(pageData.content)) return pageData.content;
+        return [];
+      }
+
+      async function fetchShowcases() {
+        try {
+          const pageData = await apiJson("/api/v1/admin/honors/page?" + buildQuery({
+            page: 0,
+            size: 100,
+            keyword: s.keyword || undefined,
+            awardYear: s.awardYear || undefined,
+            honorCategory: s.honorCategory || undefined,
+            recipientType: s.recipientType || undefined,
+            publicVisible: s.publicVisible === "" ? undefined : s.publicVisible
+          }));
+          const items = normalizePage(pageData);
+          return Promise.all(items.map(async item => {
+            const detail = await apiJson("/api/v1/admin/honors/" + item.id).catch(() => item);
+            const recPage = await apiJson("/api/v1/admin/honors/" + item.id + "/recipients/page?" + buildQuery({ page: 0, size: 100 })).catch(() => null);
+            const recipients = normalizePage(recPage || {});
+            return Object.assign({}, detail || item, { recipients: recipients.length ? recipients : ((detail && detail.recipients) || item.recipients || []) });
+          }));
+        } catch (e) {
+          apiReady = false;
+          return loadLocal();
+        }
+      }
+
+      function filteredLocal(items) {
+        return items
+          .filter(x => !s.keyword || [x.title, x.honorCategory, x.description].some(v => String(v || "").includes(s.keyword)))
+          .filter(x => !s.awardYear || String(x.awardYear || "") === String(s.awardYear))
+          .filter(x => !s.honorCategory || String(x.honorCategory || "").includes(s.honorCategory))
+          .filter(x => !s.recipientType || String(x.recipientType || "") === String(s.recipientType))
+          .filter(x => s.publicVisible === "" || String(!!x.publicVisible) === String(s.publicVisible))
+          .sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0));
+      }
+
+      function recipientTypeText(type) {
+        return type === "COLLECTIVE" ? "集体" : "个人";
+      }
+
+      function visiblePill(v) {
+        return el("span", { class: "statusPill " + (v ? "ok" : "bad"), text: v ? "公开展示" : "暂不公开" });
+      }
+
+      function validText(item) {
+        const start = item.displayStartAt ? String(item.displayStartAt).replace("T", " ").slice(0, 16) : "立即";
+        const end = item.displayEndAt ? String(item.displayEndAt).replace("T", " ").slice(0, 16) : "长期";
+        return start + " 至 " + end;
+      }
+
+      function nextId(items) {
+        const ids = [];
+        items.forEach(x => {
+          ids.push(Number(x.id || 0));
+          (x.recipients || []).forEach(r => ids.push(Number(r.id || 0)));
+        });
+        return Math.max(1000, ...ids) + 1;
+      }
+
+      async function saveShowcase(item) {
+        const payload = {
+          awardYear: Number(item.awardYear),
+          honorCategory: item.honorCategory,
+          recipientType: item.recipientType,
+          title: item.title,
+          description: item.description || "",
+          publicVisible: !!item.publicVisible,
+          displayOrder: Number(item.displayOrder || 0),
+          displayStartAt: item.displayStartAt || null,
+          displayEndAt: item.displayEndAt || null,
+          importTaskId: item.importTaskId || null
+        };
+        if (apiReady) {
+          try {
+            if (item.id) await apiJson("/api/v1/admin/honors/" + item.id, { method: "PUT", body: JSON.stringify(payload) });
+            else await apiJson("/api/v1/admin/honors", { method: "POST", body: JSON.stringify(payload) });
+            await loadHonorScholarships(Object.assign({}, s, { selectedId: item.id }));
+            return;
+          } catch (e) {
+            apiReady = false;
+          }
+        }
+        const all = loadLocal();
+        if (item.id) {
+          const idx = all.findIndex(x => String(x.id) === String(item.id));
+          if (idx >= 0) all[idx] = Object.assign({}, all[idx], item);
+        } else {
+          item = Object.assign({}, item, { id: nextId(all), recipients: [] });
+          all.unshift(item);
+        }
+        saveLocal(all);
+        await loadHonorScholarships(Object.assign({}, s, { selectedId: item.id }));
+      }
+
+      async function deleteShowcase(item) {
+        if (!confirm("确认删除该奖助信息模块及其获得者？")) return;
+        if (apiReady) {
+          try {
+            await apiJson("/api/v1/admin/honors/" + item.id, { method: "DELETE" });
+            await loadHonorScholarships(Object.assign({}, s, { selectedId: null }));
+            return;
+          } catch (e) {
+            apiReady = false;
+          }
+        }
+        saveLocal(loadLocal().filter(x => String(x.id) !== String(item.id)));
+        await loadHonorScholarships(Object.assign({}, s, { selectedId: null }));
+      }
+
+      async function saveRecipient(showcase, recipient) {
+        const payload = {
+          recipientType: recipient.recipientType || showcase.recipientType,
+          studentId: recipient.studentId || null,
+          studentNo: recipient.studentNo || "",
+          recipientName: recipient.recipientName,
+          major: recipient.major || "",
+          grade: recipient.grade || "",
+          className: recipient.className || "",
+          awardIntro: recipient.awardIntro || "",
+          advancedDeeds: recipient.advancedDeeds || "",
+          photoFileId: recipient.photoFileId || null,
+          publicVisible: !!recipient.publicVisible,
+          displayOrder: Number(recipient.displayOrder || 0),
+          displayStartAt: recipient.displayStartAt || null,
+          displayEndAt: recipient.displayEndAt || null,
+          importTaskId: recipient.importTaskId || null
+        };
+        if (apiReady) {
+          try {
+            if (recipient.id) await apiJson("/api/v1/admin/honors/recipients/" + recipient.id, { method: "PUT", body: JSON.stringify(payload) });
+            else await apiJson("/api/v1/admin/honors/" + showcase.id + "/recipients", { method: "POST", body: JSON.stringify(payload) });
+            await loadHonorScholarships(Object.assign({}, s, { selectedId: showcase.id }));
+            return;
+          } catch (e) {
+            apiReady = false;
+          }
+        }
+        const all = loadLocal();
+        const parent = all.find(x => String(x.id) === String(showcase.id));
+        if (parent) {
+          parent.recipients = parent.recipients || [];
+          if (recipient.id) {
+            const idx = parent.recipients.findIndex(x => String(x.id) === String(recipient.id));
+            if (idx >= 0) parent.recipients[idx] = Object.assign({}, parent.recipients[idx], recipient);
+          } else {
+            parent.recipients.unshift(Object.assign({}, recipient, { id: nextId(all), showcaseId: parent.id }));
+          }
+          parent.recipientCount = parent.recipients.length;
+          saveLocal(all);
+        }
+        await loadHonorScholarships(Object.assign({}, s, { selectedId: showcase.id }));
+      }
+
+      async function deleteRecipient(showcase, recipient) {
+        if (!confirm("确认删除该获得者？")) return;
+        if (apiReady) {
+          try {
+            await apiJson("/api/v1/admin/honors/recipients/" + recipient.id, { method: "DELETE" });
+            await loadHonorScholarships(Object.assign({}, s, { selectedId: showcase.id }));
+            return;
+          } catch (e) {
+            apiReady = false;
+          }
+        }
+        const all = loadLocal();
+        const parent = all.find(x => String(x.id) === String(showcase.id));
+        if (parent) {
+          parent.recipients = (parent.recipients || []).filter(x => String(x.id) !== String(recipient.id));
+          parent.recipientCount = parent.recipients.length;
+          saveLocal(all);
+        }
+        await loadHonorScholarships(Object.assign({}, s, { selectedId: showcase.id }));
+      }
+
+      function openShowcaseForm(item) {
+        const values = Object.assign({ awardYear: new Date().getFullYear(), honorCategory: "信息学院国家奖学金", recipientType: "PERSONAL", title: "", description: "", publicVisible: true, displayOrder: 1, displayStartAt: "", displayEndAt: "" }, item || {});
+        const year = el("input", { value: values.awardYear || "", type: "number" });
+        const category = el("input", { value: values.honorCategory || "", placeholder: "如 信息学院国家奖学金" });
+        const type = el("select", null, [el("option", { value: "PERSONAL", text: "个人" }), el("option", { value: "COLLECTIVE", text: "集体" })]);
+        type.value = values.recipientType || "PERSONAL";
+        const title = el("input", { value: values.title || "", placeholder: "如 2024年信息学院国家奖学金" });
+        const desc = el("textarea", { placeholder: "展示说明" });
+        desc.value = values.description || "";
+        const publicVisible = el("input", { type: "checkbox" });
+        publicVisible.checked = values.publicVisible !== false;
+        const order = el("input", { value: values.displayOrder || 0, type: "number" });
+        const start = el("input", { value: values.displayStartAt ? String(values.displayStartAt).slice(0, 16) : "", type: "datetime-local" });
+        const end = el("input", { value: values.displayEndAt ? String(values.displayEndAt).slice(0, 16) : "", type: "datetime-local" });
+        showUserOverlay(item ? "编辑奖助信息模块" : "新建奖助信息模块");
+        setUserModalContent([
+          el("div", { class: "row" }, [
+            el("div", { class: "field" }, [el("label", { text: "年份" }), year]),
+            el("div", { class: "field" }, [el("label", { text: "展示类别" }), category]),
+            el("div", { class: "field" }, [el("label", { text: "个人/集体" }), type])
+          ]),
+          el("div", { class: "field" }, [el("label", { text: "蓝色高亮块标题" }), title]),
+          el("div", { class: "field" }, [el("label", { text: "整体简介" }), desc]),
+          el("div", { class: "row" }, [
+            el("label", { class: "cfgCheckRow" }, [publicVisible, el("span", { text: "公开展示" })]),
+            el("div", { class: "field" }, [el("label", { text: "展示顺序" }), order]),
+            el("div", { class: "field" }, [el("label", { text: "展示开始" }), start]),
+            el("div", { class: "field" }, [el("label", { text: "展示结束" }), end])
+          ])
+        ], [
+          el("button", { class: "btn", type: "button", text: "取消", onclick: hideUserOverlay }),
+          el("button", { class: "btn primary", type: "button", text: "保存", onclick: async () => {
+            if (!title.value.trim() || !category.value.trim()) {
+              document.getElementById("userModalMsg").textContent = "请填写标题和展示类别";
+              return;
+            }
+            await saveShowcase(Object.assign({}, values, {
+              awardYear: Number(year.value || new Date().getFullYear()),
+              honorCategory: category.value.trim(),
+              recipientType: type.value,
+              title: title.value.trim(),
+              description: desc.value.trim(),
+              publicVisible: publicVisible.checked,
+              displayOrder: Number(order.value || 0),
+              displayStartAt: start.value || "",
+              displayEndAt: end.value || ""
+            }));
+            hideUserOverlay();
+          }})
+        ]);
+      }
+
+      function openRecipientForm(showcase, recipient) {
+        const values = Object.assign({ recipientType: showcase.recipientType || "PERSONAL", recipientName: "", studentNo: "", major: "", grade: "", className: "", awardIntro: "", advancedDeeds: "", photoUrl: "", publicVisible: true, displayOrder: 1, displayStartAt: showcase.displayStartAt || "", displayEndAt: showcase.displayEndAt || "" }, recipient || {});
+        const name = el("input", { value: values.recipientName || "", placeholder: "姓名或集体名称" });
+        const no = el("input", { value: values.studentNo || "", placeholder: "个人可填学号，集体可留空" });
+        const major = el("input", { value: values.major || "" });
+        const grade = el("input", { value: values.grade || "" });
+        const cls = el("input", { value: values.className || "" });
+        const photo = el("input", { value: values.photoUrl || "", placeholder: "照片 URL 或附件路径" });
+        const intro = el("textarea", { placeholder: "获奖简介" });
+        intro.value = values.awardIntro || "";
+        const deeds = el("textarea", { placeholder: "先进事迹" });
+        deeds.value = values.advancedDeeds || "";
+        const publicVisible = el("input", { type: "checkbox" });
+        publicVisible.checked = values.publicVisible !== false;
+        const order = el("input", { value: values.displayOrder || 0, type: "number" });
+        const start = el("input", { value: values.displayStartAt ? String(values.displayStartAt).slice(0, 16) : "", type: "datetime-local" });
+        const end = el("input", { value: values.displayEndAt ? String(values.displayEndAt).slice(0, 16) : "", type: "datetime-local" });
+        const preview = el("div", { class: "honorEmpty", text: "暂无照片预览" });
+        function renderPhoto() {
+          const url = photo.value.trim();
+          preview.innerHTML = "";
+          if (url) preview.appendChild(el("img", { class: "honorPreviewPhoto", src: url, alt: name.value || "获得者照片" }));
+          else preview.textContent = "暂无照片预览";
+        }
+        photo.addEventListener("input", renderPhoto);
+        showUserOverlay(recipient ? "编辑获得者详情" : "新增获得者");
+        setUserModalContent([
+          el("div", { class: "row" }, [
+            el("div", { class: "field" }, [el("label", { text: showcase.recipientType === "COLLECTIVE" ? "集体名称" : "姓名" }), name]),
+            el("div", { class: "field" }, [el("label", { text: "学号" }), no]),
+            el("div", { class: "field" }, [el("label", { text: "专业" }), major]),
+            el("div", { class: "field" }, [el("label", { text: "年级" }), grade]),
+            el("div", { class: "field" }, [el("label", { text: "班级" }), cls])
+          ]),
+          el("div", { class: "field" }, [el("label", { text: "照片" }), photo]),
+          preview,
+          el("div", { class: "field" }, [el("label", { text: "获奖简介" }), intro]),
+          el("div", { class: "field" }, [el("label", { text: "先进事迹" }), deeds]),
+          el("div", { class: "row" }, [
+            el("label", { class: "cfgCheckRow" }, [publicVisible, el("span", { text: "公开展示" })]),
+            el("div", { class: "field" }, [el("label", { text: "展示顺序" }), order]),
+            el("div", { class: "field" }, [el("label", { text: "展示开始" }), start]),
+            el("div", { class: "field" }, [el("label", { text: "展示结束" }), end])
+          ])
+        ], [
+          el("button", { class: "btn", type: "button", text: "取消", onclick: hideUserOverlay }),
+          el("button", { class: "btn primary", type: "button", text: "保存", onclick: async () => {
+            if (!name.value.trim()) {
+              document.getElementById("userModalMsg").textContent = "请填写获得者名称";
+              return;
+            }
+            await saveRecipient(showcase, Object.assign({}, values, {
+              recipientType: showcase.recipientType,
+              recipientName: name.value.trim(),
+              studentNo: no.value.trim(),
+              major: major.value.trim(),
+              grade: grade.value.trim(),
+              className: cls.value.trim(),
+              photoUrl: photo.value.trim(),
+              awardIntro: intro.value.trim(),
+              advancedDeeds: deeds.value.trim(),
+              publicVisible: publicVisible.checked,
+              displayOrder: Number(order.value || 0),
+              displayStartAt: start.value || "",
+              displayEndAt: end.value || ""
+            }));
+            hideUserOverlay();
+          }})
+        ]);
+        renderPhoto();
+      }
+
+      function openImportDialog(showcase) {
+        const input = el("textarea", { style: "min-height: 220px;", placeholder: "recipientName,studentNo,major,grade,className,awardIntro,advancedDeeds,photoUrl\n王同学,2021201008,计算机科学与技术,2021级,计科1班,获奖简介,先进事迹,https://..." });
+        showUserOverlay("批量导入获得者");
+        setUserModalContent([
+          el("div", { class: "honorImportHelp", text: "每行一名获得者，字段顺序：名称、学号、专业、年级、班级、获奖简介、先进事迹、照片URL。首行表头会自动跳过。" }),
+          el("div", { class: "field" }, [el("label", { text: "导入内容" }), input])
+        ], [
+          el("button", { class: "btn", type: "button", text: "取消", onclick: hideUserOverlay }),
+          el("button", { class: "btn primary", type: "button", text: "导入", onclick: async () => {
+            const lines = input.value.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+            const rows = lines.filter((line, idx) => idx !== 0 || !/^recipientName|^名称/.test(line)).map(line => line.split(",").map(x => x.trim()));
+            for (let i = 0; i < rows.length; i++) {
+              const row = rows[i];
+              await saveRecipient(showcase, {
+                recipientType: showcase.recipientType,
+                recipientName: row[0] || "",
+                studentNo: row[1] || "",
+                major: row[2] || "",
+                grade: row[3] || "",
+                className: row[4] || "",
+                awardIntro: row[5] || "",
+                advancedDeeds: row[6] || "",
+                photoUrl: row[7] || "",
+                publicVisible: true,
+                displayOrder: Number((showcase.recipients || []).length + i + 1),
+                displayStartAt: showcase.displayStartAt || "",
+                displayEndAt: showcase.displayEndAt || ""
+              });
+            }
+            hideUserOverlay();
+          }})
+        ]);
+      }
+
+      const showcases = filteredLocal(await fetchShowcases());
+      const selected = showcases.find(x => String(x.id) === String(s.selectedId)) || showcases[0] || null;
+      if (selected) s.selectedId = selected.id;
+      const keyword = el("input", { value: s.keyword || "", placeholder: "搜索年份、类别、标题" });
+      const year = el("input", { value: s.awardYear || "", type: "number", placeholder: "年份" });
+      const category = el("input", { value: s.honorCategory || "", placeholder: "展示类别" });
+      const type = el("select", null, [el("option", { value: "", text: "全部类型" }), el("option", { value: "PERSONAL", text: "个人" }), el("option", { value: "COLLECTIVE", text: "集体" })]);
+      type.value = s.recipientType || "";
+      const publicVisible = el("select", null, [el("option", { value: "", text: "全部状态" }), el("option", { value: "true", text: "公开展示" }), el("option", { value: "false", text: "暂不公开" })]);
+      publicVisible.value = s.publicVisible;
+
+      function doFilter() {
+        loadHonorScholarships({ keyword: keyword.value.trim(), awardYear: year.value.trim(), honorCategory: category.value.trim(), recipientType: type.value, publicVisible: publicVisible.value, selectedId: s.selectedId });
+      }
+
+      const totalRecipients = showcases.reduce((sum, x) => sum + ((x.recipients || []).length || Number(x.recipientCount || 0)), 0);
+      content.appendChild(el("div", { class: "honorHero" }, [
+        el("div", null, [
+          el("h2", { text: "奖助信息" }),
+          el("div", { class: "desc", text: apiReady ? "管理年份、类别、个人/集体展示模块与获得者风采内容。" : "当前后端接口未接入，已启用本地演示数据，界面功能可直接试用。" })
+        ]),
+        el("div", { class: "honorActions" }, [
+          el("button", { class: "btn primary", type: "button", text: "新建模块", onclick: () => openShowcaseForm(null) }),
+          selected ? el("button", { class: "btn green", type: "button", text: "新增获得者", onclick: () => openRecipientForm(selected, null) }) : null,
+          selected ? el("button", { class: "btn", type: "button", text: "批量导入", onclick: () => openImportDialog(selected) }) : null
+        ])
+      ]));
+      content.appendChild(el("div", { class: "honorStats" }, [
+        el("div", { class: "honorStat" }, [el("div", { class: "k", text: "展示模块" }), el("div", { class: "v", text: String(showcases.length) })]),
+        el("div", { class: "honorStat" }, [el("div", { class: "k", text: "获得者" }), el("div", { class: "v", text: String(totalRecipients) })]),
+        el("div", { class: "honorStat" }, [el("div", { class: "k", text: "公开模块" }), el("div", { class: "v", text: String(showcases.filter(x => x.publicVisible !== false).length) })]),
+        el("div", { class: "honorStat" }, [el("div", { class: "k", text: "当前类别" }), el("div", { class: "v", text: selected ? recipientTypeText(selected.recipientType) : "-" })])
+      ]));
+      content.appendChild(el("div", { class: "honorFilters" }, [
+        el("div", { class: "row" }, [
+          el("div", { class: "field" }, [el("label", { text: "关键词" }), keyword]),
+          el("div", { class: "field" }, [el("label", { text: "年份" }), year]),
+          el("div", { class: "field" }, [el("label", { text: "类别" }), category]),
+          el("div", { class: "field" }, [el("label", { text: "类型" }), type]),
+          el("div", { class: "field" }, [el("label", { text: "公开状态" }), publicVisible]),
+          el("div", { class: "field", style: "justify-content:flex-end;" }, [el("button", { class: "btn primary", type: "button", text: "筛选", onclick: doFilter })])
+        ])
+      ]));
+      keyword.addEventListener("keydown", e => { if (e.key === "Enter") doFilter(); });
+      [year, category, type, publicVisible].forEach(x => x.addEventListener("change", doFilter));
+
+      const list = el("div", { class: "card" }, [
+        el("div", { class: "sectionTitle", text: "展示模块" }),
+        showcases.length ? el("div", { class: "honorShowcaseList" }, showcases.map(item => {
+          const card = el("div", { class: "honorShowcaseCard" + (selected && String(selected.id) === String(item.id) ? " active" : "") }, [
+            el("div", { class: "honorBlueBlock", text: item.title || ((item.awardYear || "") + "年" + (item.honorCategory || "")) }),
+            el("div", { class: "honorMeta" }, [
+              el("span", { text: (item.awardYear || "-") + "年" }),
+              el("span", { text: item.honorCategory || "-" }),
+              el("span", { text: recipientTypeText(item.recipientType) }),
+              el("span", { text: "排序 " + (item.displayOrder || 0) }),
+              visiblePill(item.publicVisible !== false)
+            ]),
+            el("div", { class: "honorExcerpt", text: item.description || "暂无整体简介" })
+          ]);
+          card.addEventListener("click", () => loadHonorScholarships(Object.assign({}, s, { selectedId: item.id })));
+          return card;
+        })) : el("div", { class: "honorEmpty", text: "暂无展示模块，请新建一个奖助信息模块。" })
+      ]);
+      const detailChildren = [];
+      if (!selected) {
+        detailChildren.push(el("div", { class: "honorEmpty", text: "请选择或新建一个展示模块。" }));
+      } else {
+        const recipients = (selected.recipients || []).slice().sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0));
+        detailChildren.push(el("div", { class: "honorDetailTitle" }, [
+          el("div", null, [
+            el("h3", { text: selected.title || "-" }),
+            el("div", { class: "honorMeta" }, [
+              el("span", { text: selected.awardYear + "年" }),
+              el("span", { text: selected.honorCategory || "-" }),
+              el("span", { text: recipientTypeText(selected.recipientType) }),
+              el("span", { text: "时效：" + validText(selected) })
+            ])
+          ]),
+          el("div", { class: "iconActions" }, [
+            el("button", { class: "iconAction", type: "button", title: "编辑模块", text: "✎", onclick: () => openShowcaseForm(selected) }),
+            el("button", { class: "iconAction", type: "button", title: "删除模块", text: "×", onclick: () => deleteShowcase(selected) })
+          ])
+        ]));
+        detailChildren.push(el("div", { class: "sub", text: selected.description || "暂无整体简介" }));
+        detailChildren.push(el("div", { class: "sectionTitle", text: "获得者详情" }));
+        detailChildren.push(recipients.length ? el("div", { class: "honorRecipientGrid" }, recipients.map(r => {
+          const photoUrl = r.photoUrl || ((r.attachments || []).find(a => a.attachmentType === "PHOTO") || {}).storagePath || "";
+          const avatar = photoUrl ? el("img", { class: "honorAvatar", src: photoUrl, alt: r.recipientName || "照片" }) : el("div", { class: "honorAvatar", text: String(r.recipientName || "?").slice(0, 1) });
+          const card = el("div", { class: "honorRecipientCard" }, [
+            el("div", { class: "honorRecipientHead" }, [
+              avatar,
+              el("div", null, [
+                el("div", { class: "honorRecipientName", text: r.recipientName || "-" }),
+                el("div", { class: "honorRecipientSub", text: [r.studentNo, r.grade, r.major, r.className].filter(Boolean).join(" · ") || recipientTypeText(r.recipientType) })
+              ])
+            ]),
+            el("div", { class: "honorMeta" }, [visiblePill(r.publicVisible !== false), el("span", { text: "排序 " + (r.displayOrder || 0) }), el("span", { text: validText(r) })]),
+            el("div", { class: "honorExcerpt", text: r.awardIntro || "暂无获奖简介" }),
+            el("div", { class: "iconActions", style: "margin-top:10px;" }, [
+              el("button", { class: "linkAction", type: "button", text: "查看/编辑", onclick: (e) => { e.stopPropagation(); openRecipientForm(selected, r); } }),
+              el("button", { class: "linkAction danger", type: "button", text: "删除", onclick: (e) => { e.stopPropagation(); deleteRecipient(selected, r); } })
+            ])
+          ]);
+          card.addEventListener("click", () => openRecipientForm(selected, r));
+          return card;
+        })) : el("div", { class: "honorEmpty", text: "暂无获得者，可点击新增或批量导入。" }));
+      }
+      content.appendChild(el("div", { class: "honorLayout" }, [list, el("div", { class: "card" }, detailChildren)]));
+    }
+
     async function switchView(view, state) {
       const ok = await ensureLoggedIn();
       if (!ok) return;
@@ -6873,6 +7421,7 @@
       if (view === "notices") return loadNoticeList(Object.assign({}, state || {}));
       if (view === "noticeList") return loadNoticeList(Object.assign({}, state || {}));
       if (view === "noticePublish") return loadNoticePublish(Object.assign({}, state || {}));
+      if (view === "honorScholarships") return loadHonorScholarships(Object.assign({}, state || {}));
       if (view === "approvals") return loadApprovals(Object.assign({}, state || {}));
       if (view === "users") return loadUsers(Object.assign({}, state || {}));
       if (view === "roles") return loadRoles();
