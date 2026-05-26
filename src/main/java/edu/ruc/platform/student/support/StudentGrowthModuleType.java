@@ -1,4 +1,4 @@
-﻿package edu.ruc.platform.student.support;
+package edu.ruc.platform.student.support;
 
 import java.util.Arrays;
 import java.util.List;

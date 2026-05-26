@@ -79,6 +79,7 @@ public class QaTicketService implements QaTicketApplicationService {
             adminService.createKnowledgeItem(new AdminKnowledgeUpsertRequest(
                     "FAQ：" + (ticket.getQuestionText() == null ? "" : ticket.getQuestionText()),
                     "FAQ管理",
+                    "qa-ticket",
                     request.content(),
                     null,
                     "qa-ticket",

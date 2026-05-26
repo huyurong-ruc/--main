@@ -1766,21 +1766,16 @@
         const titleInput = el("input", { placeholder: "政策标题（必填）" });
         const categoryInput = el("input", { value: "政策管理", placeholder: "分类" });
         const contentInput = el("textarea", { placeholder: "政策内容（必填）" });
-        const publishedSelect = el("select", null, [
-          el("option", { value: "false", text: "草稿" }),
-          el("option", { value: "true", text: "已发布" })
-        ]);
-        publishedSelect.value = "false";
         const officialUrlInput = el("input", { placeholder: "官方链接（可空，http/https）" });
         const sourceFileInput = el("input", { placeholder: "来源文件名（可空）" });
         const scopeInput = el("input", { placeholder: "适用人群（可空，如：全体学生）" });
+        const publishHint = el("div", { class: "sub", text: "提示：已发布政策必须提供官方链接或来源文件名；官方链接必须以 http/https 开头。" });
         const msg = el("div", { class: "toast" }, []);
 
         setUserModalContent([
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 260px;" }, [el("label", { text: "标题" }), titleInput]),
             el("div", { class: "field", style: "min-width: 180px;" }, [el("label", { text: "分类" }), categoryInput]),
-            el("div", { class: "field", style: "min-width: 160px;" }, [el("label", { text: "状态" }), publishedSelect])
           ]),
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "内容" }), contentInput])
@@ -1790,13 +1785,13 @@
             el("div", { class: "field", style: "flex:1; min-width: 220px;" }, [el("label", { text: "来源文件" }), sourceFileInput]),
             el("div", { class: "field", style: "flex:1; min-width: 220px;" }, [el("label", { text: "适用人群" }), scopeInput])
           ]),
+          publishHint,
           msg
         ], [
           el("button", { class: "btn", text: "取消", onclick: () => hideUserOverlay() }),
-          el("button", { class: "btn primary", text: "创建", onclick: async () => {
+          el("button", { class: "btn", text: "保存为草稿", onclick: async () => {
             msg.textContent = "";
             try {
-              const published = publishedSelect.value === "true";
               const body = {
                 title: titleInput.value.trim(),
                 category: categoryInput.value.trim(),
@@ -1805,14 +1800,43 @@
                 sourceFileName: normalizeText(sourceFileInput.value),
                 audienceScope: normalizeText(scopeInput.value),
                 updatedBy: updatedBy,
-                published: published
+                published: false
               };
               Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
               if (!body.title || !body.content) {
                 msg.textContent = "标题和内容不能为空";
                 return;
               }
-              if (published && !body.officialUrl && !body.sourceFileName) {
+              const created = await apiJson("/api/v1/admin/knowledge", { method: "POST", body: JSON.stringify(body) });
+              if (created && created.id != null) {
+                saveKnowledgeContent(created.id, body.content);
+              }
+              hideUserOverlay();
+              await loadPoliciesList();
+            } catch (e) {
+              msg.textContent = e.message;
+            }
+          }}),
+          el("button", { class: "btn primary", text: "发布", onclick: async () => {
+            msg.textContent = "";
+            try {
+              if (!confirm("确认发布该政策？")) return;
+              const body = {
+                title: titleInput.value.trim(),
+                category: categoryInput.value.trim(),
+                content: contentInput.value.trim(),
+                officialUrl: normalizeUrl(officialUrlInput.value),
+                sourceFileName: normalizeText(sourceFileInput.value),
+                audienceScope: normalizeText(scopeInput.value),
+                updatedBy: updatedBy,
+                published: true
+              };
+              Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
+              if (!body.title || !body.content) {
+                msg.textContent = "标题和内容不能为空";
+                return;
+              }
+              if (!body.officialUrl && !body.sourceFileName) {
                 msg.textContent = "已发布政策必须提供官方链接或来源文件名";
                 return;
               }
@@ -1836,14 +1860,10 @@
         const titleInput = el("input", { value: policy.title || "" });
         const categoryInput = el("input", { value: policy.category || "政策管理" });
         const contentInput = el("textarea", { placeholder: "内容" });
-        const publishedSelect = el("select", null, [
-          el("option", { value: "false", text: "草稿" }),
-          el("option", { value: "true", text: "已发布" })
-        ]);
-        publishedSelect.value = policy.published ? "true" : "false";
         const officialUrlInput = el("input", { value: normalizeUrlForInput(policy.officialUrl), placeholder: "官方链接（可空，http/https）" });
         const sourceFileInput = el("input", { value: policy.sourceFileName || "", placeholder: "来源文件名（可空）" });
         const scopeInput = el("input", { value: policy.audienceScope || "", placeholder: "适用人群（可空，如：全体学生）" });
+        const publishHint = el("div", { class: "sub", text: "提示：已发布政策必须提供官方链接或来源文件名；官方链接必须以 http/https 开头。" });
         const msg = el("div", { class: "toast" }, []);
 
         const savedContent = getKnowledgeContent(policy.id);
@@ -1860,7 +1880,6 @@
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 260px;" }, [el("label", { text: "标题" }), titleInput]),
             el("div", { class: "field", style: "min-width: 180px;" }, [el("label", { text: "分类" }), categoryInput]),
-            el("div", { class: "field", style: "min-width: 160px;" }, [el("label", { text: "状态" }), publishedSelect])
           ]),
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "内容" }), contentInput])
@@ -1870,13 +1889,13 @@
             el("div", { class: "field", style: "flex:1; min-width: 220px;" }, [el("label", { text: "来源文件" }), sourceFileInput]),
             el("div", { class: "field", style: "flex:1; min-width: 220px;" }, [el("label", { text: "适用人群" }), scopeInput])
           ]),
+          publishHint,
           msg
         ], [
           el("button", { class: "btn", text: "取消", onclick: () => hideUserOverlay() }),
-          el("button", { class: "btn primary", text: "保存", onclick: async () => {
+          el("button", { class: "btn", text: "保存为草稿", onclick: async () => {
             msg.textContent = "";
             try {
-              const published = publishedSelect.value === "true";
               const body = {
                 title: titleInput.value.trim(),
                 category: categoryInput.value.trim(),
@@ -1885,14 +1904,43 @@
                 sourceFileName: normalizeText(sourceFileInput.value),
                 audienceScope: normalizeText(scopeInput.value),
                 updatedBy: updatedBy,
-                published: published
+                published: false
               };
               Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
               if (!body.title || !body.content) {
                 msg.textContent = "标题和内容不能为空";
                 return;
               }
-              if (published && !body.officialUrl && !body.sourceFileName) {
+              await apiJson("/api/v1/admin/knowledge/" + policy.id, { method: "PUT", body: JSON.stringify(body) });
+              saveKnowledgeContent(policy.id, body.content);
+              hideUserOverlay();
+              await loadPoliciesList();
+              const updatedItem = (allPolicies || []).find(x => String(x.id) === String(policy.id)) || policy;
+              await loadPolicyDetail(updatedItem);
+            } catch (e) {
+              msg.textContent = e.message;
+            }
+          }}),
+          el("button", { class: "btn primary", text: "发布", onclick: async () => {
+            msg.textContent = "";
+            try {
+              if (!confirm("确认发布该政策？")) return;
+              const body = {
+                title: titleInput.value.trim(),
+                category: categoryInput.value.trim(),
+                content: contentInput.value.trim(),
+                officialUrl: normalizeUrl(officialUrlInput.value),
+                sourceFileName: normalizeText(sourceFileInput.value),
+                audienceScope: normalizeText(scopeInput.value),
+                updatedBy: updatedBy,
+                published: true
+              };
+              Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
+              if (!body.title || !body.content) {
+                msg.textContent = "标题和内容不能为空";
+                return;
+              }
+              if (!body.officialUrl && !body.sourceFileName) {
                 msg.textContent = "已发布政策必须提供官方链接或来源文件名";
                 return;
               }
@@ -1997,17 +2045,11 @@
         showUserOverlay("新建FAQ");
         const titleInput = el("input", { placeholder: "问题（必填）" });
         const answerInput = el("textarea", { placeholder: "答案（必填）" });
-        const publishedSelect = el("select", null, [
-          el("option", { value: "true", text: "已发布" }),
-          el("option", { value: "false", text: "草稿" })
-        ]);
-        publishedSelect.value = "true";
         const msg = el("div", { class: "toast" }, []);
 
         setUserModalContent([
           el("div", { class: "row" }, [
-            el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "问题" }), titleInput]),
-            el("div", { class: "field", style: "min-width: 160px;" }, [el("label", { text: "状态" }), publishedSelect])
+            el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "问题" }), titleInput])
           ]),
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 520px;" }, [el("label", { text: "答案" }), answerInput])
@@ -2015,14 +2057,39 @@
           msg
         ], [
           el("button", { class: "btn", text: "取消", onclick: () => hideUserOverlay() }),
-          el("button", { class: "btn primary", text: "保存", onclick: async () => {
+          el("button", { class: "btn", text: "保存为草稿", onclick: async () => {
             msg.textContent = "";
             const body = {
               title: titleInput.value.trim(),
               category: "FAQ管理",
               content: answerInput.value.trim(),
               updatedBy: getUpdatedBy(),
-              published: publishedSelect.value === "true"
+              published: false
+            };
+            if (!body.title || !body.content) {
+              msg.textContent = "问题和答案不能为空";
+              return;
+            }
+            try {
+              const created = await apiJson("/api/v1/admin/knowledge", { method: "POST", body: JSON.stringify(body) });
+              if (created && created.id != null) {
+                saveKnowledgeContent(created.id, body.content);
+              }
+              hideUserOverlay();
+              await loadFaqManage(Object.assign({}, s, { page: 0 }));
+            } catch (e) {
+              msg.textContent = e.message;
+            }
+          }}),
+          el("button", { class: "btn primary", text: "发布", onclick: async () => {
+            msg.textContent = "";
+            if (!confirm("确认发布该 FAQ？")) return;
+            const body = {
+              title: titleInput.value.trim(),
+              category: "FAQ管理",
+              content: answerInput.value.trim(),
+              updatedBy: getUpdatedBy(),
+              published: true
             };
             if (!body.title || !body.content) {
               msg.textContent = "问题和答案不能为空";
@@ -2046,18 +2113,12 @@
         showUserOverlay("编辑FAQ");
         const titleInput = el("input", { value: item.title || "", placeholder: "问题（必填）" });
         const answerInput = el("textarea", { placeholder: "答案（必填）" });
-        const publishedSelect = el("select", null, [
-          el("option", { value: "true", text: "已发布" }),
-          el("option", { value: "false", text: "草稿" })
-        ]);
-        publishedSelect.value = item.published ? "true" : "false";
         const msg = el("div", { class: "toast" }, []);
         answerInput.value = await tryLoadAnswer(item.id);
 
         setUserModalContent([
           el("div", { class: "row" }, [
-            el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "问题" }), titleInput]),
-            el("div", { class: "field", style: "min-width: 160px;" }, [el("label", { text: "状态" }), publishedSelect])
+            el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "问题" }), titleInput])
           ]),
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 520px;" }, [el("label", { text: "答案" }), answerInput])
@@ -2065,14 +2126,37 @@
           msg
         ], [
           el("button", { class: "btn", text: "取消", onclick: () => hideUserOverlay() }),
-          el("button", { class: "btn primary", text: "保存", onclick: async () => {
+          el("button", { class: "btn", text: "保存为草稿", onclick: async () => {
             msg.textContent = "";
             const body = {
               title: titleInput.value.trim(),
               category: "FAQ管理",
               content: answerInput.value.trim(),
               updatedBy: getUpdatedBy(),
-              published: publishedSelect.value === "true"
+              published: false
+            };
+            if (!body.title || !body.content) {
+              msg.textContent = "问题和答案不能为空";
+              return;
+            }
+            try {
+              await apiJson("/api/v1/admin/knowledge/" + item.id, { method: "PUT", body: JSON.stringify(body) });
+              saveKnowledgeContent(item.id, body.content);
+              hideUserOverlay();
+              await loadFaqManage(Object.assign({}, s, { page: 0 }));
+            } catch (e) {
+              msg.textContent = e.message;
+            }
+          }}),
+          el("button", { class: "btn primary", text: "发布", onclick: async () => {
+            msg.textContent = "";
+            if (!confirm("确认发布该 FAQ？")) return;
+            const body = {
+              title: titleInput.value.trim(),
+              category: "FAQ管理",
+              content: answerInput.value.trim(),
+              updatedBy: getUpdatedBy(),
+              published: true
             };
             if (!body.title || !body.content) {
               msg.textContent = "问题和答案不能为空";

@@ -290,7 +290,7 @@ public class PlatformController {
             RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY, RoleType.STUDENT
     })
     public ApiResponse<PlatformStudentDetailResponse> getStudent(@Positive(message = "学生ID必须大于 0") @PathVariable Long studentId) {
-        return ApiResponse.success(platformService.getStudent(studentId));
+        return ApiResponse.success(platformService.getStudentDetail(studentId));
     }
 
     @GetMapping("/students/page")
@@ -549,22 +549,18 @@ public class PlatformController {
                                @RequestParam(required = false) String className,
                                @RequestParam(required = false) String status,
                                HttpServletResponse response) throws IOException {
-    @PostMapping("/students/award-support/import")
-    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN})
-    public ApiResponse<BatchImportResultResponse> importAwardSupportRecords(@RequestParam("file") MultipartFile file) {
-        return ApiResponse.success("奖助情况导入完成", excelImportExportService.importAwardSupportRecords(file));
-    }
-
-    @GetMapping("/students/export")
-    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR})
-    public void exportStudents(@RequestParam(required = false) String grade,
-                              @RequestParam(required = false) String className,
-                              @RequestParam(required = false) String status,
-                              HttpServletResponse response) throws IOException {
         byte[] data = excelImportExportService.exportStudents(grade, className, status);
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition", "attachment; filename=students.xlsx");
         response.getOutputStream().write(data);
         response.getOutputStream().flush();
+    }
+
+    @PostMapping("/students/award-support/import")
+    @RequireRoles({
+            RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN
+    })
+    public ApiResponse<BatchImportResultResponse> importAwardSupportRecords(@RequestParam("file") MultipartFile file) {
+        return ApiResponse.success("奖助情况导入完成", excelImportExportService.importAwardSupportRecords(file));
     }
 }

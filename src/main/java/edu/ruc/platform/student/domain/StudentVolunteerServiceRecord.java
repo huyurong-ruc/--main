@@ -1,4 +1,4 @@
-﻿package edu.ruc.platform.student.domain;
+package edu.ruc.platform.student.domain;
 
 import edu.ruc.platform.common.model.BaseEntity;
 import jakarta.persistence.Column;

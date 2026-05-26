@@ -72,6 +72,7 @@ public class MockQaTicketService implements QaTicketApplicationService {
             adminService.createKnowledgeItem(new AdminKnowledgeUpsertRequest(
                     "FAQ：" + (t.summary == null ? "" : t.summary),
                     "FAQ管理",
+                    "qa-ticket",
                     request.content(),
                     null,
                     "qa-ticket",

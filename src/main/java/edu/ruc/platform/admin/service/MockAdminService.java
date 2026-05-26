@@ -133,7 +133,26 @@ public class MockAdminService implements AdminApplicationService {
             }
             if (state.knowledgeItems != null) {
                 knowledgeItems.clear();
-                knowledgeItems.addAll(state.knowledgeItems);
+                for (AdminKnowledgeItemResponse item : state.knowledgeItems) {
+                    if (item == null) {
+                        continue;
+                    }
+                    Integer version = item.version() == null ? 1 : item.version();
+                    knowledgeItems.add(new AdminKnowledgeItemResponse(
+                            item.id(),
+                            item.title(),
+                            item.category(),
+                            item.tags(),
+                            version,
+                            item.published(),
+                            item.officialUrl(),
+                            item.sourceFileName(),
+                            item.audienceScope(),
+                            item.updatedBy(),
+                            item.createdAt(),
+                            item.updatedAt()
+                    ));
+                }
             }
             if (state.knowledgeAttachments != null) {
                 knowledgeAttachments.clear();
@@ -213,16 +232,15 @@ public class MockAdminService implements AdminApplicationService {
                 resolvePriority(request.tags(), request.targetDescription()),
                 resolveMatchedRules(request.targetDescription(), request.tags()),
                 resolveDeliveryChannels(request.tags()),
-<<<<<<< HEAD
                 resolveNoticePublishTime(request.published())
         );
         notices.add(0, response);
+        writeOperationLog("NOTICE", "CREATE", response.title(), "SUCCESS", response.targetDescription());
         persistState();
-=======
-                LocalDateTime.now()
-        );
-        notices.add(0, response);
-<<<<<<< HEAD
+        return response;
+    }
+
+    @Override
     public TargetedNoticeResponse updateNotice(Long id, AdminNoticeCreateRequest request) {
         ensureStateLoaded();
         for (int i = 0; i < notices.size(); i += 1) {
@@ -326,9 +344,7 @@ public class MockAdminService implements AdminApplicationService {
     @Override
     public List<AdminKnowledgeItemResponse> listKnowledgeItems(AuthenticatedUser user) {
         ensureStateLoaded();
-=======
-    public List<AdminKnowledgeItemResponse> listKnowledgeItems(AuthenticatedUser user) {
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
+
         initializeKnowledgeItems();
         return knowledgeItems.stream()
                 .filter(item -> canViewKnowledgeItem(user, item))
@@ -375,31 +391,22 @@ public class MockAdminService implements AdminApplicationService {
 
     @Override
     public AdminKnowledgeItemResponse createKnowledgeItem(AdminKnowledgeUpsertRequest request) {
-<<<<<<< HEAD
         ensureStateLoaded();
         initializeKnowledgeItems();
         validateKnowledgeRequest(request);
         AuthenticatedUser user = currentUserService.requireCurrentUser();
         LocalDateTime now = LocalDateTime.now();
-=======
-        initializeKnowledgeItems();
-        validateKnowledgeRequest(request);
-        AuthenticatedUser user = currentUserService.requireCurrentUser();
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
+
         AdminKnowledgeItemResponse response = new AdminKnowledgeItemResponse(
                 knowledgeIdGenerator.incrementAndGet(),
                 request.title(),
                 request.category(),
-<<<<<<< HEAD
-=======
                 request.tags(),
                 1,
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
                 Boolean.TRUE.equals(request.published()),
                 request.officialUrl(),
                 request.sourceFileName(),
                 request.audienceScope(),
-<<<<<<< HEAD
                 user.name(),
                 now,
                 now
@@ -407,45 +414,30 @@ public class MockAdminService implements AdminApplicationService {
         knowledgeItems.add(0, response);
         writeOperationLog("KNOWLEDGE", "CREATE", response.title(), "SUCCESS", response.sourceFileName());
         persistState();
-=======
-                user.name()
-        );
-        knowledgeItems.add(0, response);
-        writeOperationLog("KNOWLEDGE", "CREATE", response.title(), "SUCCESS", response.sourceFileName());
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
         return response;
     }
 
     @Override
     public AdminKnowledgeItemResponse updateKnowledgeItem(Long id, AdminKnowledgeUpsertRequest request) {
-<<<<<<< HEAD
         ensureStateLoaded();
-=======
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
         initializeKnowledgeItems();
         validateKnowledgeRequest(request);
         AuthenticatedUser user = currentUserService.requireCurrentUser();
         for (int i = 0; i < knowledgeItems.size(); i++) {
             AdminKnowledgeItemResponse item = knowledgeItems.get(i);
             if (item.id().equals(id)) {
-<<<<<<< HEAD
                 LocalDateTime now = LocalDateTime.now();
-=======
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
+                int nextVersion = (item.version() == null ? 1 : item.version()) + 1;
                 AdminKnowledgeItemResponse updated = new AdminKnowledgeItemResponse(
                         id,
                         request.title(),
                         request.category(),
-<<<<<<< HEAD
-=======
                         request.tags(),
-                        item.version() + 1,
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
+                        nextVersion,
                         Boolean.TRUE.equals(request.published()),
                         request.officialUrl(),
                         request.sourceFileName(),
                         request.audienceScope(),
-<<<<<<< HEAD
                         user.name(),
                         item.createdAt(),
                         now
@@ -453,12 +445,6 @@ public class MockAdminService implements AdminApplicationService {
                 knowledgeItems.set(i, updated);
                 writeOperationLog("KNOWLEDGE", "UPDATE", updated.title(), "SUCCESS", updated.sourceFileName());
                 persistState();
-=======
-                        user.name()
-                );
-                knowledgeItems.set(i, updated);
-                writeOperationLog("KNOWLEDGE", "UPDATE", updated.title(), "SUCCESS", updated.sourceFileName());
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
                 return updated;
             }
         }
@@ -467,7 +453,6 @@ public class MockAdminService implements AdminApplicationService {
 
     @Override
     public void deleteKnowledgeItem(Long id) {
-<<<<<<< HEAD
         ensureStateLoaded();
         initializeKnowledgeItems();
         boolean exists = knowledgeItems.stream().anyMatch(item -> item.id().equals(id));
@@ -478,14 +463,6 @@ public class MockAdminService implements AdminApplicationService {
         knowledgeAttachments.removeIf(item -> item.knowledgeId().equals(id));
         writeOperationLog("KNOWLEDGE", "DELETE", "knowledge#" + id, "SUCCESS", null);
         persistState();
-=======
-        initializeKnowledgeItems();
-        boolean removed = knowledgeItems.removeIf(item -> item.id().equals(id));
-        if (!removed) {
-            throw new BusinessException("知识条目不存在: " + id);
-        }
-        writeOperationLog("KNOWLEDGE", "DELETE", "知识条目#" + id, "SUCCESS", null);
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
     }
 
     @Override
@@ -502,10 +479,7 @@ public class MockAdminService implements AdminApplicationService {
 
     @Override
     public KnowledgeAttachmentResponse uploadKnowledgeAttachment(Long knowledgeId, MultipartFile file) {
-<<<<<<< HEAD
         ensureStateLoaded();
-=======
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
         initializeKnowledgeItems();
         boolean exists = knowledgeItems.stream().anyMatch(item -> item.id().equals(knowledgeId));
         if (!exists) {
@@ -531,29 +505,20 @@ public class MockAdminService implements AdminApplicationService {
         );
         knowledgeAttachments.add(0, response);
         writeOperationLog("KNOWLEDGE_ATTACHMENT", "UPLOAD", "knowledge#" + knowledgeId, "SUCCESS", response.fileName());
-<<<<<<< HEAD
         persistState();
-=======
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
         return response;
     }
 
     @Override
     public void deleteKnowledgeAttachment(Long attachmentId) {
-<<<<<<< HEAD
         ensureStateLoaded();
-=======
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
         KnowledgeAttachmentResponse target = knowledgeAttachments.stream()
                 .filter(item -> item.id().equals(attachmentId))
                 .findFirst()
                 .orElseThrow(() -> new BusinessException("知识附件不存在: " + attachmentId));
         knowledgeAttachments.removeIf(item -> item.id().equals(attachmentId));
         writeOperationLog("KNOWLEDGE_ATTACHMENT", "DELETE", "attachment#" + attachmentId, "SUCCESS", target.fileName());
-<<<<<<< HEAD
         persistState();
-=======
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
     }
 
     @Override
@@ -883,7 +848,6 @@ public class MockAdminService implements AdminApplicationService {
         return importExecutionContexts.get(taskId);
     }
 
-<<<<<<< HEAD
     @Override
     public List<WorkflowDefinitionResponse> listWorkflowDefinitions() {
         initializeWorkflowConfigs();
@@ -1246,9 +1210,6 @@ public class MockAdminService implements AdminApplicationService {
 
     private void initializeKnowledgeItems() {
         ensureStateLoaded();
-=======
-    private void initializeKnowledgeItems() {
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
         if (!knowledgeItems.isEmpty()) {
             return;
         }
@@ -1257,47 +1218,32 @@ public class MockAdminService implements AdminApplicationService {
                         item.id(),
                         item.title(),
                         item.category(),
-<<<<<<< HEAD
-=======
                         null,
                         1,
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
                         true,
                         item.officialUrl(),
                         item.title() + ".pdf",
                         "全体学生",
-<<<<<<< HEAD
                         "胡浩老师",
                         LocalDateTime.of(2026, 3, 20, 9, 0),
                         LocalDateTime.of(2026, 3, 20, 9, 0)
-=======
-                        "胡浩老师"
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
                 ))
                 .toList());
         knowledgeItems.add(0, new AdminKnowledgeItemResponse(
                 299L,
                 "辅导员内部口径说明",
                 "内部资料",
-<<<<<<< HEAD
-=======
                 "内部",
                 1,
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
                 false,
                 "https://example.edu/internal",
                 "internal-note.pdf",
                 "辅导员",
-<<<<<<< HEAD
                 "系统管理员",
                 LocalDateTime.of(2026, 3, 18, 10, 0),
                 LocalDateTime.of(2026, 3, 18, 10, 0)
         ));
         persistState();
-=======
-                "系统管理员"
-        ));
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
     }
 
     private void initializeImportTasks() {
@@ -1361,18 +1307,12 @@ public class MockAdminService implements AdminApplicationService {
     }
 
     private List<TargetedNoticeResponse> filterNotices(AdminNoticeFilterRequest request) {
-<<<<<<< HEAD
         String normalizedTab = QueryFilterSupport.normalizeUpper(request.tab());
-=======
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
         String normalizedKeyword = QueryFilterSupport.trimToNull(request.keyword());
         String normalizedTag = QueryFilterSupport.trimToNull(request.tag());
         String normalizedTargetKeyword = QueryFilterSupport.trimToNull(request.targetKeyword());
         return listNotices().stream()
-<<<<<<< HEAD
                 .filter(item -> matchesNoticeTab(normalizedTab, item.publishTime()))
-=======
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
                 .filter(item -> normalizedKeyword == null
                         || QueryFilterSupport.containsIgnoreCase(item.title(), normalizedKeyword)
                         || QueryFilterSupport.containsIgnoreCase(item.summary(), normalizedKeyword))
@@ -1383,7 +1323,6 @@ public class MockAdminService implements AdminApplicationService {
                 .toList();
     }
 
-<<<<<<< HEAD
     private boolean matchesNoticeTab(String tab, LocalDateTime publishTime) {
         if (tab == null || tab.isBlank() || "ALL".equals(tab)) {
             return true;
@@ -1401,8 +1340,6 @@ public class MockAdminService implements AdminApplicationService {
         };
     }
 
-=======
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
     private boolean canViewNotice(AuthenticatedUser user, TargetedNoticeResponse item) {
         if ("SUPER_ADMIN".equals(user.role()) || "COLLEGE_ADMIN".equals(user.role()) || "COUNSELOR".equals(user.role())) {
             return true;
@@ -1527,17 +1464,11 @@ public class MockAdminService implements AdminApplicationService {
 
     private void validateKnowledgeRequest(AdminKnowledgeUpsertRequest request) {
         boolean published = Boolean.TRUE.equals(request.published());
-<<<<<<< HEAD
         String category = request.category() == null ? null : request.category().trim();
         boolean isFaq = category != null && "FAQ管理".equalsIgnoreCase(category);
         boolean hasOfficialUrl = request.officialUrl() != null && !request.officialUrl().isBlank();
         boolean hasSourceFile = request.sourceFileName() != null && !request.sourceFileName().isBlank();
         if (published && !isFaq && !hasOfficialUrl && !hasSourceFile) {
-=======
-        boolean hasOfficialUrl = request.officialUrl() != null && !request.officialUrl().isBlank();
-        boolean hasSourceFile = request.sourceFileName() != null && !request.sourceFileName().isBlank();
-        if (published && !hasOfficialUrl && !hasSourceFile) {
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
             throw new BusinessException("已发布知识条目必须提供官方链接或来源文件名");
         }
         if (hasOfficialUrl && !(request.officialUrl().startsWith("http://") || request.officialUrl().startsWith("https://"))) {
@@ -1597,18 +1528,12 @@ public class MockAdminService implements AdminApplicationService {
             return;
         }
         operationLogs.addAll(List.of(
-<<<<<<< HEAD
                 new AdminOperationLogResponse(6L, 20001L, "胡浩老师", "COUNSELOR", "APPROVAL", "APPROVE", "证明申请#1001", "SUCCESS", "fromStatus=PENDING,toStatus=COUNSELOR_APPROVED", LocalDateTime.of(2026, 3, 23, 10, 10), "trace-approval-1001", "/api/v1/admin/approvals/1001/actions", "192.168.1.110", "INFO"),
                 new AdminOperationLogResponse(1L, 1L, "张老师", "ADMIN", "USER", "UPDATE", "编辑用户", "SUCCESS", "编辑用户", LocalDateTime.of(2024, 3, 28, 14, 30, 25), "abc123", "/api/user/update", "192.168.1.100", "INFO"),
                 new AdminOperationLogResponse(2L, 2L, "李老师", "ADMIN", "APPROVAL", "APPROVE", "通过审批", "SUCCESS", "通过审批", LocalDateTime.of(2024, 3, 28, 14, 25, 18), "def456", "/api/approval/approve", "192.168.1.101", "INFO"),
                 new AdminOperationLogResponse(3L, 3L, "王老师", "ADMIN", "KNOWLEDGE", "PUBLISH", "发布政策", "SUCCESS", "发布政策", LocalDateTime.of(2024, 3, 28, 14, 20, 42), "ghi789", "/api/policy/publish", "192.168.1.102", "INFO"),
                 new AdminOperationLogResponse(4L, 4L, "赵老师", "ADMIN", "NOTICE", "SEND", "发送通知", "FAILED", "发送通知失败", LocalDateTime.of(2024, 3, 28, 14, 15, 30), "jkl012", "/api/auth/login", "192.168.1.103", "ERROR"),
                 new AdminOperationLogResponse(5L, 5L, "钱老师", "ADMIN", "NOTICE", "SEND", "发送通知", "FAILED", "发送通知失败", LocalDateTime.of(2024, 3, 28, 14, 10, 15), "mno345", "/api/notification/send", "192.168.1.104", "ERROR")
-=======
-                new AdminOperationLogResponse(1L, 1L, "系统管理员", "SUPER_ADMIN", "SYSTEM", "GRANT_ROLE", "团支书账号", "SUCCESS", "role=LEAGUE_SECRETARY", LocalDateTime.of(2026, 3, 21, 9, 30)),
-                new AdminOperationLogResponse(2L, 20001L, "胡浩老师", "COUNSELOR", "KNOWLEDGE", "PUBLISH", "入党全流程说明", "SUCCESS", "published=true", LocalDateTime.of(2026, 3, 22, 14, 0)),
-                new AdminOperationLogResponse(3L, 20001L, "胡浩老师", "COUNSELOR", "APPROVAL", "APPROVE", "证明申请#1001", "SUCCESS", "fromStatus=PENDING,toStatus=COUNSELOR_APPROVED", LocalDateTime.of(2026, 3, 23, 10, 10))
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
         ));
     }
 
@@ -1625,15 +1550,11 @@ public class MockAdminService implements AdminApplicationService {
                 target,
                 result,
                 detail,
-<<<<<<< HEAD
                 LocalDateTime.now(),
                 "trace-mock-" + operationLogIdGenerator.get(),
                 null,
                 null,
                 "SUCCESS".equalsIgnoreCase(result) ? "INFO" : "ERROR"
-=======
-                LocalDateTime.now()
->>>>>>> be45e16d019f3b4296da2e08137ec2e0c1dbc057
         ));
     }
 

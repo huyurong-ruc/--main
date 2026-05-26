@@ -4,9 +4,11 @@ edu/ruc/platform/PartyAcademicIntegrationTest.class
 edu/ruc/platform/knowledge/service/KnowledgeServiceUnitTest.class
 edu/ruc/platform/AdminCapabilityIntegrationTest.class
 edu/ruc/platform/BusinessFlowIntegrationTest.class
+edu/ruc/platform/DevProfileContextIntegrationTest.class
 edu/ruc/platform/ErrorFlowIntegrationTest.class
 edu/ruc/platform/StudentFeatureIntegrationTest.class
 edu/ruc/platform/PlatformCapabilityIntegrationTest.class
 edu/ruc/platform/StudentWorkLogIntegrationTest.class
+edu/ruc/platform/DevProfileBusinessIntegrationTest.class
 edu/ruc/platform/certificate/service/CertificateServiceUnitTest.class
 edu/ruc/platform/notice/service/NoticeServiceUnitTest.class

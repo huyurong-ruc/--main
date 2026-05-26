@@ -49,7 +49,6 @@ public class MockAuthService implements AuthApplicationService {
                 );
             }
         }
-        String defaultPassword = platformSecurityPolicyService.defaultPassword();
         if ("admin".equals(request.username()) && defaultPassword.equals(request.password())) {
             mockPlatformService.clearLoginFailures(request.username());
             return issueToken(new AuthenticatedUser(1L, null, "admin", "SUPER_ADMIN", null, "系统管理员", null, null), platformUser != null && Boolean.TRUE.equals(platformUser.passwordResetRequired()));

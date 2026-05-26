@@ -1,4 +1,4 @@
-﻿package edu.ruc.platform.student.repository;
+package edu.ruc.platform.student.repository; 
 
 import edu.ruc.platform.student.domain.StudentCompetitionRecord;
 import org.springframework.data.jpa.repository.JpaRepository;

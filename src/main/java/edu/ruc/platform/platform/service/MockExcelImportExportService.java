@@ -5,12 +5,11 @@ import edu.ruc.platform.common.exception.BusinessException;
 import edu.ruc.platform.platform.dto.BatchImportResultResponse;
 import edu.ruc.platform.platform.dto.PlatformUserResponse;
 import edu.ruc.platform.platform.dto.PlatformUserUpsertRequest;
-import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.usermodel.*;
 import edu.ruc.platform.student.dto.StudentProfileResponse;
 import edu.ruc.platform.student.dto.StudentProfileUpsertRequest;
 import edu.ruc.platform.student.service.MockStudentGrowthService;
 import edu.ruc.platform.student.service.StudentProfileApplicationService;
+import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
@@ -26,8 +25,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -36,34 +35,11 @@ import java.util.Map;
 public class MockExcelImportExportService implements ExcelImportExportService {
 
     private final PlatformApplicationService platformService;
-
-    @Override
-    public BatchImportResultResponse importUsers(MultipartFile file) {
     private final StudentProfileApplicationService studentProfileService;
     private final MockStudentGrowthService mockStudentGrowthService;
 
     @Override
     public BatchImportResultResponse importUsers(MultipartFile file) {
-        return readWorkbookAndCount(file, 4);
-    }
-
-    @Override
-    public byte[] exportUsers(String role, Boolean enabled) {
-        try (Workbook workbook = new XSSFWorkbook()) {
-            Sheet sheet = workbook.createSheet("用户列表");
-            Row headerRow = sheet.createRow(0);
-            headerRow.createCell(0).setCellValue("用户名");
-            headerRow.createCell(1).setCellValue("姓名");
-            headerRow.createCell(2).setCellValue("角色");
-            headerRow.createCell(3).setCellValue("状态");
-            return writeWorkbook(workbook);
-        } catch (IOException e) {
-            throw new BusinessException("导出Excel失败: " + e.getMessage());
-        }
-    }
-
-    @Override
-    public BatchImportResultResponse importStudents(MultipartFile file) {
         List<BatchImportResultResponse.ImportErrorItem> errors = new ArrayList<>();
         int totalRows = 0;
         int successRows = 0;
@@ -74,7 +50,7 @@ public class MockExcelImportExportService implements ExcelImportExportService {
 
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
-                if (row == null) continue;
+                if (row == null || isRowBlank(row, 4)) continue;
 
                 totalRows++;
                 try {
@@ -86,58 +62,18 @@ public class MockExcelImportExportService implements ExcelImportExportService {
                         errors.add(new BatchImportResultResponse.ImportErrorItem(i + 1, "username", "用户名不能为空", ""));
                         continue;
                     }
+                    if (role == null || role.isBlank()) {
+                        errors.add(new BatchImportResultResponse.ImportErrorItem(i + 1, "role", "角色不能为空", username));
+                        continue;
+                    }
 
                     platformService.createUser(new PlatformUserUpsertRequest(
-                            username,
-                            role,
+                            username.trim(),
+                            role.trim(),
                             Boolean.TRUE,
-                            rawPassword == null || rawPassword.isBlank() ? null : rawPassword,
+                            rawPassword == null || rawPassword.isBlank() ? null : rawPassword.trim(),
                             Boolean.TRUE
                     ));
-
-                if (row == null || isRowBlank(row, 6)) continue;
-                totalRows++;
-                try {
-                    String studentNo = getCellStringValue(row, 0);
-                    String name = getCellStringValue(row, 1);
-                    String major = getCellStringValue(row, 2);
-                    String grade = getCellStringValue(row, 3);
-                    String className = getCellStringValue(row, 4);
-                    String email = getCellStringValue(row, 5);
-
-                    if (studentNo == null || studentNo.isBlank()) {
-                        errors.add(new BatchImportResultResponse.ImportErrorItem(i + 1, "studentNo", "学号不能为空", ""));
-                        continue;
-                    }
-                    if (name == null || name.isBlank()) {
-                        errors.add(new BatchImportResultResponse.ImportErrorItem(i + 1, "name", "姓名不能为空", studentNo));
-                        continue;
-                    }
-
-                    StudentProfileResponse existing = findStudent(studentNo);
-                    StudentProfileUpsertRequest request = new StudentProfileUpsertRequest(
-                            studentNo,
-                            name,
-                            existing == null ? null : existing.collegeName(),
-                            major,
-                            grade,
-                            className,
-                            existing == null ? null : existing.advisorScope(),
-                            existing == null ? "本科" : existing.degreeLevel(),
-                            email,
-                            Boolean.FALSE,
-                            "ACTIVE",
-                            null,
-                            null,
-                            null,
-                            null,
-                            null
-                    );
-                    if (existing == null) {
-                        studentProfileService.createStudent(request);
-                    } else {
-                        studentProfileService.updateStudent(existing.id(), request);
-                    }
                     successRows++;
                 } catch (Exception e) {
                     errors.add(new BatchImportResultResponse.ImportErrorItem(i + 1, "general", e.getMessage(), ""));
@@ -297,7 +233,80 @@ public class MockExcelImportExportService implements ExcelImportExportService {
 
     @Override
     public BatchImportResultResponse importStudents(MultipartFile file) {
-        return new BatchImportResultResponse(0, 0, 0, List.of());
+        List<BatchImportResultResponse.ImportErrorItem> errors = new ArrayList<>();
+        int totalRows = 0;
+        int successRows = 0;
+
+        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            if (sheet == null) throw new BusinessException("Excel文件为空");
+
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null || isRowBlank(row, 6)) continue;
+
+                totalRows++;
+                try {
+                    String studentNo = getCellStringValue(row, 0);
+                    String name = getCellStringValue(row, 1);
+                    String major = getCellStringValue(row, 2);
+                    String grade = getCellStringValue(row, 3);
+                    String className = getCellStringValue(row, 4);
+                    String email = getCellStringValue(row, 5);
+
+                    if (studentNo == null || studentNo.isBlank()) {
+                        errors.add(new BatchImportResultResponse.ImportErrorItem(i + 1, "studentNo", "学号不能为空", ""));
+                        continue;
+                    }
+                    if (name == null || name.isBlank()) {
+                        errors.add(new BatchImportResultResponse.ImportErrorItem(i + 1, "name", "姓名不能为空", studentNo));
+                        continue;
+                    }
+
+                    StudentProfileResponse existing = null;
+                    try {
+                        existing = studentProfileService.getStudentByStudentNo(studentNo);
+                    } catch (Exception ignored) {
+                        existing = null;
+                    }
+
+                    StudentProfileUpsertRequest request = new StudentProfileUpsertRequest(
+                            studentNo.trim(),
+                            name.trim(),
+                            existing == null ? null : existing.collegeName(),
+                            blankToNull(major),
+                            blankToNull(grade),
+                            blankToNull(className),
+                            existing == null ? null : existing.advisorScope(),
+                            existing == null ? "本科" : existing.degreeLevel(),
+                            blankToNull(email),
+                            Boolean.FALSE,
+                            "ACTIVE",
+                            existing == null ? null : existing.majorChangedTo(),
+                            null,
+                            null,
+                            null,
+                            null,
+                            null
+                    );
+                    if (existing == null) {
+                        studentProfileService.createStudent(request);
+                    } else {
+                        studentProfileService.updateStudent(existing.id(), request);
+                    }
+                    successRows++;
+                } catch (Exception e) {
+                    errors.add(new BatchImportResultResponse.ImportErrorItem(i + 1, "general", e.getMessage(), ""));
+                }
+            }
+        } catch (IOException e) {
+            throw new BusinessException("读取Excel文件失败: " + e.getMessage());
+        }
+
+        return new BatchImportResultResponse(totalRows, successRows, totalRows - successRows, errors);
+    }
+
+    @Override
     public BatchImportResultResponse importAwardSupportRecords(MultipartFile file) {
         List<BatchImportResultResponse.ImportErrorItem> errors = new ArrayList<>();
         int totalRows = 0;
@@ -310,6 +319,7 @@ public class MockExcelImportExportService implements ExcelImportExportService {
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null || isRowBlank(row, 8)) continue;
+
                 totalRows++;
                 try {
                     String studentNo = getCellStringValue(row, 0);
@@ -338,11 +348,11 @@ public class MockExcelImportExportService implements ExcelImportExportService {
                     Map<String, Object> fields = new LinkedHashMap<>();
                     fields.put("assessmentAcademicYear", assessmentAcademicYear);
                     fields.put("awardName", awardName);
-                    fields.put("batchName", batchName);
-                    fields.put("awardLevel", awardLevel);
-                    fields.put("awardGrade", awardGrade);
-                    fields.put("awardAmount", awardAmount);
-                    fields.put("awardType", awardType);
+                    fields.put("batchName", blankToNull(batchName));
+                    fields.put("awardLevel", blankToNull(awardLevel));
+                    fields.put("awardGrade", blankToNull(awardGrade));
+                    fields.put("awardAmount", blankToNull(awardAmount));
+                    fields.put("awardType", blankToNull(awardType));
                     mockStudentGrowthService.importAwardSupportRecord(student.id(), fields);
                     successRows++;
                 } catch (Exception e) {
@@ -360,68 +370,39 @@ public class MockExcelImportExportService implements ExcelImportExportService {
     public byte[] exportStudents(String grade, String className, String status) {
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("学生列表");
+
             Row headerRow = sheet.createRow(0);
             headerRow.createCell(0).setCellValue("学号");
             headerRow.createCell(1).setCellValue("姓名");
-            headerRow.createCell(2).setCellValue("学院");
-            headerRow.createCell(3).setCellValue("专业");
-            headerRow.createCell(4).setCellValue("年级");
-            headerRow.createCell(5).setCellValue("班级");
-            headerRow.createCell(6).setCellValue("邮箱");
-            headerRow.createCell(7).setCellValue("状态");
+            headerRow.createCell(2).setCellValue("专业");
+            headerRow.createCell(3).setCellValue("年级");
+            headerRow.createCell(4).setCellValue("班级");
+            headerRow.createCell(5).setCellValue("邮箱");
+            headerRow.createCell(6).setCellValue("状态");
 
+            List<StudentProfileResponse> students = studentProfileService.listStudents();
             int rowNum = 1;
-            for (StudentProfileResponse item : studentProfileService.listStudents()) {
-                if (grade != null && !grade.equals(item.grade())) continue;
-                if (className != null && !className.equals(item.className())) continue;
-                if (status != null && !status.equals(item.status())) continue;
+            for (StudentProfileResponse student : students) {
+                if (grade != null && !grade.isBlank() && (student.grade() == null || !grade.equals(student.grade()))) continue;
+                if (className != null && !className.isBlank() && (student.className() == null || !className.equals(student.className()))) continue;
+                if (status != null && !status.isBlank() && (student.status() == null || !status.equals(student.status()))) continue;
+
                 Row row = sheet.createRow(rowNum++);
-                row.createCell(0).setCellValue(item.studentNo());
-                row.createCell(1).setCellValue(item.name());
-                row.createCell(2).setCellValue(item.collegeName() == null ? "" : item.collegeName());
-                row.createCell(3).setCellValue(item.major() == null ? "" : item.major());
-                row.createCell(4).setCellValue(item.grade() == null ? "" : item.grade());
-                row.createCell(5).setCellValue(item.className() == null ? "" : item.className());
-                row.createCell(6).setCellValue(item.email() == null ? "" : item.email());
-                row.createCell(7).setCellValue(item.status() == null ? "" : item.status());
+                row.createCell(0).setCellValue(student.studentNo() == null ? "" : student.studentNo());
+                row.createCell(1).setCellValue(student.name() == null ? "" : student.name());
+                row.createCell(2).setCellValue(student.major() == null ? "" : student.major());
+                row.createCell(3).setCellValue(student.grade() == null ? "" : student.grade());
+                row.createCell(4).setCellValue(student.className() == null ? "" : student.className());
+                row.createCell(5).setCellValue(student.email() == null ? "" : student.email());
+                row.createCell(6).setCellValue(student.status() == null ? "" : student.status());
             }
-            return writeWorkbook(workbook);
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            workbook.write(out);
+            return out.toByteArray();
         } catch (IOException e) {
             throw new BusinessException("导出Excel失败: " + e.getMessage());
         }
-    }
-
-    private BatchImportResultResponse readWorkbookAndCount(MultipartFile file, int cellCount) {
-        List<BatchImportResultResponse.ImportErrorItem> errors = new ArrayList<>();
-        int totalRows = 0;
-        int successRows = 0;
-        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
-            Sheet sheet = workbook.getSheetAt(0);
-            if (sheet == null) throw new BusinessException("Excel文件为空");
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-                Row row = sheet.getRow(i);
-                if (row == null || isRowBlank(row, cellCount)) continue;
-                totalRows++;
-                successRows++;
-            }
-            return new BatchImportResultResponse(totalRows, successRows, 0, errors);
-        } catch (IOException e) {
-            throw new BusinessException("读取Excel文件失败: " + e.getMessage());
-        }
-    }
-
-    private StudentProfileResponse findStudent(String studentNo) {
-        try {
-            return studentProfileService.getStudentByStudentNo(studentNo);
-        } catch (BusinessException ex) {
-            return null;
-        }
-    }
-
-    private byte[] writeWorkbook(Workbook workbook) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        workbook.write(out);
-        return out.toByteArray();
     }
 
     private String getCellStringValue(Row row, int cellNum) {
@@ -429,6 +410,35 @@ public class MockExcelImportExportService implements ExcelImportExportService {
         if (cell == null) return null;
         cell.setCellType(CellType.STRING);
         return cell.getStringCellValue().trim();
+    }
+
+    private boolean isRowBlank(Row row, int cellCount) {
+        for (int i = 0; i < cellCount; i++) {
+            String value = getCellStringValue(row, i);
+            if (value != null && !value.isBlank()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String blankToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private RoleType parseRoleSafely(String role) {
+        if (role == null || role.isBlank()) {
+            return null;
+        }
+        try {
+            return RoleType.valueOf(role.trim().toUpperCase());
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String roleLabel(RoleType role) {
@@ -445,34 +455,5 @@ public class MockExcelImportExportService implements ExcelImportExportService {
             case SUPER_ADMIN -> "超级管理员";
             case ASSISTANT -> "助理";
         };
-    }
-
-    private RoleType parseRoleSafely(String role) {
-        if (role == null || role.isBlank()) {
-            return null;
-        }
-        try {
-            return RoleType.valueOf(role.trim().toUpperCase());
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private boolean containsIgnoreCase(String value, String keyword) {
-        if (keyword == null || keyword.isBlank()) {
-            return true;
-        }
-        if (value == null || value.isBlank()) {
-            return false;
-        }
-        return value.toLowerCase().contains(keyword.toLowerCase());
-    private boolean isRowBlank(Row row, int cellCount) {
-        for (int i = 0; i < cellCount; i++) {
-            String value = getCellStringValue(row, i);
-            if (value != null && !value.isBlank()) {
-                return false;
-            }
-        }
-        return true;
     }
 }

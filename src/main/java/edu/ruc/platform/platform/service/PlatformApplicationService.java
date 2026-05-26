@@ -88,7 +88,7 @@ public interface PlatformApplicationService {
     PlatformUserStatsResponse userStats(String role, Boolean enabled, String keyword);
 
     PlatformStudentQueryResponse getStudent(Long studentId);
-    PlatformStudentDetailResponse getStudent(Long studentId);
+    PlatformStudentDetailResponse getStudentDetail(Long studentId);
 
     PageResponse<PlatformStudentQueryResponse> pageStudents(String grade, String className, String status, String keyword, int page, int size);
 

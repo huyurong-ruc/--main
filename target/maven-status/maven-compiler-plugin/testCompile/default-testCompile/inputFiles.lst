@@ -1,6 +1,8 @@
 /Users/yuronghu/Desktop/web-main/src/test/java/edu/ruc/platform/AdminCapabilityIntegrationTest.java
 /Users/yuronghu/Desktop/web-main/src/test/java/edu/ruc/platform/AuthIntegrationTest.java
 /Users/yuronghu/Desktop/web-main/src/test/java/edu/ruc/platform/BusinessFlowIntegrationTest.java
+/Users/yuronghu/Desktop/web-main/src/test/java/edu/ruc/platform/DevProfileBusinessIntegrationTest.java
+/Users/yuronghu/Desktop/web-main/src/test/java/edu/ruc/platform/DevProfileContextIntegrationTest.java
 /Users/yuronghu/Desktop/web-main/src/test/java/edu/ruc/platform/ErrorFlowIntegrationTest.java
 /Users/yuronghu/Desktop/web-main/src/test/java/edu/ruc/platform/PartyAcademicIntegrationTest.java
 /Users/yuronghu/Desktop/web-main/src/test/java/edu/ruc/platform/PlatformCapabilityIntegrationTest.java

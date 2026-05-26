@@ -492,6 +492,8 @@ public class ExcelImportExportServiceImpl implements ExcelImportExportService {
             return false;
         }
         return value.toLowerCase().contains(keyword.toLowerCase());
+    }
+
     private StudentAwardSupportRecord findExistingAwardSupportRecord(Long studentId,
                                                                      String assessmentAcademicYear,
                                                                      String awardName,

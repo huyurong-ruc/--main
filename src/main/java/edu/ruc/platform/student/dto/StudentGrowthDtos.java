@@ -1,4 +1,4 @@
-﻿package edu.ruc.platform.student.dto;
+package edu.ruc.platform.student.dto; 
 
 import java.util.List;
 import java.util.Map;

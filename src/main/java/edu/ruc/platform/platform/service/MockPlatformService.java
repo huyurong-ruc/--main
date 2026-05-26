@@ -625,7 +625,10 @@ public class MockPlatformService implements PlatformApplicationService {
     @Override
     public PlatformStudentQueryResponse getStudent(Long studentId) {
         return toPlatformStudent(studentProfileService.getStudent(studentId));
-    public PlatformStudentDetailResponse getStudent(Long studentId) {
+    }
+
+    @Override
+    public PlatformStudentDetailResponse getStudentDetail(Long studentId) {
         StudentProfileResponse profile = studentProfileService.getStudent(studentId);
         return toPlatformStudentDetail(profile, studentGrowthService.archiveByStudentId(studentId).modules());
     }
@@ -664,7 +667,6 @@ public class MockPlatformService implements PlatformApplicationService {
         }
         PlatformFileUploadResponse response = new PlatformFileUploadResponse(
                 id,
-                uploadIdGenerator.incrementAndGet(),
                 normalizedBizType,
                 bizId,
                 originalFileName,

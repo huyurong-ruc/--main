@@ -202,7 +202,6 @@ public class AdminService implements AdminApplicationService {
                 notice.getTitle(),
                 notice.getSummary(),
                 finalTags,
-                request.tags(),
                 request.targetDescription(),
                 resolvePriority(notice),
                 resolveMatchedRules(notice),
@@ -371,7 +370,8 @@ public class AdminService implements AdminApplicationService {
         KnowledgeDocument item = knowledgeDocumentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("知识条目不存在"));
         populateKnowledgeItem(item, request);
-        item.setVersion(item.getVersion() + 1);
+        int nextVersion = (item.getVersion() == null ? 1 : item.getVersion()) + 1;
+        item.setVersion(nextVersion);
         item = knowledgeDocumentRepository.save(item);
         writeOperationLog("KNOWLEDGE", "UPDATE", item.getTitle(), "SUCCESS", request.sourceFileName());
         return toKnowledgeResponse(item);

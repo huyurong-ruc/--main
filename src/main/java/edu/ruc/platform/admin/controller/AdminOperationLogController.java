@@ -38,9 +38,15 @@ public class AdminOperationLogController {
 
     @GetMapping("/page")
     public ApiResponse<PageResponse<AdminOperationLogResponse>> page(@RequestParam(required = false) String module,
+                                                                     @RequestParam(required = false) String result,
+                                                                     @RequestParam(required = false) String logLevel,
+                                                                     @RequestParam(required = false) String operatorName,
+                                                                     @RequestParam(required = false) String traceId,
                                                                      @RequestParam(required = false) String action,
                                                                      @RequestParam(required = false) String operatorRole,
                                                                      @RequestParam(required = false) String targetKeyword,
+                                                                     @RequestParam(required = false) String startTime,
+                                                                     @RequestParam(required = false) String endTime,
                                                                      @Min(value = 0, message = "page 不能小于 0") @RequestParam(defaultValue = "0") int page,
                                                                      @Min(value = 1, message = "size 不能小于 1") @RequestParam(defaultValue = "10") int size) {
         currentUserService.requireAnyRole(RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN);
