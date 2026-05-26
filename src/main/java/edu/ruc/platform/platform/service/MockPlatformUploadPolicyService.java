@@ -18,12 +18,19 @@ public class MockPlatformUploadPolicyService implements PlatformUploadPolicyServ
             "application/pdf",
             "image/png",
             "image/jpeg",
+            "image/jpg",
+            "image/pjpeg",
+            "image/gif",
+            "image/webp",
+            "image/bmp",
+            "image/heic",
+            "image/heif",
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "application/vnd.ms-excel"
     ));
-    private boolean allowEmptyContentType = false;
+    private boolean allowEmptyContentType = true;
 
     @Override
     public synchronized PlatformUploadPolicyResponse getPolicy() {

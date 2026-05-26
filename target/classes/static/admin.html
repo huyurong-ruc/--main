@@ -789,6 +789,19 @@
       return json.data;
     }
 
+    async function apiBlob(path, options) {
+      const resp = await apiFetch(path, options);
+      if (!resp.ok) {
+        let msg = "请求失败(" + resp.status + ")";
+        try {
+          const json = await resp.json();
+          if (json && json.message) msg = json.message;
+        } catch (e) {}
+        throw new Error(msg);
+      }
+      return await resp.blob();
+    }
+
     function guessIconActionTitle(text) {
       const t = (text == null ? "" : String(text)).trim();
       if (!t) return null;
@@ -7531,9 +7544,19 @@
       document.getElementById("pageTitle").textContent = "奖助信息";
       const content = document.getElementById("content");
       content.innerHTML = "";
-      const s = Object.assign({ keyword: "", awardYear: "", honorCategory: "", recipientType: "", publicVisible: "", selectedId: null }, state || {});
+      const s = Object.assign({ keyword: "", awardYear: "", recipientType: "", publicVisible: "", selectedId: null }, state || {});
       const LOCAL_KEY = "ssp_admin_honor_showcases";
       let apiReady = true;
+      const yearListId = "honorYearOptions";
+
+      function buildYearDatalist() {
+        const now = new Date().getFullYear();
+        const opts = [];
+        for (let i = 0; i < 15; i++) {
+          opts.push(el("option", { value: String(now - i) }));
+        }
+        return el("datalist", { id: yearListId }, opts);
+      }
 
       function seedData() {
         return [
@@ -7600,16 +7623,37 @@
             size: 100,
             keyword: s.keyword || undefined,
             awardYear: s.awardYear || undefined,
-            honorCategory: s.honorCategory || undefined,
             recipientType: s.recipientType || undefined,
             publicVisible: s.publicVisible === "" ? undefined : s.publicVisible
           }));
           const items = normalizePage(pageData);
+          function mergeRecipients(detailRecipients, pageRecipients) {
+            const d = Array.isArray(detailRecipients) ? detailRecipients : [];
+            const p = Array.isArray(pageRecipients) ? pageRecipients : [];
+            if (!p.length) return d;
+            const dMap = new Map();
+            d.forEach(x => dMap.set(String(x && x.id != null ? x.id : ""), x));
+            const merged = p.map(x => {
+              const dx = dMap.get(String(x && x.id != null ? x.id : "")) || null;
+              const out = Object.assign({}, dx || {}, x || {});
+              if (dx && Array.isArray(dx.attachments)) out.attachments = dx.attachments;
+              if (dx && dx.photoFileId != null) out.photoFileId = dx.photoFileId;
+              if (dx && dx.photoUrl) out.photoUrl = dx.photoUrl;
+              return out;
+            });
+            d.forEach(dx => {
+              const id = String(dx && dx.id != null ? dx.id : "");
+              if (!id) return;
+              if (!merged.some(x => String(x && x.id != null ? x.id : "") === id)) merged.push(dx);
+            });
+            return merged;
+          }
           return Promise.all(items.map(async item => {
             const detail = await apiJson("/api/v1/admin/honors/" + item.id).catch(() => item);
             const recPage = await apiJson("/api/v1/admin/honors/" + item.id + "/recipients/page?" + buildQuery({ page: 0, size: 100 })).catch(() => null);
-            const recipients = normalizePage(recPage || {});
-            return Object.assign({}, detail || item, { recipients: recipients.length ? recipients : ((detail && detail.recipients) || item.recipients || []) });
+            const pageRecipients = normalizePage(recPage || {});
+            const detailRecipients = (detail && Array.isArray(detail.recipients)) ? detail.recipients : (item.recipients || []);
+            return Object.assign({}, detail || item, { recipients: mergeRecipients(detailRecipients, pageRecipients) });
           }));
         } catch (e) {
           apiReady = false;
@@ -7621,7 +7665,6 @@
         return items
           .filter(x => !s.keyword || [x.title, x.honorCategory, x.description].some(v => String(v || "").includes(s.keyword)))
           .filter(x => !s.awardYear || String(x.awardYear || "") === String(s.awardYear))
-          .filter(x => !s.honorCategory || String(x.honorCategory || "").includes(s.honorCategory))
           .filter(x => !s.recipientType || String(x.recipientType || "") === String(s.recipientType))
           .filter(x => s.publicVisible === "" || String(!!x.publicVisible) === String(s.publicVisible))
           .sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0));
@@ -7633,6 +7676,12 @@
 
       function visiblePill(v) {
         return el("span", { class: "statusPill " + (v ? "ok" : "bad"), text: v ? "公开展示" : "暂不公开" });
+      }
+
+      function attachmentUrl(att) {
+        if (!att) return "";
+        const p = String(att.storagePath || "").trim();
+        return p;
       }
 
       function validText(item) {
@@ -7767,7 +7816,14 @@
 
       function openShowcaseForm(item) {
         const values = Object.assign({ awardYear: new Date().getFullYear(), honorCategory: "信息学院国家奖学金", recipientType: "PERSONAL", title: "", description: "", publicVisible: true, displayOrder: 1, displayStartAt: "", displayEndAt: "" }, item || {});
-        const year = el("input", { value: values.awardYear || "", type: "number" });
+        const modalYearListId = "honorYearOptionsModal";
+        const modalYearList = (() => {
+          const now = new Date().getFullYear();
+          const opts = [];
+          for (let i = 0; i < 15; i++) opts.push(el("option", { value: String(now - i) }));
+          return el("datalist", { id: modalYearListId }, opts);
+        })();
+        const year = el("input", { value: values.awardYear || "", list: modalYearListId, inputmode: "numeric" });
         const category = el("input", { value: values.honorCategory || "", placeholder: "如 信息学院国家奖学金" });
         const type = el("select", null, [el("option", { value: "PERSONAL", text: "个人" }), el("option", { value: "COLLECTIVE", text: "集体" })]);
         type.value = values.recipientType || "PERSONAL";
@@ -7781,6 +7837,7 @@
         const end = el("input", { value: values.displayEndAt ? String(values.displayEndAt).slice(0, 16) : "", type: "datetime-local" });
         showUserOverlay(item ? "编辑奖助信息模块" : "新建奖助信息模块");
         setUserModalContent([
+          modalYearList,
           el("div", { class: "row" }, [
             el("div", { class: "field" }, [el("label", { text: "年份" }), year]),
             el("div", { class: "field" }, [el("label", { text: "展示类别" }), category]),
@@ -7795,7 +7852,6 @@
             el("div", { class: "field" }, [el("label", { text: "展示结束" }), end])
           ])
         ], [
-          el("button", { class: "btn", type: "button", text: "取消", onclick: hideUserOverlay }),
           el("button", { class: "btn primary", type: "button", text: "保存", onclick: async () => {
             if (!title.value.trim() || !category.value.trim()) {
               document.getElementById("userModalMsg").textContent = "请填写标题和展示类别";
@@ -7818,13 +7874,13 @@
       }
 
       function openRecipientForm(showcase, recipient) {
-        const values = Object.assign({ recipientType: showcase.recipientType || "PERSONAL", recipientName: "", studentNo: "", major: "", grade: "", className: "", awardIntro: "", advancedDeeds: "", photoUrl: "", publicVisible: true, displayOrder: 1, displayStartAt: showcase.displayStartAt || "", displayEndAt: showcase.displayEndAt || "" }, recipient || {});
+        const values = Object.assign({ recipientType: showcase.recipientType || "PERSONAL", recipientName: "", studentNo: "", major: "", grade: "", className: "", awardIntro: "", advancedDeeds: "", publicVisible: true, displayOrder: 1, displayStartAt: showcase.displayStartAt || "", displayEndAt: showcase.displayEndAt || "" }, recipient || {});
         const name = el("input", { value: values.recipientName || "", placeholder: "姓名或集体名称" });
         const no = el("input", { value: values.studentNo || "", placeholder: "个人可填学号，集体可留空" });
         const major = el("input", { value: values.major || "" });
         const grade = el("input", { value: values.grade || "" });
         const cls = el("input", { value: values.className || "" });
-        const photo = el("input", { value: values.photoUrl || "", placeholder: "照片 URL 或附件路径" });
+        const photoFile = el("input", { type: "file", accept: "image/*" });
         const intro = el("textarea", { placeholder: "获奖简介" });
         intro.value = values.awardIntro || "";
         const deeds = el("textarea", { placeholder: "先进事迹" });
@@ -7835,13 +7891,42 @@
         const start = el("input", { value: values.displayStartAt ? String(values.displayStartAt).slice(0, 16) : "", type: "datetime-local" });
         const end = el("input", { value: values.displayEndAt ? String(values.displayEndAt).slice(0, 16) : "", type: "datetime-local" });
         const preview = el("div", { class: "honorEmpty", text: "暂无照片预览" });
-        function renderPhoto() {
-          const url = photo.value.trim();
+        let localPreviewUrl = null;
+        function renderPhoto(url) {
           preview.innerHTML = "";
           if (url) preview.appendChild(el("img", { class: "honorPreviewPhoto", src: url, alt: name.value || "获得者照片" }));
           else preview.textContent = "暂无照片预览";
         }
-        photo.addEventListener("input", renderPhoto);
+        async function renderPhotoAttachment(att) {
+          const fileId = att && att.fileId != null ? Number(att.fileId) : 0;
+          if (fileId > 0) {
+            preview.innerHTML = "";
+            preview.appendChild(el("div", { class: "sub", text: "照片加载中…" }));
+            try {
+              const blob = await apiBlob("/api/v1/platform/files/" + fileId + "/download");
+              const url = URL.createObjectURL(blob);
+              renderPhoto(url);
+            } catch (e) {
+              renderPhoto(attachmentUrl(att));
+            }
+            return;
+          }
+          renderPhoto(attachmentUrl(att));
+        }
+        photoFile.addEventListener("change", () => {
+          if (localPreviewUrl) {
+            try { URL.revokeObjectURL(localPreviewUrl); } catch (e) {}
+            localPreviewUrl = null;
+          }
+          const f = photoFile.files && photoFile.files[0] ? photoFile.files[0] : null;
+          if (!f) {
+            const fromAttachment = (values.attachments || []).find(a => a.attachmentType === "PHOTO") || null;
+            renderPhotoAttachment(fromAttachment);
+            return;
+          }
+          localPreviewUrl = URL.createObjectURL(f);
+          renderPhoto(localPreviewUrl);
+        });
         showUserOverlay(recipient ? "编辑获得者详情" : "新增获得者");
         setUserModalContent([
           el("div", { class: "row" }, [
@@ -7851,7 +7936,7 @@
             el("div", { class: "field" }, [el("label", { text: "年级" }), grade]),
             el("div", { class: "field" }, [el("label", { text: "班级" }), cls])
           ]),
-          el("div", { class: "field" }, [el("label", { text: "照片" }), photo]),
+          el("div", { class: "field" }, [el("label", { text: "照片" }), photoFile]),
           preview,
           el("div", { class: "field" }, [el("label", { text: "获奖简介" }), intro]),
           el("div", { class: "field" }, [el("label", { text: "先进事迹" }), deeds]),
@@ -7862,63 +7947,130 @@
             el("div", { class: "field" }, [el("label", { text: "展示结束" }), end])
           ])
         ], [
-          el("button", { class: "btn", type: "button", text: "取消", onclick: hideUserOverlay }),
           el("button", { class: "btn primary", type: "button", text: "保存", onclick: async () => {
             if (!name.value.trim()) {
               document.getElementById("userModalMsg").textContent = "请填写获得者名称";
               return;
             }
-            await saveRecipient(showcase, Object.assign({}, values, {
+            const payload = {
               recipientType: showcase.recipientType,
-              recipientName: name.value.trim(),
+              studentId: values.studentId || null,
               studentNo: no.value.trim(),
+              recipientName: name.value.trim(),
               major: major.value.trim(),
               grade: grade.value.trim(),
               className: cls.value.trim(),
-              photoUrl: photo.value.trim(),
               awardIntro: intro.value.trim(),
               advancedDeeds: deeds.value.trim(),
+              photoFileId: values.photoFileId || null,
               publicVisible: publicVisible.checked,
               displayOrder: Number(order.value || 0),
-              displayStartAt: start.value || "",
-              displayEndAt: end.value || ""
-            }));
-            hideUserOverlay();
+              displayStartAt: start.value || null,
+              displayEndAt: end.value || null,
+              importTaskId: values.importTaskId || null
+            };
+            if (apiReady) {
+              try {
+                const saved = values.id
+                  ? await apiJson("/api/v1/admin/honors/recipients/" + values.id, { method: "PUT", body: JSON.stringify(payload) })
+                  : await apiJson("/api/v1/admin/honors/" + showcase.id + "/recipients", { method: "POST", body: JSON.stringify(payload) });
+                const f = photoFile.files && photoFile.files[0] ? photoFile.files[0] : null;
+                let photoWarn = "";
+                if (f) {
+                  try {
+                    const fd = new FormData();
+                    fd.append("file", f);
+                    const uploadResp = await (async () => {
+                      const resp = await apiFetch("/api/v1/platform/files/upload?bizType=HONOR_RECIPIENT_PHOTO&bizId=" + encodeURIComponent(saved.id), { method: "POST", body: fd });
+                      const json = await resp.json().catch(() => null);
+                      if (!resp.ok) throw new Error((json && json.message) ? json.message : ("请求失败(" + resp.status + ")"));
+                      if (!json || !json.success) throw new Error((json && json.message) ? json.message : "请求失败");
+                      return json.data;
+                    })();
+
+                    const current = await apiJson("/api/v1/admin/honors/recipients/" + saved.id).catch(() => saved);
+                    const existingPhotos = (current && Array.isArray(current.attachments) ? current.attachments : []).filter(a => a.attachmentType === "PHOTO");
+                    for (let i = 0; i < existingPhotos.length; i++) {
+                      const att = existingPhotos[i];
+                      await apiJson("/api/v1/admin/honors/attachments/" + att.id, {
+                        method: "PUT",
+                        body: JSON.stringify({
+                          fileId: att.fileId || null,
+                          attachmentType: att.attachmentType,
+                          fileName: att.fileName,
+                          contentType: att.contentType || null,
+                          fileSize: att.fileSize || null,
+                          storagePath: att.storagePath || null,
+                          caption: att.caption || null,
+                          publicVisible: att.publicVisible !== false,
+                          displayOrder: Number(att.displayOrder || 0) + 1
+                        })
+                      });
+                    }
+
+                    await apiJson("/api/v1/admin/honors/recipients/" + saved.id + "/attachments", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        fileId: uploadResp.id,
+                        attachmentType: "PHOTO",
+                        fileName: uploadResp.fileName,
+                        contentType: uploadResp.contentType || null,
+                        fileSize: uploadResp.fileSize || null,
+                        storagePath: uploadResp.storagePath || null,
+                        caption: "照片",
+                        publicVisible: true,
+                        displayOrder: 0
+                      })
+                    });
+                  } catch (e) {
+                    photoWarn = String(e && e.message ? e.message : e);
+                  }
+                }
+                await loadHonorScholarships(Object.assign({}, s, { selectedId: showcase.id }));
+                hideUserOverlay();
+                if (photoWarn) {
+                  alert("获得者信息已保存，但照片保存失败：" + photoWarn);
+                }
+              } catch (e) {
+                document.getElementById("userModalMsg").textContent = e.message;
+                return;
+              }
+            } else {
+              await saveRecipient(showcase, Object.assign({}, values, payload, { photoUrl: "", displayStartAt: start.value || "", displayEndAt: end.value || "" }));
+              hideUserOverlay();
+            }
           }})
         ]);
-        renderPhoto();
+        const initPhoto = (values.attachments || []).find(a => a.attachmentType === "PHOTO") || null;
+        renderPhotoAttachment(initPhoto);
       }
 
       function openImportDialog(showcase) {
-        const input = el("textarea", { style: "min-height: 220px;", placeholder: "recipientName,studentNo,major,grade,className,awardIntro,advancedDeeds,photoUrl\n王同学,2021201008,计算机科学与技术,2021级,计科1班,获奖简介,先进事迹,https://..." });
         showUserOverlay("批量导入获得者");
+        const fileInput = el("input", { type: "file", accept: ".xlsx,.xls" });
         setUserModalContent([
-          el("div", { class: "honorImportHelp", text: "每行一名获得者，字段顺序：名称、学号、专业、年级、班级、获奖简介、先进事迹、照片URL。首行表头会自动跳过。" }),
-          el("div", { class: "field" }, [el("label", { text: "导入内容" }), input])
+          el("div", { class: "honorImportHelp", text: "支持 Excel 导入（Sheet1）。列顺序：获得者名称、学号、专业、年级、班级、获奖简介、先进事迹、照片URL(可空)。首行表头会自动跳过。" }),
+          el("div", { class: "field" }, [el("label", { text: "选择 Excel 文件" }), fileInput])
         ], [
-          el("button", { class: "btn", type: "button", text: "取消", onclick: hideUserOverlay }),
           el("button", { class: "btn primary", type: "button", text: "导入", onclick: async () => {
-            const lines = input.value.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
-            const rows = lines.filter((line, idx) => idx !== 0 || !/^recipientName|^名称/.test(line)).map(line => line.split(",").map(x => x.trim()));
-            for (let i = 0; i < rows.length; i++) {
-              const row = rows[i];
-              await saveRecipient(showcase, {
-                recipientType: showcase.recipientType,
-                recipientName: row[0] || "",
-                studentNo: row[1] || "",
-                major: row[2] || "",
-                grade: row[3] || "",
-                className: row[4] || "",
-                awardIntro: row[5] || "",
-                advancedDeeds: row[6] || "",
-                photoUrl: row[7] || "",
-                publicVisible: true,
-                displayOrder: Number((showcase.recipients || []).length + i + 1),
-                displayStartAt: showcase.displayStartAt || "",
-                displayEndAt: showcase.displayEndAt || ""
-              });
+            document.getElementById("userModalMsg").textContent = "";
+            const f = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+            if (!f) {
+              document.getElementById("userModalMsg").textContent = "请先选择 Excel 文件";
+              return;
             }
-            hideUserOverlay();
+            try {
+              const fd = new FormData();
+              fd.append("file", f);
+              const resp = await apiFetch("/api/v1/admin/honors/" + showcase.id + "/recipients/import", { method: "POST", body: fd });
+              const json = await resp.json().catch(() => null);
+              if (!resp.ok) throw new Error((json && json.message) ? json.message : ("请求失败(" + resp.status + ")"));
+              if (!json || !json.success) throw new Error((json && json.message) ? json.message : "请求失败");
+              hideUserOverlay();
+              await loadHonorScholarships(Object.assign({}, s, { selectedId: showcase.id }));
+            } catch (e) {
+              document.getElementById("userModalMsg").textContent = e.message;
+            }
           }})
         ]);
       }
@@ -7927,15 +8079,14 @@
       const selected = showcases.find(x => String(x.id) === String(s.selectedId)) || showcases[0] || null;
       if (selected) s.selectedId = selected.id;
       const keyword = el("input", { value: s.keyword || "", placeholder: "搜索年份、类别、标题" });
-      const year = el("input", { value: s.awardYear || "", type: "number", placeholder: "年份" });
-      const category = el("input", { value: s.honorCategory || "", placeholder: "展示类别" });
+      const year = el("input", { value: s.awardYear || "", placeholder: "年份", list: yearListId, inputmode: "numeric" });
       const type = el("select", null, [el("option", { value: "", text: "全部类型" }), el("option", { value: "PERSONAL", text: "个人" }), el("option", { value: "COLLECTIVE", text: "集体" })]);
       type.value = s.recipientType || "";
       const publicVisible = el("select", null, [el("option", { value: "", text: "全部状态" }), el("option", { value: "true", text: "公开展示" }), el("option", { value: "false", text: "暂不公开" })]);
       publicVisible.value = s.publicVisible;
 
       function doFilter() {
-        loadHonorScholarships({ keyword: keyword.value.trim(), awardYear: year.value.trim(), honorCategory: category.value.trim(), recipientType: type.value, publicVisible: publicVisible.value, selectedId: s.selectedId });
+        loadHonorScholarships({ keyword: keyword.value.trim(), awardYear: year.value.trim(), recipientType: type.value, publicVisible: publicVisible.value, selectedId: s.selectedId });
       }
 
       const totalRecipients = showcases.reduce((sum, x) => sum + ((x.recipients || []).length || Number(x.recipientCount || 0)), 0);
@@ -7957,17 +8108,17 @@
         el("div", { class: "honorStat" }, [el("div", { class: "k", text: "当前类别" }), el("div", { class: "v", text: selected ? recipientTypeText(selected.recipientType) : "-" })])
       ]));
       content.appendChild(el("div", { class: "honorFilters" }, [
+        buildYearDatalist(),
         el("div", { class: "row" }, [
           el("div", { class: "field" }, [el("label", { text: "关键词" }), keyword]),
           el("div", { class: "field" }, [el("label", { text: "年份" }), year]),
-          el("div", { class: "field" }, [el("label", { text: "类别" }), category]),
           el("div", { class: "field" }, [el("label", { text: "类型" }), type]),
           el("div", { class: "field" }, [el("label", { text: "公开状态" }), publicVisible]),
           el("div", { class: "field", style: "justify-content:flex-end;" }, [el("button", { class: "btn primary", type: "button", text: "筛选", onclick: doFilter })])
         ])
       ]));
       keyword.addEventListener("keydown", e => { if (e.key === "Enter") doFilter(); });
-      [year, category, type, publicVisible].forEach(x => x.addEventListener("change", doFilter));
+      [year, type, publicVisible].forEach(x => x.addEventListener("change", doFilter));
 
       const list = el("div", { class: "card" }, [
         el("div", { class: "sectionTitle", text: "展示模块" }),
@@ -8010,8 +8161,23 @@
         detailChildren.push(el("div", { class: "sub", text: selected.description || "暂无整体简介" }));
         detailChildren.push(el("div", { class: "sectionTitle", text: "获得者详情" }));
         detailChildren.push(recipients.length ? el("div", { class: "honorRecipientGrid" }, recipients.map(r => {
-          const photoUrl = r.photoUrl || ((r.attachments || []).find(a => a.attachmentType === "PHOTO") || {}).storagePath || "";
-          const avatar = photoUrl ? el("img", { class: "honorAvatar", src: photoUrl, alt: r.recipientName || "照片" }) : el("div", { class: "honorAvatar", text: String(r.recipientName || "?").slice(0, 1) });
+          const photoAtt = ((r.attachments || []).find(a => a.attachmentType === "PHOTO") || null);
+          const fileId = photoAtt && photoAtt.fileId != null ? Number(photoAtt.fileId) : 0;
+          const storageUrl = r.photoUrl || attachmentUrl(photoAtt);
+          let avatar = el("div", { class: "honorAvatar", text: String(r.recipientName || "?").slice(0, 1) });
+          if (fileId > 0) {
+            const img = el("img", { class: "honorAvatar", alt: r.recipientName || "照片" });
+            (async () => {
+              try {
+                const blob = await apiBlob("/api/v1/platform/files/" + fileId + "/download");
+                img.src = URL.createObjectURL(blob);
+                avatar.replaceWith(img);
+                avatar = img;
+              } catch (e) {}
+            })();
+          } else if (storageUrl) {
+            avatar = el("img", { class: "honorAvatar", src: storageUrl, alt: r.recipientName || "照片" });
+          }
           const card = el("div", { class: "honorRecipientCard" }, [
             el("div", { class: "honorRecipientHead" }, [
               avatar,
