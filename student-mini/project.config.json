@@ -46,8 +46,8 @@
     "disableSWC": true
   },
   "compileType": "miniprogram",
-  "libVersion": "2.25.0",
-  "appid": "wx893fabf4031a87c0",
+  "libVersion": "3.15.2",
+  "appid": "wxbd7e4fd2fd066ef6",
   "projectname": "student-mini",
   "condition": {},
   "editorSetting": {

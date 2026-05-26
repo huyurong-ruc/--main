@@ -24,7 +24,7 @@
     >
       <view class="apply-header">
         <text class="apply-type">{{item.typeName}}</text>
-        <text class="apply-status status-{{item.status}}">{{item.statusText}}</text>
+        <text class="apply-status status-{{item.statusClass}}">{{item.statusText}}</text>
       </view>
       <view class="apply-body">
         <text class="apply-purpose">{{item.purpose || '未填写用途'}}</text>
