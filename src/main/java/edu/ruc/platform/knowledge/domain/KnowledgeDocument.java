@@ -3,7 +3,6 @@ package edu.ruc.platform.knowledge.domain;
 import edu.ruc.platform.common.model.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,8 +22,7 @@ public class KnowledgeDocument extends BaseEntity {
     @Column(length = 500)
     private String tags;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
     @Column(length = 500)

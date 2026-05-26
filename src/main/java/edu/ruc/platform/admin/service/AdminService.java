@@ -34,6 +34,16 @@ import edu.ruc.platform.admin.dto.WorkflowNodeResponse;
 import edu.ruc.platform.admin.dto.WorkflowNodeUpsertRequest;
 import edu.ruc.platform.admin.dto.AdminOperationLogModuleStatsResponse;
 import edu.ruc.platform.admin.dto.AdminOperationLogRoleStatsResponse;
+import edu.ruc.platform.admin.dto.CourseResponse;
+import edu.ruc.platform.admin.dto.CourseUpsertRequest;
+import edu.ruc.platform.admin.dto.PartyReminderTaskFilterRequest;
+import edu.ruc.platform.admin.dto.PartyReminderTaskResponse;
+import edu.ruc.platform.admin.dto.RoleResponse;
+import edu.ruc.platform.admin.dto.RoleUpsertRequest;
+import edu.ruc.platform.admin.dto.TermCourseResponse;
+import edu.ruc.platform.admin.dto.TermCourseUpsertRequest;
+import edu.ruc.platform.admin.dto.WorkflowInstanceFilterRequest;
+import edu.ruc.platform.admin.dto.WorkflowInstanceResponse;
 import edu.ruc.platform.admin.domain.DataImportTask;
 import edu.ruc.platform.admin.domain.DataImportErrorItem;
 import edu.ruc.platform.admin.domain.KnowledgeAttachment;
@@ -2567,4 +2577,146 @@ public class AdminService implements AdminApplicationService {
     private String buildAdvisorScopeTarget(AdvisorScopeBinding binding) {
         return binding.getAdvisorUsername() + "/" + binding.getGrade() + "/" + binding.getClassName() + "/student#" + binding.getStudentId();
     }
+
+
+    @Override
+    public List<RoleResponse> listRoles() {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public RoleResponse getRole(Long id) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public RoleResponse createRole(RoleUpsertRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public RoleResponse updateRole(Long id, RoleUpsertRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public RoleResponse copyRole(Long id) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public RoleResponse toggleRole(Long id) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public void deleteRole(Long id) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public List<WorkflowInstanceResponse> listWorkflowInstances(WorkflowInstanceFilterRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public PageResponse<WorkflowInstanceResponse> pageWorkflowInstances(WorkflowInstanceFilterRequest request, int page, int size) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public WorkflowInstanceResponse getWorkflowInstance(Long id) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public WorkflowInstanceResponse cancelWorkflowInstance(Long id) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public List<CourseResponse> listCourses(String keyword, String courseType) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public PageResponse<CourseResponse> pageCourses(String keyword, String courseType, int page, int size) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public CourseResponse getCourse(Long id) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public CourseResponse createCourse(CourseUpsertRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public CourseResponse updateCourse(Long id, CourseUpsertRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public void deleteCourse(Long id) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public List<TermCourseResponse> listTermCourses(String termCode, String keyword) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public PageResponse<TermCourseResponse> pageTermCourses(String termCode, String keyword, int page, int size) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public TermCourseResponse getTermCourse(Long id) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public TermCourseResponse createTermCourse(TermCourseUpsertRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public TermCourseResponse updateTermCourse(Long id, TermCourseUpsertRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public void deleteTermCourse(Long id) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public List<PartyReminderTaskResponse> listPartyReminderTasks(PartyReminderTaskFilterRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public PageResponse<PartyReminderTaskResponse> pagePartyReminderTasks(PartyReminderTaskFilterRequest request, int page, int size) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public PartyReminderTaskResponse sendPartyReminder(Long id) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public PartyReminderTaskResponse resendPartyReminder(Long id) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public PartyReminderTaskResponse cancelPartyReminder(Long id) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
 }
