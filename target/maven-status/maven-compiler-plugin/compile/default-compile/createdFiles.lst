@@ -138,6 +138,7 @@ edu/ruc/platform/academic/dto/AuditReportResponse.class
 edu/ruc/platform/knowledge/domain/KnowledgeQaTicket.class
 edu/ruc/platform/admin/dto/AdminOperationLogModuleStatsResponse.class
 edu/ruc/platform/admin/service/MockQaTicketService.class
+edu/ruc/platform/knowledge/service/MockKnowledgeService$AdminStateSnapshot.class
 edu/ruc/platform/knowledge/domain/SearchQueryLog.class
 edu/ruc/platform/certificate/dto/CertificateTemplateUpdateRequest.class
 edu/ruc/platform/academic/repository/LatestAcademicCourseRecommendationRepository.class

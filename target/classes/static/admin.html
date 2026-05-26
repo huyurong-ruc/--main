@@ -812,7 +812,7 @@
         "⧉": "复制",
         "📎": "附件",
         "🚀": "发布",
-        "↩": "撤回为草稿",
+        "↩": "撤回",
         "✅": "启用",
         "⛔": "禁用",
         "🔑": "重置密码",
@@ -1045,7 +1045,8 @@
 
     function getKnowledgeContent(knowledgeId) {
       const map = loadKnowledgeContentMap();
-      return map[String(knowledgeId)] || "";
+      const k = String(knowledgeId);
+      return Object.prototype.hasOwnProperty.call(map, k) ? map[k] : null;
     }
 
     function saveKnowledgeContent(knowledgeId, content) {
@@ -2035,12 +2036,20 @@
 
       const s = Object.assign({ keyword: "", published: "", page: 0, size: 10 }, state || {});
       const keywordInput = el("input", { value: s.keyword, placeholder: "搜索问题" });
-      const statusSelect = el("select", null, [
-        el("option", { value: "", text: "全部状态" }),
-        el("option", { value: "true", text: "已发布" }),
-        el("option", { value: "false", text: "草稿" })
-      ]);
-      statusSelect.value = s.published;
+      if (s.published !== "true" && s.published !== "false") s.published = "true";
+      const tabs = el("div", { class: "tabs" }, []);
+      const tabPublished = el("button", { class: "tabBtn" + (s.published === "true" ? " active" : ""), type: "button", text: "已发布" });
+      const tabDraft = el("button", { class: "tabBtn" + (s.published === "false" ? " active" : ""), type: "button", text: "草稿" });
+      tabs.appendChild(tabPublished);
+      tabs.appendChild(tabDraft);
+      function setTab(next) {
+        s.published = next;
+        tabPublished.classList.toggle("active", next === "true");
+        tabDraft.classList.toggle("active", next === "false");
+        loadFaqManage({ keyword: keywordInput.value.trim(), published: s.published, page: 0, size: s.size });
+      }
+      tabPublished.addEventListener("click", () => setTab("true"));
+      tabDraft.addEventListener("click", () => setTab("false"));
       const toast = el("div", { class: "toast" }, []);
 
       const header = el("div", { class: "pageHeader" }, [
@@ -2054,9 +2063,9 @@
       const filterCard = el("div", { class: "card" }, [
         el("div", { style: "display:flex; gap: 10px; align-items:center; flex-wrap: wrap;" }, [
           el("div", { style: "flex: 1; min-width: 320px;" }, [keywordInput]),
-          el("div", { style: "min-width: 140px;" }, [statusSelect]),
+          el("div", { style: "min-width: 240px;" }, [tabs]),
           el("button", { class: "btn primary", text: "搜索", onclick: async () => {
-            await loadFaqManage({ keyword: keywordInput.value.trim(), published: statusSelect.value, page: 0, size: s.size });
+            await loadFaqManage({ keyword: keywordInput.value.trim(), published: s.published, page: 0, size: s.size });
           }})
         ]),
         toast
@@ -2074,7 +2083,7 @@
 
       async function tryLoadAnswer(id) {
         const local = getKnowledgeContent(id);
-        if (local) return local;
+        if (local != null) return local;
         try {
           const detail = await apiJson("/api/v1/knowledge/" + id);
           return detail && detail.answer ? String(detail.answer) : "";
@@ -5938,7 +5947,7 @@
       const content = document.getElementById("content");
       content.innerHTML = "";
 
-      const s = Object.assign({ tab: "ALL", selectedId: null }, state || {});
+      const s = Object.assign({ tab: "ALL", selectedId: null, replyDraftMap: {} }, state || {});
       const header = el("div", { class: "flowPageHeader" }, [
         el("div", null, [
           el("h2", { text: "问答工单处理" }),
@@ -6036,8 +6045,52 @@
 
         const questionBox = el("div", { class: "detailBox" }, [d.questionText || "-"]);
         const msgBox = el("div", { class: "detailBox" }, []);
+        function parseWithdrawnContent(content) {
+          const raw = content == null ? "" : String(content);
+          if (raw.startsWith("WITHDRAWN::")) {
+            const encoded = raw.substring("WITHDRAWN::".length);
+            if (!encoded) return { withdrawn: true, original: "" };
+            try {
+              const decoded = atob(encoded);
+              return { withdrawn: true, original: decoded };
+            } catch (e) {
+              return { withdrawn: true, original: "" };
+            }
+          }
+          if (raw.trim() === "(已撤回)") {
+            return { withdrawn: true, original: "" };
+          }
+          return { withdrawn: false, original: raw };
+        }
         (d.messages || []).forEach(m => {
+          const withdrawBtn = el("button", { class: "iconAction", text: "↩", type: "button" });
           const delBtn = el("button", { class: "iconAction", text: "🗑", type: "button" });
+          const parsed = parseWithdrawnContent(m.content);
+          const isWithdrawn = !!parsed.withdrawn;
+          withdrawBtn.disabled = isWithdrawn;
+
+          withdrawBtn.addEventListener("click", async (ev) => {
+            ev.stopPropagation();
+            toast.textContent = "";
+            if (!m.id) {
+              toast.textContent = "该记录不支持撤回（缺少ID）";
+              return;
+            }
+            if (isWithdrawn) return;
+            if (!confirm("确认撤回这条回复吗？")) return;
+            withdrawBtn.disabled = true;
+            try {
+              await apiJson("/api/v1/admin/qa-tickets/messages/" + m.id + "/withdraw", { method: "POST" });
+              s.replyDraftMap[String(id)] = String(parsed.original || "").trim();
+              await loadDetail(id);
+              await loadList();
+              toast.textContent = "撤回成功";
+            } catch (e) {
+              toast.textContent = e.message;
+              withdrawBtn.disabled = false;
+            }
+          });
+
           delBtn.addEventListener("click", async (ev) => {
             ev.stopPropagation();
             toast.textContent = "";
@@ -6061,9 +6114,9 @@
           msgBox.appendChild(el("div", { style: "padding: 8px 0; border-top: 1px solid rgba(15,23,42,.06);" }, [
             el("div", { style: "display:flex; justify-content: space-between; align-items: center; gap: 10px;" }, [
               el("div", { style: "font-weight: 900;" }, [(m.actorName || "-") + "  " + (m.createdAt || "")]),
-              el("div", { class: "iconActions" }, [delBtn])
+              el("div", { class: "iconActions" }, [withdrawBtn, delBtn])
             ]),
-            el("div", { style: "margin-top: 6px; color: #374151; font-size: 13px;" }, [m.content || "-"])
+            el("div", { style: "margin-top: 6px; color: #374151; font-size: 13px;" }, [isWithdrawn ? "(已撤回)" : (parsed.original || "-")])
           ]));
         });
         if (!(d.messages || []).length) {
@@ -6071,6 +6124,9 @@
         }
 
         const replyInput = el("textarea", { class: "replyArea", placeholder: "输入回复内容…" });
+        const draftKey = String(id);
+        replyInput.value = s.replyDraftMap[draftKey] || "";
+        replyInput.addEventListener("input", () => { s.replyDraftMap[draftKey] = replyInput.value; });
         const btnReply = el("button", { class: "replyBtn", type: "button", text: "仅回复" });
         const btnPublish = el("button", { class: "replyBtn green", type: "button", text: "回复并作为FAQ发布" });
         const btnClose = el("button", { class: "replyBtn gray", type: "button", text: "关闭工单" });
@@ -6083,17 +6139,22 @@
             toast.textContent = "请输入回复内容";
             return;
           }
+          s.replyDraftMap[draftKey] = replyInput.value;
           toast.textContent = "";
           sending = true;
           btnReply.disabled = true;
           btnPublish.disabled = true;
           btnClose.disabled = true;
           try {
-            await apiJson("/api/v1/admin/qa-tickets/" + id + "/reply", {
+            const after = await apiJson("/api/v1/admin/qa-tickets/" + id + "/reply", {
               method: "POST",
               body: JSON.stringify({ content: text, publishAsFaq: !!publish, closeTicket: !!close })
             });
             replyInput.value = "";
+            s.replyDraftMap[draftKey] = "";
+            if (publish && after && after.matchedFaqId != null) {
+              saveKnowledgeContent(after.matchedFaqId, text);
+            }
             await loadDetail(id);
             await loadList();
           } catch (e) {

@@ -69,4 +69,10 @@ public class AdminQaTicketController {
         currentUserService.requireAnyRole(RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR);
         return ApiResponse.success(service.deleteMessage(messageId));
     }
+
+    @PostMapping("/messages/{messageId}/withdraw")
+    public ApiResponse<QaTicketDetailResponse> withdrawMessage(@Positive(message = "消息ID必须大于0") @PathVariable Long messageId) {
+        currentUserService.requireAnyRole(RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR);
+        return ApiResponse.success(service.withdrawMessage(messageId));
+    }
 }

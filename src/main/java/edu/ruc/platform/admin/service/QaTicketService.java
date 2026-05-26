@@ -23,6 +23,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Base64;
 
 @Service
 @Profile("!mock")
@@ -76,17 +77,35 @@ public class QaTicketService implements QaTicketApplicationService {
         String actorName = user.name() == null || user.name().isBlank() ? user.username() : user.name();
 
         if (Boolean.TRUE.equals(request.publishAsFaq())) {
-            adminService.createKnowledgeItem(new AdminKnowledgeUpsertRequest(
-                    "FAQ：" + (ticket.getQuestionText() == null ? "" : ticket.getQuestionText()),
-                    "FAQ管理",
-                    "qa-ticket",
-                    request.content(),
-                    null,
-                    "qa-ticket",
-                    "全体学生",
-                    actorName,
-                    true
-            ));
+            Long existingFaqId = ticket.getMatchedFaqId();
+            if (existingFaqId != null) {
+                adminService.updateKnowledgeItem(existingFaqId, new AdminKnowledgeUpsertRequest(
+                        "FAQ：" + (ticket.getQuestionText() == null ? "" : ticket.getQuestionText()),
+                        "FAQ管理",
+                        "qa-ticket",
+                        request.content(),
+                        null,
+                        "qa-ticket",
+                        "全体学生",
+                        actorName,
+                        true
+                ));
+            } else {
+                var created = adminService.createKnowledgeItem(new AdminKnowledgeUpsertRequest(
+                        "FAQ：" + (ticket.getQuestionText() == null ? "" : ticket.getQuestionText()),
+                        "FAQ管理",
+                        "qa-ticket",
+                        request.content(),
+                        null,
+                        "qa-ticket",
+                        "全体学生",
+                        actorName,
+                        true
+                ));
+                if (created != null && created.id() != null) {
+                    ticket.setMatchedFaqId(created.id());
+                }
+            }
         }
 
         KnowledgeQaTicketMessage msg = new KnowledgeQaTicketMessage();
@@ -125,6 +144,34 @@ public class QaTicketService implements QaTicketApplicationService {
         return toDetail(ticket);
     }
 
+    @Override
+    public QaTicketDetailResponse withdrawMessage(Long messageId) {
+        KnowledgeQaTicketMessage msg = messageRepository.findById(messageId)
+                .orElseThrow(() -> new BusinessException("处理记录不存在"));
+        AuthenticatedUser user = currentUserService.requireCurrentUser();
+        String actorName = user.name() == null || user.name().isBlank() ? user.username() : user.name();
+        String originalText = msg.getMessageText();
+        Long ticketId = msg.getTicketId();
+        messageRepository.delete(msg);
+        KnowledgeQaTicket ticket = ticketRepository.findById(ticketId).orElseThrow(() -> new BusinessException("工单不存在"));
+        if (ticket.getMatchedFaqId() != null) {
+            adminService.updateKnowledgeItem(ticket.getMatchedFaqId(), new AdminKnowledgeUpsertRequest(
+                    "FAQ：" + (ticket.getQuestionText() == null ? "" : ticket.getQuestionText()),
+                    "FAQ管理",
+                    "qa-ticket",
+                    (originalText == null ? "" : originalText),
+                    null,
+                    "qa-ticket",
+                    "全体学生",
+                    actorName,
+                    false
+            ));
+        }
+        ticket.setUpdatedAt(LocalDateTime.now());
+        ticket = ticketRepository.save(ticket);
+        return toDetail(ticket);
+    }
+
     private QaTicketListItemResponse toListItem(KnowledgeQaTicket t) {
         String name = t.getAskName() == null || t.getAskName().isBlank() ? (t.getAskUsername() == null ? "-" : t.getAskUsername()) : t.getAskName();
         String summary = t.getQuestionText();
@@ -139,7 +186,7 @@ public class QaTicketService implements QaTicketApplicationService {
                 .map(m -> new QaTicketMessageResponse(m.getId(), m.getActorName(), m.getActorRole(), format(m.getCreatedAt()), m.getMessageText()))
                 .toList();
         String name = t.getAskName() == null || t.getAskName().isBlank() ? (t.getAskUsername() == null ? "-" : t.getAskUsername()) : t.getAskName();
-        return new QaTicketDetailResponse(t.getId(), name, t.getAskUserId(), format(t.getCreatedAt()), t.getStatus(), t.getQuestionText(), msgs);
+        return new QaTicketDetailResponse(t.getId(), name, t.getAskUserId(), format(t.getCreatedAt()), t.getStatus(), t.getQuestionText(), t.getMatchedFaqId(), msgs);
     }
 
     private static String format(LocalDateTime dt) {

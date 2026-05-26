@@ -86,6 +86,7 @@ public class MockAdminService implements AdminApplicationService {
     private final List<KnowledgeAttachmentResponse> knowledgeAttachments = new ArrayList<>(List.of(
             new KnowledgeAttachmentResponse(51L, 101L, "party-process.pdf", "application/pdf", 1024L, "/uploads/knowledge/101/party-process.pdf", "胡浩老师", LocalDateTime.of(2026, 3, 22, 11, 0))
     ));
+    private final Map<Long, String> knowledgeContents = new HashMap<>();
     private final List<DataImportErrorItemResponse> importErrors = new ArrayList<>(List.of(
             new DataImportErrorItemResponse(81L, 2L, 7, "title", "标题为空", null, LocalDateTime.of(2026, 3, 23, 9, 5)),
             new DataImportErrorItemResponse(82L, 2L, 12, "officialUrl", "URL 格式不合法", "htp://bad-url", LocalDateTime.of(2026, 3, 23, 9, 6))
@@ -104,6 +105,7 @@ public class MockAdminService implements AdminApplicationService {
         public List<TargetedNoticeResponse> notices;
         public List<AdminKnowledgeItemResponse> knowledgeItems;
         public List<KnowledgeAttachmentResponse> knowledgeAttachments;
+        public Map<Long, String> knowledgeContents;
     }
 
     private static boolean isTestRuntime() {
@@ -158,6 +160,10 @@ public class MockAdminService implements AdminApplicationService {
                 knowledgeAttachments.clear();
                 knowledgeAttachments.addAll(state.knowledgeAttachments);
             }
+            if (state.knowledgeContents != null) {
+                knowledgeContents.clear();
+                knowledgeContents.putAll(state.knowledgeContents);
+            }
             long maxNoticeId = notices.stream().mapToLong(TargetedNoticeResponse::id).max().orElse(10L);
             long maxKnowledgeId = knowledgeItems.stream().mapToLong(AdminKnowledgeItemResponse::id).max().orElse(200L);
             long maxAttachmentId = knowledgeAttachments.stream().mapToLong(KnowledgeAttachmentResponse::id).max().orElse(50L);
@@ -178,6 +184,7 @@ public class MockAdminService implements AdminApplicationService {
             state.notices = List.copyOf(notices);
             state.knowledgeItems = List.copyOf(knowledgeItems);
             state.knowledgeAttachments = List.copyOf(knowledgeAttachments);
+            state.knowledgeContents = Map.copyOf(knowledgeContents);
             stateMapper.writeValue(persistedStatePath.toFile(), state);
         } catch (Exception ignored) {
         }
@@ -412,6 +419,7 @@ public class MockAdminService implements AdminApplicationService {
                 now
         );
         knowledgeItems.add(0, response);
+        knowledgeContents.put(response.id(), request.content());
         writeOperationLog("KNOWLEDGE", "CREATE", response.title(), "SUCCESS", response.sourceFileName());
         persistState();
         return response;
@@ -443,6 +451,7 @@ public class MockAdminService implements AdminApplicationService {
                         now
                 );
                 knowledgeItems.set(i, updated);
+                knowledgeContents.put(id, request.content());
                 writeOperationLog("KNOWLEDGE", "UPDATE", updated.title(), "SUCCESS", updated.sourceFileName());
                 persistState();
                 return updated;
@@ -461,6 +470,7 @@ public class MockAdminService implements AdminApplicationService {
         }
         knowledgeItems.removeIf(item -> item.id().equals(id));
         knowledgeAttachments.removeIf(item -> item.knowledgeId().equals(id));
+        knowledgeContents.remove(id);
         writeOperationLog("KNOWLEDGE", "DELETE", "knowledge#" + id, "SUCCESS", null);
         persistState();
     }
@@ -1229,6 +1239,7 @@ public class MockAdminService implements AdminApplicationService {
                         LocalDateTime.of(2026, 3, 20, 9, 0)
                 ))
                 .toList());
+        mockDataStore.knowledgeDocuments().forEach(item -> knowledgeContents.putIfAbsent(item.id(), item.answer()));
         knowledgeItems.add(0, new AdminKnowledgeItemResponse(
                 299L,
                 "辅导员内部口径说明",
@@ -1243,6 +1254,7 @@ public class MockAdminService implements AdminApplicationService {
                 LocalDateTime.of(2026, 3, 18, 10, 0),
                 LocalDateTime.of(2026, 3, 18, 10, 0)
         ));
+        knowledgeContents.putIfAbsent(299L, "仅内部可见：用于演示 mock 数据。");
         persistState();
     }
 
