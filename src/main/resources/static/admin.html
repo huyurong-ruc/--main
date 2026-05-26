@@ -643,7 +643,6 @@
     <div class="modal">
       <div class="modalHeader">
         <div class="modalTitle" id="userModalTitle">用户</div>
-        <button class="btn" id="userModalCloseBtn" type="button">关闭</button>
       </div>
       <div class="modalBody" id="userModalBody"></div>
       <div class="toast" id="userModalMsg"></div>
@@ -752,7 +751,8 @@
       footer.innerHTML = "";
       (bodyNodes || []).forEach(n => body.appendChild(n));
       const nodes = (footerNodes || []).filter(Boolean);
-      if (nodes.length === 1 && nodes[0] && nodes[0].tagName === "BUTTON" && nodes[0].textContent === "关闭") {
+      if (!nodes.length) {
+        footer.appendChild(el("button", { class: "btn", type: "button", text: "关闭", onclick: () => hideUserOverlay() }));
         return;
       }
       nodes.forEach(n => footer.appendChild(n));
@@ -4269,6 +4269,53 @@
         ]);
       }});
 
+      const importAwardSupportBtn = el("button", { class: "btn", text: "导入奖助情况", onclick: async () => {
+        const msg = el("div", { class: "toast" }, []);
+        const fileInput = el("input", { type: "file", accept: ".xlsx,.xls" });
+        const hint = el("div", { class: "sub", text: "仅支持 Excel（.xlsx/.xls）：Sheet1 第一行为表头。列：学号(studentNo)、评定学年(assessmentAcademicYear)、奖学金名称(awardName)、批次名称(batchName)、奖励级别(awardLevel)、奖励等级(awardGrade)、奖学金额（元）(awardAmount)、奖励类型(awardType)。" });
+
+        async function doImport() {
+          msg.textContent = "";
+          const f = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+          if (!f) {
+            msg.textContent = "请先选择 Excel 文件";
+            return;
+          }
+          const fd = new FormData();
+          fd.append("file", f);
+          const resp = await apiFetch("/api/v1/platform/students/award-support/import", { method: "POST", body: fd, headers: { "Accept": "application/json" } });
+          const json = await resp.json().catch(() => null);
+          if (!resp.ok || !json || !json.success) {
+            throw new Error((json && json.message) ? json.message : ("导入失败(" + resp.status + ")"));
+          }
+          const data = json.data || {};
+          const total = data.totalRows ?? 0;
+          const success = data.successRows ?? 0;
+          const failed = data.failedRows ?? 0;
+          const errors = Array.isArray(data.errors) ? data.errors : [];
+          const samples = errors.slice(0, 8).map(e => "第 " + e.rowNumber + " 行：" + (e.errorMessage || "失败"));
+          msg.textContent = "导入完成：总 " + total + "，成功 " + success + "，失败 " + failed + (samples.length ? ("；示例错误：" + samples.join("；")) : "");
+        }
+
+        showUserOverlay("批量导入 · 奖助情况");
+        setUserModalContent([
+          el("div", { class: "row" }, [
+            el("div", { class: "field", style: "flex:1; min-width: 520px;" }, [el("label", { text: "选择 Excel 文件" }), fileInput]),
+          ]),
+          hint,
+          msg
+        ], [
+          el("button", { class: "btn", text: "取消", type: "button", onclick: () => hideUserOverlay() }),
+          el("button", { class: "btn primary", text: "开始导入", type: "button", onclick: async () => {
+            try {
+              await doImport();
+            } catch (e) {
+              msg.textContent = e.message;
+            }
+          } })
+        ]);
+      }});
+
       const exportStatsBtn = el("button", { class: "btn", text: "导出统计", onclick: async () => {
         toast.textContent = "";
         try {
@@ -4337,7 +4384,7 @@
             }}),
             el("div", { class: "field", style: "min-width: 120px;" }, [el("label", { text: "每页" }), sizeSelect])
           ]),
-          el("div", { class: "row", style: "flex-wrap: wrap;" }, [exportStatsBtn, importBtn])
+          el("div", { class: "row", style: "flex-wrap: wrap;" }, [exportStatsBtn, importBtn, importAwardSupportBtn])
         ]),
         toast
       ]);
@@ -4474,9 +4521,118 @@
           { k: "创建时间", v: formatDateYmd(detail.createdAt) },
           { k: "更新时间", v: formatDateYmd(detail.updatedAt) }
         ];
-        setUserModalContent(rows.map(r => el("div", { class: "row" }, [
-          el("div", { class: "field", style: "flex:1; min-width: 240px;" }, [el("label", { text: r.k }), el("div", { text: String(r.v ?? "-") })])
-        ])), [el("button", { class: "btn", text: "关闭", onclick: () => hideUserOverlay() })]);
+        const studentBlock = el("div", { class: "card", style: "margin-top: 10px;" }, [
+          el("div", { class: "sectionTitle", text: "个人档案" }),
+          el("div", { class: "sub", text: detail.studentNo ? "加载中…" : "该用户未关联学生学号，无法展示学生档案与成长信息。" })
+        ]);
+        const growthBlock = el("div", { class: "card", style: "margin-top: 10px;" }, [
+          el("div", { class: "sectionTitle", text: "成长信息" }),
+          el("div", { class: "sub", text: detail.studentNo ? "加载中…" : "—" })
+        ]);
+        const container = el("div", null, [
+          ...rows.map(r => el("div", { class: "row" }, [
+            el("div", { class: "field", style: "flex:1; min-width: 240px;" }, [el("label", { text: r.k }), el("div", { text: String(r.v ?? "-") })])
+          ])),
+          studentBlock,
+          growthBlock
+        ]);
+        setUserModalContent([container], [el("button", { class: "btn", text: "关闭", onclick: () => hideUserOverlay() })]);
+
+        function pageItems(pageData) {
+          if (Array.isArray(pageData)) return pageData;
+          if (pageData && Array.isArray(pageData.content)) return pageData.content;
+          return [];
+        }
+
+        function kvField(label, value) {
+          return el("div", { class: "field", style: "flex:1; min-width: 240px;" }, [
+            el("label", { text: label }),
+            el("div", { text: String(value ?? "-") })
+          ]);
+        }
+
+        function renderGrowthModules(modules) {
+          const list = Array.isArray(modules) ? modules : [];
+          if (!list.length) return el("div", { class: "honorEmpty", text: "暂无成长记录" });
+          return el("div", null, list.map(m => {
+            const records = Array.isArray(m.records) ? m.records : [];
+            const header = el("div", { style: "display:flex; justify-content: space-between; align-items:flex-end; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(15,23,42,.06);" }, [
+              el("div", { style: "font-weight: 900;" , text: (m.moduleName || m.moduleCode || "-") }),
+              el("div", { class: "sub", text: (m.editModeLabel || "") })
+            ]);
+            const body = records.length ? el("div", null, records.map(r => {
+              const fields = Array.isArray(r.fields) ? r.fields : [];
+              return el("div", { style: "padding: 10px 0; border-bottom: 1px solid rgba(15,23,42,.06);" }, [
+                el("div", { style: "display:flex; justify-content: space-between; align-items: flex-start; gap: 10px;" }, [
+                  el("div", { style: "font-weight: 800;", text: r.summary || (m.moduleName || "-") }),
+                  el("div", { class: "sub", text: r.updatedAt || "" })
+                ]),
+                fields.length ? el("div", { style: "margin-top: 6px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; font-size: 12px; color: #334155;" },
+                  fields.map(f => el("div", null, [el("span", { class: "sub", text: (f.label || f.key || "") + "：" }), el("span", { text: f.value || "-" })]))
+                ) : el("div", { class: "sub", style: "margin-top: 6px;", text: "无字段明细" })
+              ]);
+            })) : el("div", { class: "sub", style: "padding: 10px 0;" , text: "暂无记录" });
+            return el("div", null, [header, body]);
+          }));
+        }
+
+        if (!detail.studentNo) return;
+        try {
+          const studentPage = await apiJson("/api/v1/platform/students/page?" + buildQuery({ keyword: detail.studentNo, page: 0, size: 5 }));
+          const candidates = pageItems(studentPage);
+          const matched = candidates.find(x => String(x.studentNo || "") === String(detail.studentNo)) || candidates[0] || null;
+          const studentId = matched ? matched.studentId : null;
+          if (!studentId) {
+            studentBlock.innerHTML = "";
+            studentBlock.appendChild(el("div", { class: "sectionTitle", text: "个人档案" }));
+            studentBlock.appendChild(el("div", { class: "sub", text: "未找到对应学生档案（按学号检索不到学生ID）。" }));
+            growthBlock.innerHTML = "";
+            growthBlock.appendChild(el("div", { class: "sectionTitle", text: "成长信息" }));
+            growthBlock.appendChild(el("div", { class: "sub", text: "—" }));
+            return;
+          }
+          const studentDetail = await apiJson("/api/v1/platform/students/" + studentId);
+          studentBlock.innerHTML = "";
+          studentBlock.appendChild(el("div", { class: "sectionTitle", text: "个人档案" }));
+          studentBlock.appendChild(el("div", { class: "sub", text: "学生ID：" + studentId }));
+          studentBlock.appendChild(el("div", { class: "row" }, [
+            kvField("学院", studentDetail.collegeName || "-"),
+            kvField("班级", studentDetail.className || "-")
+          ]));
+          studentBlock.appendChild(el("div", { class: "row" }, [
+            kvField("学历层次", studentDetail.degreeLevel || "-"),
+            kvField("学籍状态", studentDetail.status || "-")
+          ]));
+          studentBlock.appendChild(el("div", { class: "row" }, [
+            kvField("导师范围", studentDetail.advisorScope || "-"),
+            kvField("毕业", studentDetail.graduated ? "是" : "否")
+          ]));
+          studentBlock.appendChild(el("div", { class: "row" }, [kvField("转专业去向", studentDetail.majorChangedTo || "-")]));
+          studentBlock.appendChild(el("div", { class: "row" }, [kvField("邮箱", studentDetail.email || "-")]));
+          const sFields = studentDetail.sensitiveFields || {};
+          studentBlock.appendChild(el("div", { class: "sectionTitle", text: "敏感字段（脱敏展示）", style: "margin-top: 10px;" }));
+          studentBlock.appendChild(el("div", { class: "row" }, [
+            kvField("身份证号", sFields.maskedIdCardNo || "-"),
+            kvField("手机号", sFields.maskedPhone || "-")
+          ]));
+          studentBlock.appendChild(el("div", { class: "row" }, [
+            kvField("籍贯", sFields.maskedNativePlace || "-"),
+            kvField("户籍地址", sFields.maskedHouseholdAddress || "-")
+          ]));
+          studentBlock.appendChild(el("div", { class: "row" }, [kvField("导师", sFields.maskedSupervisor || "-")]));
+
+          growthBlock.innerHTML = "";
+          growthBlock.appendChild(el("div", { class: "sectionTitle", text: "成长信息" }));
+          growthBlock.appendChild(el("div", { class: "sub", text: "包含：奖助情况、学科竞赛、创新创业、社会实践、学生工作、志愿服务、技能证书。" }));
+          growthBlock.appendChild(renderGrowthModules(studentDetail.growthModules));
+        } catch (e) {
+          studentBlock.innerHTML = "";
+          studentBlock.appendChild(el("div", { class: "sectionTitle", text: "个人档案" }));
+          studentBlock.appendChild(el("div", { class: "toast", text: "加载失败：" + e.message }));
+          growthBlock.innerHTML = "";
+          growthBlock.appendChild(el("div", { class: "sectionTitle", text: "成长信息" }));
+          growthBlock.appendChild(el("div", { class: "toast", text: "加载失败：" + e.message }));
+        }
       }
 
       async function toggleEnabled(userId, enabled) {
@@ -8281,10 +8437,6 @@
         return;
       }
       hideAllMenus();
-    });
-
-    document.getElementById("userModalCloseBtn").addEventListener("click", () => {
-      hideUserOverlay();
     });
 
     document.getElementById("userOverlay").addEventListener("click", (e) => {
