@@ -294,10 +294,10 @@
     .slaPill.bad { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.28); color: #b91c1c; }
     .approvalMeta { margin-top: 10px; display:grid; gap: 6px; color: #475569; font-size: 13px; }
     .approvalBtns { display:flex; gap: 10px; align-items:center; }
-    .approvalBtn { border: 0; padding: 10px 14px; border-radius: 12px; font-weight: 900; cursor: pointer; color: #ffffff; display:inline-flex; align-items:center; gap: 8px; }
-    .approvalBtn.green { background: #16a34a; }
-    .approvalBtn.red { background: #dc2626; }
-    .approvalBtn.blue { background: #2563eb; }
+    .approvalBtn { border: 1px solid rgba(15,23,42,.14); background: rgba(15,23,42,.08); padding: 10px 14px; border-radius: 12px; font-weight: 900; cursor: pointer; color: #111827; display:inline-flex; align-items:center; gap: 8px; }
+    .approvalBtn.green { background: #16a34a; border-color: rgba(22,163,74,.25); color: #ffffff; }
+    .approvalBtn.red { background: #dc2626; border-color: rgba(220,38,38,.25); color: #ffffff; }
+    .approvalBtn.blue { background: #2563eb; border-color: rgba(37,99,235,.25); color: #ffffff; }
     .approvalBtn:disabled { opacity: .55; cursor: not-allowed; }
     .approvalBulkBtn { border: 0; padding: 10px 14px; border-radius: 12px; font-weight: 900; cursor: pointer; color: #ffffff; background: #16a34a; display:inline-flex; align-items:center; gap: 8px; }
     .approvalBulkBtn:disabled { opacity: .55; cursor: not-allowed; }
@@ -1649,16 +1649,20 @@
 
       async function loadPolicyDetail(policy) {
         detailPanel.innerHTML = "";
+        let adminDetail = null;
+        try {
+          adminDetail = await apiJson("/api/v1/admin/knowledge/" + policy.id + "/detail");
+          if (adminDetail && adminDetail.content) {
+            saveKnowledgeContent(policy.id, String(adminDetail.content));
+          }
+        } catch (e) {}
         
         async function togglePublish(nextPublished) {
           const user = getUser();
           const updatedBy = user ? (user.name || user.username) : "系统管理员";
           let contentText = getKnowledgeContent(policy.id);
-          if (!contentText) {
-            try {
-              const detail = await apiJson("/api/v1/knowledge/" + policy.id);
-              if (detail && detail.answer) contentText = String(detail.answer);
-            } catch (e) {}
+          if (!contentText && adminDetail && adminDetail.content) {
+            contentText = String(adminDetail.content);
           }
           contentText = (contentText || "").trim();
           if (!contentText) {
@@ -1668,6 +1672,7 @@
           const body = {
             title: (policy.title || "").trim(),
             category: (policy.category || "政策管理").trim(),
+            summary: normalizeText(adminDetail && adminDetail.summary ? String(adminDetail.summary) : ""),
             content: contentText,
             officialUrl: normalizeUrl(policy.officialUrl),
             sourceFileName: normalizeText(policy.sourceFileName),
@@ -1741,8 +1746,11 @@
         ]);
 
         const summaryTitle = el("h4", { text: "摘要", style: "margin: 16px 0 8px; font-size: 13px; font-weight: 700;" });
+        const summaryText = (adminDetail && adminDetail.summary ? String(adminDetail.summary) : "").trim()
+          || (adminDetail && adminDetail.content ? String(adminDetail.content).trim().slice(0, 80) : "").trim()
+          || "";
         const summary = el("div", { style: "font-size: 12px; line-height: 1.6; color: #64748b; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);" }, [
-          el("span", { text: policy.audienceScope || "本政策旨在规范学生日常管理工作，明确各项规章制度，为学生提供良好的学习和生活环境。" })
+          el("span", { text: summaryText || "暂无摘要（可在编辑中填写）" })
         ]);
 
         const contentTitle = el("h4", { text: "正文内容", style: "margin: 16px 0 8px; font-size: 13px; font-weight: 700;" });
@@ -1750,16 +1758,12 @@
         
         // 加载内容
         const savedContent = getKnowledgeContent(policy.id);
-        if (savedContent) {
-          content_div.innerHTML = savedContent.replace(/\n/g, "<br>");
+        const remoteContent = adminDetail && adminDetail.content ? String(adminDetail.content) : "";
+        const contentText = (savedContent && String(savedContent).trim()) ? String(savedContent) : remoteContent;
+        if (!contentText || !String(contentText).trim()) {
+          content_div.innerHTML = "<span style='color:#94a3b8;'>暂无正文内容，请点击“编辑”补充。</span>";
         } else {
-          try {
-            const detail = await apiJson("/api/v1/knowledge/" + policy.id);
-            const content_text = detail && detail.answer ? String(detail.answer) : "第一条 为了加强学生管理工作...\n第二条 学生应当遵守学校各项规章制度...\n第三条 本规定自发布之日起施行...";
-            content_div.innerHTML = content_text.replace(/\n/g, "<br>");
-          } catch (e) {
-            content_div.innerHTML = "第一条 为了加强学生管理工作...<br>第二条 学生应当遵守学校各项规章制度...<br>第三条 本规定自发布之日起施行...";
-          }
+          content_div.innerHTML = String(contentText).replace(/\n/g, "<br>");
         }
 
         const attachmentsTitle = el("h4", { text: "附件", style: "margin: 16px 0 8px; font-size: 13px; font-weight: 700;" });
@@ -1808,6 +1812,7 @@
         const updatedBy = user ? (user.name || user.username) : "系统管理员";
         const titleInput = el("input", { placeholder: "政策标题（必填）" });
         const categoryInput = el("input", { value: "政策管理", placeholder: "分类" });
+        const summaryInput = el("textarea", { placeholder: "摘要（可空，建议 80 字以内）" });
         const contentInput = el("textarea", { placeholder: "政策内容（必填）" });
         const officialUrlInput = el("input", { placeholder: "官方链接（可空，http/https）" });
         const sourceFileInput = el("input", { placeholder: "来源文件名（可空）" });
@@ -1819,6 +1824,9 @@
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 260px;" }, [el("label", { text: "标题" }), titleInput]),
             el("div", { class: "field", style: "min-width: 180px;" }, [el("label", { text: "分类" }), categoryInput]),
+          ]),
+          el("div", { class: "row" }, [
+            el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "摘要" }), summaryInput])
           ]),
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "内容" }), contentInput])
@@ -1838,6 +1846,7 @@
               const body = {
                 title: titleInput.value.trim(),
                 category: categoryInput.value.trim(),
+                summary: normalizeText(summaryInput.value),
                 content: contentInput.value.trim(),
                 officialUrl: normalizeUrl(officialUrlInput.value),
                 sourceFileName: normalizeText(sourceFileInput.value),
@@ -1867,6 +1876,7 @@
               const body = {
                 title: titleInput.value.trim(),
                 category: categoryInput.value.trim(),
+                summary: normalizeText(summaryInput.value),
                 content: contentInput.value.trim(),
                 officialUrl: normalizeUrl(officialUrlInput.value),
                 sourceFileName: normalizeText(sourceFileInput.value),
@@ -1902,6 +1912,7 @@
         const updatedBy = user ? (user.name || user.username) : "系统管理员";
         const titleInput = el("input", { value: policy.title || "" });
         const categoryInput = el("input", { value: policy.category || "政策管理" });
+        const summaryInput = el("textarea", { placeholder: "摘要（可空，建议 80 字以内）" });
         const contentInput = el("textarea", { placeholder: "内容" });
         const officialUrlInput = el("input", { value: normalizeUrlForInput(policy.officialUrl), placeholder: "官方链接（可空，http/https）" });
         const sourceFileInput = el("input", { value: policy.sourceFileName || "", placeholder: "来源文件名（可空）" });
@@ -1912,17 +1923,20 @@
         const savedContent = getKnowledgeContent(policy.id);
         if (savedContent) {
           contentInput.value = savedContent;
-        } else {
-          try {
-            const detail = await apiJson("/api/v1/knowledge/" + policy.id);
-            if (detail && detail.answer) contentInput.value = detail.answer;
-          } catch (e) {}
         }
+        try {
+          const detail = await apiJson("/api/v1/admin/knowledge/" + policy.id + "/detail");
+          if (!savedContent && detail && detail.content) contentInput.value = detail.content;
+          if (detail && detail.summary) summaryInput.value = detail.summary;
+        } catch (e) {}
 
         setUserModalContent([
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 260px;" }, [el("label", { text: "标题" }), titleInput]),
             el("div", { class: "field", style: "min-width: 180px;" }, [el("label", { text: "分类" }), categoryInput]),
+          ]),
+          el("div", { class: "row" }, [
+            el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "摘要" }), summaryInput])
           ]),
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "内容" }), contentInput])
@@ -1942,6 +1956,7 @@
               const body = {
                 title: titleInput.value.trim(),
                 category: categoryInput.value.trim(),
+                summary: normalizeText(summaryInput.value),
                 content: contentInput.value.trim(),
                 officialUrl: normalizeUrl(officialUrlInput.value),
                 sourceFileName: normalizeText(sourceFileInput.value),
@@ -1971,6 +1986,7 @@
               const body = {
                 title: titleInput.value.trim(),
                 category: categoryInput.value.trim(),
+                summary: normalizeText(summaryInput.value),
                 content: contentInput.value.trim(),
                 officialUrl: normalizeUrl(officialUrlInput.value),
                 sourceFileName: normalizeText(sourceFileInput.value),
@@ -2003,13 +2019,16 @@
       async function openPreviewPolicy(policy) {
         showUserOverlay("政策预览 · " + policy.title);
         const savedContent = getKnowledgeContent(policy.id);
-        let previewContent = savedContent || "第一条 为了加强学生管理工作...\n第二条 学生应当遵守学校各项规章制度...\n第三条 本规定自发布之日起施行...";
+        let previewContent = savedContent || "";
         
         if (!savedContent) {
           try {
-            const detail = await apiJson("/api/v1/knowledge/" + policy.id);
-            if (detail && detail.answer) previewContent = detail.answer;
+            const detail = await apiJson("/api/v1/admin/knowledge/" + policy.id + "/detail");
+            if (detail && detail.content) previewContent = detail.content;
           } catch (e) {}
+        }
+        if (!previewContent || !String(previewContent).trim()) {
+          previewContent = "暂无正文内容";
         }
 
         const contentDiv = el("div", { style: "font-size: 13px; line-height: 1.8; color: #555; padding: 12px; background: #fafafa; border-radius: 8px; min-height: 200px; white-space: pre-wrap; word-wrap: break-word;" });
@@ -2374,6 +2393,14 @@
         }
       }
 
+      async function tryLoadAdminKnowledgeDetail(id) {
+        try {
+          return await apiJson("/api/v1/admin/knowledge/" + id + "/detail");
+        } catch (e) {
+          return null;
+        }
+      }
+
       function renderCreateForm() {
         createCard.innerHTML = "";
         if (!createVisible) {
@@ -2386,6 +2413,7 @@
 
         const titleInput = el("input", { placeholder: "例如：测试知识条目-1" });
         const categoryCreateInput = el("input", { value: s.category || "", placeholder: "例如：党团事务/奖助学金" });
+        const summaryInput = el("textarea", { "data-role": "summary", placeholder: "摘要（可空，建议 80 字以内）" });
         const contentInput = el("textarea", { placeholder: "填写标准答案/说明内容（必填）" });
         const officialUrlInput = el("input", { placeholder: "https:// 开头（可空）" });
         const sourceFileInput = el("input", { placeholder: "例如：policy.pdf（可空）" });
@@ -2405,6 +2433,7 @@
             const body = {
               title: titleInput.value.trim(),
               category: categoryCreateInput.value.trim(),
+              summary: normalizeText(summaryInput.value),
               content: contentInput.value.trim(),
               officialUrl: normalizeUrl(officialUrlInput.value),
               sourceFileName: normalizeText(sourceFileInput.value),
@@ -2440,6 +2469,9 @@
           el("div", { class: "field", style: "flex:1; min-width: 260px;" }, [el("label", { text: "标题 title（必填）" }), titleInput]),
           el("div", { class: "field", style: "min-width: 220px;" }, [el("label", { text: "分类 category（必填）" }), categoryCreateInput]),
           el("div", { class: "field", style: "min-width: 160px;" }, [el("label", { text: "发布 published" }), publishedCreateSelect])
+        ]));
+        createCard.appendChild(el("div", { class: "row" }, [
+          el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "摘要 summary（可空）" }), summaryInput])
         ]));
         createCard.appendChild(el("div", { class: "row" }, [
           el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "内容 content（必填）" }), contentInput])
@@ -2478,6 +2510,7 @@
 
         const titleInput = el("input", { value: editingItem.title || "" });
         const categoryInput = el("input", { value: editingItem.category || "" });
+        const summaryInput = el("textarea", { "data-role": "summary", placeholder: "摘要（可空，建议 80 字以内）" });
         const contentInput = el("textarea", { placeholder: "内容（必填）" });
         const officialUrlInput = el("input", { value: normalizeUrlForInput(editingItem.officialUrl), placeholder: "https:// 开头（可空）" });
         const sourceFileInput = el("input", { value: editingItem.sourceFileName || "", placeholder: "例如：policy.pdf（可空）" });
@@ -2518,6 +2551,7 @@
             const body = {
               title: titleInput.value.trim(),
               category: categoryInput.value.trim(),
+              summary: normalizeText(summaryInput.value),
               content: contentInput.value.trim(),
               officialUrl: normalizeUrl(officialUrlInput.value),
               sourceFileName: normalizeText(sourceFileInput.value),
@@ -2558,6 +2592,9 @@
           el("div", { class: "field", style: "flex:1; min-width: 260px;" }, [el("label", { text: "标题 title（必填）" }), titleInput]),
           el("div", { class: "field", style: "min-width: 220px;" }, [el("label", { text: "分类 category（必填）" }), categoryInput]),
           el("div", { class: "field", style: "min-width: 160px;" }, [el("label", { text: "发布 published" }), publishedSelect])
+        ]));
+        editCard.appendChild(el("div", { class: "row" }, [
+          el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "摘要 summary（可空）" }), summaryInput])
         ]));
         editCard.appendChild(el("div", { class: "row" }, [
           el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "内容 content（必填）" }), contentInput])
@@ -2672,16 +2709,29 @@
         editingItem = item;
         editVisible = true;
         renderEditForm();
+
+        try {
+          const adminDetail = await tryLoadAdminKnowledgeDetail(item.id);
+          const summaryTextarea = editCard.querySelector('textarea[data-role="summary"]');
+          if (summaryTextarea && adminDetail && adminDetail.summary) {
+            summaryTextarea.value = String(adminDetail.summary);
+          }
+          const textarea = editCard.querySelector("textarea:not([data-role='summary'])");
+          if (textarea && (!textarea.value || !String(textarea.value).trim()) && adminDetail && adminDetail.content) {
+            textarea.value = String(adminDetail.content);
+          }
+        } catch (e) {}
+
         const content = getKnowledgeContent(item.id);
         if (content) {
-          const textarea = editCard.querySelector("textarea");
-          if (textarea) textarea.value = content;
+          const contentTextarea = editCard.querySelector("textarea:not([data-role='summary'])");
+          if (contentTextarea) contentTextarea.value = content;
           return;
         }
         const answer = await tryLoadKnowledgeAnswer(item.id);
         if (answer) {
-          const textarea = editCard.querySelector("textarea");
-          if (textarea) textarea.value = answer;
+          const contentTextarea = editCard.querySelector("textarea:not([data-role='summary'])");
+          if (contentTextarea) contentTextarea.value = answer;
         }
       }
 
@@ -3482,11 +3532,67 @@
               msg.textContent = "请先选择目标老师";
               return;
             }
-            alert("转派接口暂未接入（已选择：" + (selected.name || "-") + "（" + (selected.username || "-") + "））");
-            hideUserOverlay();
+            try {
+              await apiJson("/api/v1/admin/approvals/" + item.requestId + "/assign", {
+                method: "POST",
+                body: JSON.stringify({
+                  targetUserId: selected.userId,
+                  targetName: selected.name || selected.username || ""
+                })
+              });
+              hideUserOverlay();
+              toast.textContent = "已转派给：" + (selected.name || selected.username || "-");
+              await reload();
+            } catch (e) {
+              msg.textContent = e.message;
+            }
           }})
         ]);
         await loadUsersByKeyword("");
+      }
+
+      async function openWorkflowDialog(item) {
+        toast.textContent = "";
+        showUserOverlay("关联流程实例");
+        const msg = el("div", { class: "toast" }, [el("div", { text: "加载中..." })]);
+        setUserModalContent([msg], [
+          el("button", { class: "btn", text: "关闭", type: "button", onclick: () => hideUserOverlay() })
+        ]);
+        try {
+          const pageData = await apiJson("/api/v1/admin/workflow-instances/page?" + buildQuery({ page: 0, size: 200 }));
+          const list = pageData && pageData.content ? pageData.content : [];
+          const found = list.find(x => x && String(x.businessId) === String(item.requestId));
+          if (!found) {
+            msg.textContent = "未找到关联流程实例（当前仅部分 mock 数据会生成实例）";
+            return;
+          }
+          const rows = [
+            ["实例ID", String(found.id ?? "-")],
+            ["流程编码", found.wfCode || "-"],
+            ["流程名称", found.wfName || "-"],
+            ["业务类型", found.businessType || "-"],
+            ["业务ID", String(found.businessId ?? "-")],
+            ["发起人", found.startedByName || "-"],
+            ["状态", String(found.status || "-")],
+            ["开始时间", formatDateTimeText(found.startedAt)],
+            ["结束时间", found.endedAt ? formatDateTimeText(found.endedAt) : "-"]
+          ];
+          const body = el("div", { style: "display:grid; gap: 10px;" }, rows.map(([k, v]) => {
+            return el("div", { style: "display:flex; gap: 10px; align-items:flex-start;" }, [
+              el("div", { style: "min-width: 86px; color:#64748b; font-size: 12px; font-weight: 800;", text: k }),
+              el("div", { style: "flex:1; font-weight: 750;", text: v })
+            ]);
+          }));
+          setUserModalContent([body], [
+            el("button", { class: "btn", text: "打开流程实例页", type: "button", onclick: async () => {
+              hideUserOverlay();
+              await switchView("workflowInstances");
+            }}),
+            el("button", { class: "btn", text: "关闭", type: "button", onclick: () => hideUserOverlay() })
+          ]);
+        } catch (e) {
+          msg.textContent = e.message;
+        }
       }
 
       function render() {
@@ -3517,8 +3623,11 @@
         }
 
         filtered.forEach(item => {
-          const sla = slaFor(item);
-          const card = el("div", { class: "approvalCard" + (sla.cls === "bad" ? " overdue" : "") }, []);
+          let sla = slaFor(item);
+          if (isDoneStatus(item.status)) {
+            sla = { cls: "ok", text: "已处理", overdue: false };
+          }
+          const card = el("div", { class: "approvalCard" + (sla.overdue && isTodoStatus(item.status) ? " overdue" : "") }, []);
           const left = el("div", null, []);
           const titleRow = el("div", { class: "approvalTitleRow" }, [
             el("div", { class: "approvalTitle", text: item.certificateType || "审批任务" }),
@@ -3552,6 +3661,10 @@
           const btnAssign = el("button", { class: "approvalBtn blue", type: "button", disabled: loading }, [
             el("span", { text: "✈" }),
             el("span", { text: "转派" })
+          ]);
+          const btnFlow = el("button", { class: "approvalBtn", type: "button", disabled: loading }, [
+            el("span", { text: "⛓" }),
+            el("span", { text: "流程" })
           ]);
 
           btnApprove.addEventListener("click", async () => {
@@ -3599,8 +3712,11 @@
           btnAssign.addEventListener("click", async () => {
             await openAssignDialog(item);
           });
+          btnFlow.addEventListener("click", async () => {
+            await openWorkflowDialog(item);
+          });
 
-          const right = el("div", { class: "approvalBtns" }, s.tab === "DONE" ? [btnResubmit, btnAssign] : [btnApprove, btnReject, btnAssign]);
+          const right = el("div", { class: "approvalBtns" }, s.tab === "DONE" ? [btnResubmit, btnAssign, btnFlow] : [btnApprove, btnReject, btnAssign, btnFlow]);
           card.appendChild(left);
           card.appendChild(right);
           listWrap.appendChild(card);
@@ -4652,6 +4768,7 @@
 
       async function resetPassword(userId) {
         const newPwd = prompt("请输入新密码（留空则使用后端默认策略）", "");
+        if (newPwd === null) return;
         const body = newPwd ? { newPassword: newPwd } : null;
         const resp = await apiFetch("/api/v1/platform/users/" + userId + "/reset-password", {
           method: "POST",
@@ -4783,34 +4900,52 @@
           el("th", { text: "角色名称" }),
           el("th", { text: "状态" }),
           el("th", { text: "用户数量" }),
-          el("th", { text: "权限描述" }),
-          el("th", { text: "操作" })
+          el("th", { text: "权限描述" })
         ])]));
         const tbody = el("tbody", null, []);
         (roles || []).forEach(r => {
           const code = r.role || "-";
           const name = roleLabel(code);
           const count = roleUserCounts && roleUserCounts[String(code).toUpperCase()] != null ? roleUserCounts[String(code).toUpperCase()] : 0;
-          const viewBtn = el("button", { class: "iconAction", text: "👁", onclick: async () => alert("查看：" + name) });
-          const editBtn = el("button", { class: "iconAction", text: "✎", onclick: async () => alert("编辑：" + name + "（演示版暂不支持）") });
-          const copyBtn = el("button", { class: "iconAction", text: "⧉", onclick: async () => {
-            try {
-              await navigator.clipboard.writeText(String(code));
-              alert("已复制角色编码：" + code);
-            } catch (e) {
-              alert("复制失败");
-            }
-          }});
-          tbody.appendChild(el("tr", null, [
-            el("td", null, [el("div", { class: "mono", text: code })]),
-            el("td", null, [el("div", { text: name })]),
-            el("td", null, [roleStatusPill(code)]),
-            el("td", null, [el("div", { class: "row", style: "gap: 8px; align-items:center;" }, [
-              el("div", { class: "mono", text: String(count) })
-            ])]),
-            el("td", null, [el("div", { text: buildPermissionText(r) })]),
-            el("td", null, [el("div", { class: "iconActions" }, [viewBtn, editBtn, copyBtn])])
-          ]));
+          const row = el("tr", { style: "cursor: pointer;" }, []);
+          row.addEventListener("click", async () => {
+            showUserOverlay("角色详情 · " + name);
+            const msg = el("div", { class: "toast" }, []);
+            const copyBtn = el("button", { class: "btn", text: "复制角色编码", onclick: async () => {
+              msg.textContent = "";
+              try {
+                await navigator.clipboard.writeText(String(code));
+                msg.textContent = "已复制：" + code;
+              } catch (e) {
+                msg.textContent = "复制失败";
+              }
+            }});
+            setUserModalContent([
+              el("div", { class: "row" }, [
+                kvField("角色编码", code),
+                kvField("角色名称", name)
+              ]),
+              el("div", { class: "row" }, [
+                kvField("状态", roleStatusPill(code).textContent),
+                kvField("用户数量", String(count))
+              ]),
+              el("div", { class: "row" }, [
+                kvField("权限描述", buildPermissionText(r))
+              ]),
+              msg
+            ], [
+              copyBtn,
+              el("button", { class: "btn primary", text: "关闭", onclick: () => hideUserOverlay() })
+            ]);
+          });
+          row.appendChild(el("td", null, [el("div", { class: "mono", text: code })]));
+          row.appendChild(el("td", null, [el("div", { text: name })]));
+          row.appendChild(el("td", null, [roleStatusPill(code)]));
+          row.appendChild(el("td", null, [el("div", { class: "row", style: "gap: 8px; align-items:center;" }, [
+            el("div", { class: "mono", text: String(count) })
+          ])]));
+          row.appendChild(el("td", null, [el("div", { text: buildPermissionText(r) })]));
+          tbody.appendChild(row);
         });
         table.appendChild(tbody);
         return table;
@@ -4897,7 +5032,7 @@
       const tbody = el("tbody", null, []);
       (pageData.content || []).forEach(item => {
         const wechatBound = item.wechatBound === true;
-        const pwdSet = item.passwordSet === true || (item.rawPassword != null && String(item.rawPassword).trim() !== "");
+        const pwdSet = item.passwordSet === true;
         const wechatCell = el("div", { style: "display:inline-flex; align-items:center; gap: 8px; font-weight: 850; color: " + (wechatBound ? "#16a34a" : "#94a3b8") + ";" }, [
           el("span", { text: "📱" }),
           el("span", { text: wechatBound ? "已绑定" : "未绑定" })
@@ -6427,33 +6562,6 @@
       const content = document.getElementById("content");
       content.innerHTML = "";
 
-      const STORAGE_KEY = "ssp_workflow_instances_demo";
-
-      function tryParseJson(raw, fallback) {
-        try {
-          const obj = JSON.parse(raw);
-          return obj == null ? fallback : obj;
-        } catch (e) {
-          return fallback;
-        }
-      }
-
-      function loadLocal() {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        const list = tryParseJson(raw, null);
-        if (Array.isArray(list) && list.length) return list;
-        return [
-          { bizType: "在读证明", starter: "张三", currentNode: "辅导员审批", status: "RUNNING", startedAt: "2024-03-28", finishedAt: "" },
-          { bizType: "请假申请", starter: "李四", currentNode: "已完成", status: "COMPLETED", startedAt: "2024-03-27", finishedAt: "2024-03-28" },
-          { bizType: "成绩单申请", starter: "王五", currentNode: "教务处审批", status: "RUNNING", startedAt: "2024-03-26", finishedAt: "" },
-          { bizType: "在读证明", starter: "赵六", currentNode: "已驳回", status: "REJECTED", startedAt: "2024-03-25", finishedAt: "2024-03-26" }
-        ];
-      }
-
-      function saveLocal(list) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(list || []));
-      }
-
       function svgIcon(type) {
         const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" };
         if (type === "search") {
@@ -6478,13 +6586,14 @@
 
       function statusPill(status) {
         const s = String(status || "").toUpperCase();
-        if (s === "COMPLETED") return el("span", { class: "instStatusPill done", text: "已完成" });
+        if (s === "APPROVED") return el("span", { class: "instStatusPill done", text: "已完成" });
         if (s === "REJECTED") return el("span", { class: "instStatusPill rejected", text: "已驳回" });
+        if (s === "CANCELED") return el("span", { class: "instStatusPill rejected", text: "已取消" });
         return el("span", { class: "instStatusPill running", text: "进行中" });
       }
 
-      let items = loadLocal();
-      saveLocal(items);
+      let items = [];
+      let approvalStatusByBizId = new Map();
 
       const header = el("div", { class: "pageHeader" }, [
         el("div", null, [
@@ -6499,9 +6608,10 @@
       const bizSelect = el("select", { class: "instSelect" }, [el("option", { value: "", text: "全部业务类型" })]);
       const statusSelect = el("select", { class: "instSelect" }, [
         el("option", { value: "", text: "全部状态" }),
-        el("option", { value: "RUNNING", text: "进行中" }),
-        el("option", { value: "COMPLETED", text: "已完成" }),
-        el("option", { value: "REJECTED", text: "已驳回" })
+        el("option", { value: "running", text: "进行中" }),
+        el("option", { value: "approved", text: "已完成" }),
+        el("option", { value: "rejected", text: "已驳回" }),
+        el("option", { value: "canceled", text: "已取消" })
       ]);
       const filterBtn = el("button", { class: "instFilterBtn", type: "button" }, [svgIcon("filter"), el("span", { text: "筛选" })]);
 
@@ -6517,21 +6627,44 @@
 
       function rebuildBizOptions(source) {
         const old = bizSelect.value;
-        const opts = Array.from(new Set((source || []).map(x => x.bizType).filter(Boolean))).sort();
+        const opts = Array.from(new Set((source || []).map(x => x.businessType).filter(Boolean))).sort();
         bizSelect.innerHTML = "";
         bizSelect.appendChild(el("option", { value: "", text: "全部业务类型" }));
         opts.forEach(v => bizSelect.appendChild(el("option", { value: v, text: v })));
         bizSelect.value = old;
       }
 
+      function resolveCurrentNodeText(item) {
+        const st = String(item.status || "").toLowerCase();
+        if (st === "approved") return "已完成";
+        if (st === "rejected") return "已驳回";
+        if (st === "canceled") return "已取消";
+        if (st !== "running") return "进行中";
+        const bizId = item.businessId;
+        const approvalStatus = bizId == null ? null : approvalStatusByBizId.get(String(bizId));
+        if (approvalStatus) {
+          const u = String(approvalStatus).toUpperCase();
+          if (u === "PENDING") return "辅导员审批";
+          if (u === "COUNSELOR_APPROVED") {
+            const code = String(item.wfCode || "");
+            return code === "AFFAIR_PARTY_IDENTITY_CERT" ? "学院党务终审" : "教务处审批";
+          }
+        }
+        return "进行中";
+      }
+
       function openDetail(item) {
         const rows = [
-          ["业务类型", item.bizType || "-"],
-          ["发起人", item.starter || "-"],
-          ["当前节点", item.currentNode || "-"],
-          ["状态", String(item.status || "").toUpperCase() === "COMPLETED" ? "已完成" : String(item.status || "").toUpperCase() === "REJECTED" ? "已驳回" : "进行中"],
-          ["开始时间", item.startedAt || "-"],
-          ["结束时间", item.finishedAt || "-"]
+          ["实例ID", String(item.id ?? "-")],
+          ["流程编码", item.wfCode || "-"],
+          ["流程名称", item.wfName || "-"],
+          ["业务类型", item.businessType || "-"],
+          ["业务ID", String(item.businessId ?? "-")],
+          ["发起人", item.startedByName || "-"],
+          ["当前节点", resolveCurrentNodeText(item)],
+          ["状态", String(item.status || "").toLowerCase() === "approved" ? "已完成" : String(item.status || "").toLowerCase() === "rejected" ? "已驳回" : String(item.status || "").toLowerCase() === "canceled" ? "已取消" : "进行中"],
+          ["开始时间", formatDateTimeText(item.startedAt)],
+          ["结束时间", item.endedAt ? formatDateTimeText(item.endedAt) : "-"]
         ];
         const body = el("div", { style: "display:grid; gap: 10px;" }, rows.map(([k, v]) => {
           return el("div", { style: "display:flex; gap: 10px; align-items:flex-start;" }, [
@@ -6559,17 +6692,17 @@
         ])]));
         const tbody = el("tbody", null, []);
         (list || []).forEach(it => {
-          const nodeEl = el("span", { class: "instNodeLink", text: it.currentNode || "-" });
+          const nodeEl = el("span", { class: "instNodeLink", text: resolveCurrentNodeText(it) });
           nodeEl.addEventListener("click", () => openDetail(it));
           const viewBtn = el("div", { class: "instViewLink" }, [svgIcon("eye"), el("span", { text: "查看详情" })]);
           viewBtn.addEventListener("click", () => openDetail(it));
           tbody.appendChild(el("tr", null, [
-            el("td", null, [el("div", { text: it.bizType || "-" })]),
-            el("td", null, [el("div", { text: it.starter || "-" })]),
+            el("td", null, [el("div", { text: it.wfName || it.wfCode || "-" })]),
+            el("td", null, [el("div", { text: it.startedByName || "-" })]),
             el("td", null, [nodeEl]),
             el("td", null, [statusPill(it.status)]),
-            el("td", null, [el("div", { class: "mono", text: it.startedAt || "-" })]),
-            el("td", null, [el("div", { class: "mono", text: it.finishedAt || "-" })]),
+            el("td", null, [el("div", { class: "mono", text: formatDateTimeText(it.startedAt) })]),
+            el("td", null, [el("div", { class: "mono", text: it.endedAt ? formatDateTimeText(it.endedAt) : "-" })]),
             el("td", null, [el("div", { style: "display:flex; justify-content:flex-end;" }, [viewBtn])])
           ]));
         });
@@ -6577,26 +6710,46 @@
         tableCard.appendChild(table);
       }
 
-      function applyFilter() {
-        const kw = searchInput.value.trim();
-        const biz = bizSelect.value;
-        const st = statusSelect.value;
-        const filtered = items
-          .filter(x => !kw || String(x.starter || "").includes(kw))
-          .filter(x => !biz || String(x.bizType || "") === String(biz))
-          .filter(x => !st || String(x.status || "").toUpperCase() === String(st).toUpperCase());
-        render(filtered);
+      async function reload() {
+        toast.textContent = "";
+        tableCard.innerHTML = "";
+        tableCard.appendChild(el("div", { text: "加载中..." }));
+        try {
+          const approvals = await apiJson("/api/v1/admin/approvals/page?" + buildQuery({ page: 0, size: 200 })).catch(() => null);
+          approvalStatusByBizId = new Map();
+          if (approvals && approvals.content) {
+            approvals.content.forEach(t => {
+              if (t && t.requestId != null) {
+                approvalStatusByBizId.set(String(t.requestId), t.status);
+              }
+            });
+          }
+          const params = {
+            startedByKeyword: normalizeText(searchInput.value),
+            businessType: normalizeText(bizSelect.value),
+            status: normalizeText(statusSelect.value),
+            page: 0,
+            size: 100
+          };
+          const pageData = await apiJson("/api/v1/admin/workflow-instances/page?" + buildQuery(params));
+          items = pageData && pageData.content ? pageData.content : [];
+          rebuildBizOptions(items);
+          render(items);
+        } catch (e) {
+          toast.textContent = e.message;
+          items = [];
+          render([]);
+        }
       }
 
-      rebuildBizOptions(items);
-      filterBtn.addEventListener("click", applyFilter);
+      filterBtn.addEventListener("click", reload);
       searchInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") applyFilter();
+        if (e.key === "Enter") reload();
       });
-      bizSelect.addEventListener("change", applyFilter);
-      statusSelect.addEventListener("change", applyFilter);
+      bizSelect.addEventListener("change", reload);
+      statusSelect.addEventListener("change", reload);
 
-      render(items);
+      await reload();
     }
 
     async function loadAcademicProgramsPage(state) {
@@ -7284,33 +7437,6 @@
       const content = document.getElementById("content");
       content.innerHTML = "";
 
-      const STORAGE_KEY = "ssp_party_reminder_tasks_demo";
-
-      function tryParseJson(raw, fallback) {
-        try {
-          const obj = JSON.parse(raw);
-          return obj == null ? fallback : obj;
-        } catch (e) {
-          return fallback;
-        }
-      }
-
-      function loadLocal() {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        const list = tryParseJson(raw, null);
-        if (Array.isArray(list) && list.length) return list;
-        return [
-          { id: 1, student: "张三", content: "入党积极分子培训即将开始", channel: "SMS", status: "PENDING", scheduledAt: "2024-03-29 09:00", failReason: "" },
-          { id: 2, student: "李四", content: "党校培训即将截止报名", channel: "EMAIL", status: "SENT", scheduledAt: "2024-03-28 10:00", failReason: "" },
-          { id: 3, student: "王五", content: "预备党员转正材料准备", channel: "SMS", status: "FAILED", scheduledAt: "2024-03-28 08:00", failReason: "用户未绑定定位" },
-          { id: 4, student: "赵六", content: "入党申请书提交提醒", channel: "SITE", status: "SENT", scheduledAt: "2024-03-27 14:00", failReason: "" }
-        ];
-      }
-
-      function saveLocal(list) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(list || []));
-      }
-
       function svgIcon(type) {
         const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" };
         if (type === "send") {
@@ -7334,21 +7460,22 @@
       }
 
       function channelPill(ch) {
-        const v = String(ch || "").toUpperCase();
-        if (v === "SMS") return el("span", { class: "remindChannelPill sms", text: "短信" });
-        if (v === "EMAIL") return el("span", { class: "remindChannelPill email", text: "邮件" });
-        return el("span", { class: "remindChannelPill site", text: "站内信" });
+        const v = String(ch || "").toLowerCase();
+        if (v === "sms") return el("span", { class: "remindChannelPill sms", text: "短信" });
+        if (v === "email") return el("span", { class: "remindChannelPill email", text: "邮件" });
+        if (v === "miniprogram") return el("span", { class: "remindChannelPill site", text: "小程序" });
+        return el("span", { class: "remindChannelPill site", text: v || "未知" });
       }
 
       function statusPill(st) {
-        const v = String(st || "").toUpperCase();
-        if (v === "SENT") return el("span", { class: "remindStatusPill sent", text: "已发送" });
-        if (v === "FAILED") return el("span", { class: "remindStatusPill failed", text: "发送失败" });
+        const v = String(st || "").toLowerCase();
+        if (v === "sent") return el("span", { class: "remindStatusPill sent", text: "已发送" });
+        if (v === "failed") return el("span", { class: "remindStatusPill failed", text: "发送失败" });
+        if (v === "canceled") return el("span", { class: "remindStatusPill failed", text: "已取消" });
         return el("span", { class: "remindStatusPill pending", text: "待发送" });
       }
 
-      let items = loadLocal();
-      saveLocal(items);
+      let items = [];
 
       const header = el("div", { class: "pageHeader" }, [
         el("div", null, [
@@ -7362,20 +7489,22 @@
 
       const channelSelect = el("select", { class: "instSelect" }, [
         el("option", { value: "", text: "全部渠道" }),
-        el("option", { value: "SMS", text: "短信" }),
-        el("option", { value: "EMAIL", text: "邮件" }),
-        el("option", { value: "SITE", text: "站内信" })
+        el("option", { value: "miniprogram", text: "小程序" }),
+        el("option", { value: "sms", text: "短信" }),
+        el("option", { value: "email", text: "邮件" })
       ]);
       const statusSelect = el("select", { class: "instSelect" }, [
         el("option", { value: "", text: "全部状态" }),
-        el("option", { value: "PENDING", text: "待发送" }),
-        el("option", { value: "SENT", text: "已发送" }),
-        el("option", { value: "FAILED", text: "发送失败" })
+        el("option", { value: "pending", text: "待发送" }),
+        el("option", { value: "sent", text: "已发送" }),
+        el("option", { value: "failed", text: "发送失败" }),
+        el("option", { value: "canceled", text: "已取消" })
       ]);
+      const studentInput = el("input", { placeholder: "搜索学生姓名/学号" });
       const filterBtn = el("button", { class: "instFilterBtn", type: "button" }, [svgIcon("filter"), el("span", { text: "筛选" })]);
 
       const filterCard = el("div", { class: "card" }, [
-        el("div", { class: "instFilterBar" }, [channelSelect, statusSelect, filterBtn])
+        el("div", { class: "instFilterBar" }, [studentInput, channelSelect, statusSelect, filterBtn])
       ]);
 
       const tableCard = el("div", { class: "card certTableCard", style: "margin-top: 12px;" }, []);
@@ -7401,49 +7530,69 @@
         const tbody = el("tbody", null, []);
         (list || []).forEach(it => {
           const actions = el("div", { class: "certActions" }, []);
-          const st = String(it.status || "").toUpperCase();
-          if (st === "PENDING") {
+          const st = String(it.status || "").toLowerCase();
+          if (st === "pending") {
             const sendBtn = el("button", { class: "certIconBtn green", type: "button", title: "发送" }, [svgIcon("send")]);
             const delBtn = el("button", { class: "certIconBtn red", type: "button", title: "删除" }, [svgIcon("x")]);
-            sendBtn.addEventListener("click", () => {
-              it.status = "SENT";
-              it.failReason = "";
-              items = items.map(x => x.id === it.id ? it : x);
-              saveLocal(items);
-              applyFilter();
-              toast.textContent = "已发送";
+            sendBtn.addEventListener("click", async () => {
+              toast.textContent = "";
+              try {
+                await apiJson("/api/v1/admin/party-reminders/" + it.id + "/send", { method: "POST" });
+                toast.textContent = "已发送";
+                await reload();
+              } catch (e) {
+                toast.textContent = e.message;
+              }
             });
-            delBtn.addEventListener("click", () => {
-              items = items.filter(x => x.id !== it.id);
-              saveLocal(items);
-              applyFilter();
-              toast.textContent = "已删除";
+            delBtn.addEventListener("click", async () => {
+              toast.textContent = "";
+              try {
+                await apiJson("/api/v1/admin/party-reminders/" + it.id + "/cancel", { method: "POST" });
+                toast.textContent = "已取消";
+                await reload();
+              } catch (e) {
+                toast.textContent = e.message;
+              }
             });
             actions.appendChild(sendBtn);
             actions.appendChild(delBtn);
-          } else if (st === "FAILED") {
+          } else if (st === "failed") {
             const retryBtn = el("div", { class: "instViewLink" }, [el("span", { text: "重发" })]);
-            retryBtn.addEventListener("click", () => {
-              it.status = "SENT";
-              it.failReason = "";
-              items = items.map(x => x.id === it.id ? it : x);
-              saveLocal(items);
-              applyFilter();
-              toast.textContent = "已重发";
+            const cancelBtn = el("div", { class: "instViewLink" }, [el("span", { text: "取消" })]);
+            retryBtn.addEventListener("click", async () => {
+              toast.textContent = "";
+              try {
+                await apiJson("/api/v1/admin/party-reminders/" + it.id + "/resend", { method: "POST" });
+                toast.textContent = "已重发";
+                await reload();
+              } catch (e) {
+                toast.textContent = e.message;
+              }
+            });
+            cancelBtn.addEventListener("click", async () => {
+              toast.textContent = "";
+              try {
+                await apiJson("/api/v1/admin/party-reminders/" + it.id + "/cancel", { method: "POST" });
+                toast.textContent = "已取消";
+                await reload();
+              } catch (e) {
+                toast.textContent = e.message;
+              }
             });
             actions.appendChild(retryBtn);
+            actions.appendChild(cancelBtn);
           } else {
             actions.appendChild(el("div", { class: "mono", text: "-" }));
           }
 
-          const trClass = st === "FAILED" ? "rowFail" : "";
+          const trClass = st === "failed" ? "rowFail" : "";
           tbody.appendChild(el("tr", trClass ? { class: trClass } : null, [
-            el("td", null, [el("div", { text: it.student || "-" })]),
-            el("td", null, [el("div", { text: it.content || "-" })]),
+            el("td", null, [el("div", { text: (it.studentName || "-") + (it.studentNo ? ("（" + it.studentNo + "）") : "") })]),
+            el("td", null, [el("div", { text: it.nodeName || "-" })]),
             el("td", null, [channelPill(it.channel)]),
             el("td", null, [statusPill(it.status)]),
-            el("td", null, [el("div", { class: "mono", text: it.scheduledAt || "-" })]),
-            el("td", null, [el("div", { style: "color:" + (st === "FAILED" ? "#b91c1c" : "#94a3b8") + "; font-weight: 750;", text: it.failReason || "-" })]),
+            el("td", null, [el("div", { class: "mono", text: formatDateTimeText(it.dueAt) })]),
+            el("td", null, [el("div", { style: "color:" + (st === "failed" ? "#b91c1c" : "#94a3b8") + "; font-weight: 750;", text: it.errorMessage || "-" })]),
             el("td", null, [actions])
           ]));
         });
@@ -7451,31 +7600,60 @@
         tableCard.appendChild(table);
       }
 
-      function applyFilter() {
-        const ch = channelSelect.value;
-        const st = statusSelect.value;
-        const filtered = items
-          .filter(x => !ch || String(x.channel || "").toUpperCase() === String(ch).toUpperCase())
-          .filter(x => !st || String(x.status || "").toUpperCase() === String(st).toUpperCase());
-        render(filtered);
+      async function reload() {
+        toast.textContent = "";
+        tableCard.innerHTML = "";
+        tableCard.appendChild(el("div", { text: "加载中..." }));
+        try {
+          const params = {
+            studentKeyword: normalizeText(studentInput.value),
+            channel: normalizeText(channelSelect.value),
+            status: normalizeText(statusSelect.value),
+            page: 0,
+            size: 100
+          };
+          const pageData = await apiJson("/api/v1/admin/party-reminders/page?" + buildQuery(params));
+          items = pageData && pageData.content ? pageData.content : [];
+          render(items);
+        } catch (e) {
+          toast.textContent = e.message;
+          items = [];
+          render([]);
+        }
       }
 
-      header.querySelector("button").addEventListener("click", () => {
-        const pending = items.filter(x => String(x.status || "").toUpperCase() === "PENDING");
-        if (!pending.length) {
-          toast.textContent = "暂无待发送任务";
-          return;
+      header.querySelector("button").addEventListener("click", async () => {
+        toast.textContent = "";
+        if (!confirm("确认批量发送当前筛选条件下的待发送任务？")) return;
+        try {
+          await reload();
+          const pending = items.filter(x => String(x.status || "").toLowerCase() === "pending");
+          if (!pending.length) {
+            toast.textContent = "暂无待发送任务";
+            return;
+          }
+          let ok = 0;
+          let fail = 0;
+          for (const t of pending) {
+            try {
+              await apiJson("/api/v1/admin/party-reminders/" + t.id + "/send", { method: "POST" });
+              ok += 1;
+            } catch (e) {
+              fail += 1;
+            }
+          }
+          toast.textContent = fail ? ("批量发送完成：成功 " + ok + " 条，失败 " + fail + " 条") : ("已批量发送 " + ok + " 条");
+          await reload();
+        } catch (e) {
+          toast.textContent = e.message;
         }
-        items = items.map(x => (String(x.status || "").toUpperCase() === "PENDING") ? Object.assign({}, x, { status: "SENT", failReason: "" }) : x);
-        saveLocal(items);
-        applyFilter();
-        toast.textContent = "已批量发送";
       });
 
-      filterBtn.addEventListener("click", applyFilter);
-      channelSelect.addEventListener("change", applyFilter);
-      statusSelect.addEventListener("change", applyFilter);
-      applyFilter();
+      filterBtn.addEventListener("click", reload);
+      studentInput.addEventListener("keydown", (e) => { if (e.key === "Enter") reload(); });
+      channelSelect.addEventListener("change", reload);
+      statusSelect.addEventListener("change", reload);
+      await reload();
     }
 
     async function loadPartyProgressOverviewPage(state) {
@@ -7498,10 +7676,11 @@
         const raw = localStorage.getItem(STORAGE_KEY);
         const list = tryParseJson(raw, null);
         if (Array.isArray(list) && list.length) return list;
+        const year = new Date().getFullYear();
         return [
-          { id: 1, studentNo: "2023001", name: "张三", className: "计算机1班", flow: "入党流程", currentNode: "入党积极分子", progress: 40, status: "OK", deadline: "2024-09-15" },
-          { id: 2, studentNo: "2023002", name: "李四", className: "软件工程2班", flow: "入党流程", currentNode: "党校培训", progress: 60, status: "OK", deadline: "2024-12-20" },
-          { id: 3, studentNo: "2022015", name: "王五", className: "人工智能1班", flow: "党员转正流程", currentNode: "预备党员", progress: 80, status: "SOON", deadline: "2024-04-05" },
+          { id: 1, studentNo: "2023001", name: "张三", className: "计算机1班", flow: "入党流程", currentNode: "入党积极分子", progress: 40, status: "OK", deadline: year + "-09-15" },
+          { id: 2, studentNo: "2023002", name: "李四", className: "软件工程2班", flow: "入党流程", currentNode: "党校培训", progress: 60, status: "OK", deadline: year + "-12-20" },
+          { id: 3, studentNo: "2022015", name: "王五", className: "人工智能1班", flow: "党员转正流程", currentNode: "预备党员", progress: 80, status: "SOON", deadline: year + "-04-05" },
           { id: 4, studentNo: "2023045", name: "赵六", className: "大数据1班", flow: "入党流程", currentNode: "入党积极分子", progress: 40, status: "PAUSED", deadline: "" }
         ];
       }
@@ -7582,7 +7761,9 @@
         el("option", { value: "", text: "全部年级" }),
         el("option", { value: "2022", text: "2022级" }),
         el("option", { value: "2023", text: "2023级" }),
-        el("option", { value: "2024", text: "2024级" })
+        el("option", { value: "2024", text: "2024级" }),
+        el("option", { value: "2025", text: "2025级" }),
+        el("option", { value: "2026", text: "2026级" })
       ]);
       const filterBtn = el("button", { class: "instFilterBtn", type: "button" }, [svgIcon("filter"), el("span", { text: "筛选" })]);
 

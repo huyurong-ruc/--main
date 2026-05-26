@@ -398,6 +398,32 @@ public class AdminService implements AdminApplicationService {
         writeOperationLog("KNOWLEDGE", "DELETE", item.getTitle(), "SUCCESS", null);
     }
 
+    public String getKnowledgeContent(Long id) {
+        if (isKingbaseProfile()) {
+            LatestKnowledgePolicy item = latestKnowledgePolicyRepository.findById(id)
+                    .filter(row -> row.getIsDeleted() != null && row.getIsDeleted() == 0)
+                    .orElseThrow(() -> new BusinessException("知识条目不存在"));
+            return item.getContent();
+        }
+        KnowledgeDocument item = knowledgeDocumentRepository.findById(id)
+                .filter(row -> row.getDeleted() == null || !row.getDeleted())
+                .orElseThrow(() -> new BusinessException("知识条目不存在"));
+        return item.getContent();
+    }
+
+    public String getKnowledgeSummary(Long id) {
+        if (isKingbaseProfile()) {
+            LatestKnowledgePolicy item = latestKnowledgePolicyRepository.findById(id)
+                    .filter(row -> row.getIsDeleted() != null && row.getIsDeleted() == 0)
+                    .orElseThrow(() -> new BusinessException("知识条目不存在"));
+            return item.getSummary();
+        }
+        KnowledgeDocument item = knowledgeDocumentRepository.findById(id)
+                .filter(row -> row.getDeleted() == null || !row.getDeleted())
+                .orElseThrow(() -> new BusinessException("知识条目不存在"));
+        return item.getSummary();
+    }
+
     @Override
     public List<KnowledgeAttachmentResponse> listKnowledgeAttachments(Long knowledgeId) {
         if (isKingbaseProfile()) {
@@ -1329,6 +1355,9 @@ public class AdminService implements AdminApplicationService {
         item.setTitle(request.title());
         item.setCategory(request.category());
         item.setTags(request.tags());
+        item.setSummary(QueryFilterSupport.trimToNull(request.summary()) != null
+                ? request.summary().trim()
+                : buildKnowledgeSummary(request.content()));
         item.setContent(request.content());
         item.setOfficialUrl(request.officialUrl());
         item.setSourceFileName(request.sourceFileName());
@@ -1654,7 +1683,9 @@ public class AdminService implements AdminApplicationService {
                                              AdminKnowledgeUpsertRequest request,
                                              AuthenticatedUser user) {
         item.setTitle(request.title());
-        item.setSummary(buildKnowledgeSummary(request.content()));
+        item.setSummary(QueryFilterSupport.trimToNull(request.summary()) != null
+                ? request.summary().trim()
+                : buildKnowledgeSummary(request.content()));
         item.setContent(request.content());
         item.setSourceType(request.sourceFileName() == null || request.sourceFileName().isBlank() ? "manual" : "import");
         item.setSourceUrl(request.officialUrl());
@@ -1675,6 +1706,7 @@ public class AdminService implements AdminApplicationService {
     private String buildLatestKnowledgeMetaJson(AdminKnowledgeUpsertRequest request) {
         Map<String, String> meta = new java.util.LinkedHashMap<>();
         meta.put("category", request.category());
+        meta.put("tags", request.tags());
         meta.put("sourceFileName", request.sourceFileName());
         meta.put("audienceScope", request.audienceScope());
         meta.put("updatedBy", request.updatedBy());
@@ -2529,6 +2561,158 @@ public class AdminService implements AdminApplicationService {
                         || QueryFilterSupport.containsIgnoreCase(item.errorMessage(), normalizedKeyword)
                         || QueryFilterSupport.containsIgnoreCase(item.rawValue(), normalizedKeyword))
                 .toList();
+    }
+
+    @Override
+    public List<edu.ruc.platform.admin.dto.RoleResponse> listRoles() {
+        return List.of();
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.RoleResponse getRole(Long id) {
+        throw new BusinessException("未实现：角色详情");
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.RoleResponse createRole(edu.ruc.platform.admin.dto.RoleUpsertRequest request) {
+        throw new BusinessException("未实现：创建角色");
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.RoleResponse updateRole(Long id, edu.ruc.platform.admin.dto.RoleUpsertRequest request) {
+        throw new BusinessException("未实现：更新角色");
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.RoleResponse copyRole(Long id) {
+        throw new BusinessException("未实现：复制角色");
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.RoleResponse toggleRole(Long id) {
+        throw new BusinessException("未实现：启用/停用角色");
+    }
+
+    @Override
+    public void deleteRole(Long id) {
+        throw new BusinessException("未实现：删除角色");
+    }
+
+    @Override
+    public List<edu.ruc.platform.admin.dto.WorkflowInstanceResponse> listWorkflowInstances(edu.ruc.platform.admin.dto.WorkflowInstanceFilterRequest request) {
+        return List.of();
+    }
+
+    @Override
+    public PageResponse<edu.ruc.platform.admin.dto.WorkflowInstanceResponse> pageWorkflowInstances(edu.ruc.platform.admin.dto.WorkflowInstanceFilterRequest request,
+                                                                                                  int page,
+                                                                                                  int size) {
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = Math.max(size, 1);
+        return new PageResponse<>(List.of(), 0, 0, normalizedPage, normalizedSize);
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.WorkflowInstanceResponse getWorkflowInstance(Long id) {
+        throw new BusinessException("未实现：流程实例详情");
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.WorkflowInstanceResponse cancelWorkflowInstance(Long id) {
+        throw new BusinessException("未实现：撤销流程实例");
+    }
+
+    @Override
+    public List<edu.ruc.platform.admin.dto.CourseResponse> listCourses(String keyword, String courseType) {
+        return List.of();
+    }
+
+    @Override
+    public PageResponse<edu.ruc.platform.admin.dto.CourseResponse> pageCourses(String keyword, String courseType, int page, int size) {
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = Math.max(size, 1);
+        return new PageResponse<>(List.of(), 0, 0, normalizedPage, normalizedSize);
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.CourseResponse getCourse(Long id) {
+        throw new BusinessException("未实现：课程详情");
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.CourseResponse createCourse(edu.ruc.platform.admin.dto.CourseUpsertRequest request) {
+        throw new BusinessException("未实现：创建课程");
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.CourseResponse updateCourse(Long id, edu.ruc.platform.admin.dto.CourseUpsertRequest request) {
+        throw new BusinessException("未实现：更新课程");
+    }
+
+    @Override
+    public void deleteCourse(Long id) {
+        throw new BusinessException("未实现：删除课程");
+    }
+
+    @Override
+    public List<edu.ruc.platform.admin.dto.TermCourseResponse> listTermCourses(String termCode, String keyword) {
+        return List.of();
+    }
+
+    @Override
+    public PageResponse<edu.ruc.platform.admin.dto.TermCourseResponse> pageTermCourses(String termCode, String keyword, int page, int size) {
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = Math.max(size, 1);
+        return new PageResponse<>(List.of(), 0, 0, normalizedPage, normalizedSize);
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.TermCourseResponse getTermCourse(Long id) {
+        throw new BusinessException("未实现：开课详情");
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.TermCourseResponse createTermCourse(edu.ruc.platform.admin.dto.TermCourseUpsertRequest request) {
+        throw new BusinessException("未实现：创建开课");
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.TermCourseResponse updateTermCourse(Long id, edu.ruc.platform.admin.dto.TermCourseUpsertRequest request) {
+        throw new BusinessException("未实现：更新开课");
+    }
+
+    @Override
+    public void deleteTermCourse(Long id) {
+        throw new BusinessException("未实现：删除开课");
+    }
+
+    @Override
+    public List<edu.ruc.platform.admin.dto.PartyReminderTaskResponse> listPartyReminderTasks(edu.ruc.platform.admin.dto.PartyReminderTaskFilterRequest request) {
+        return List.of();
+    }
+
+    @Override
+    public PageResponse<edu.ruc.platform.admin.dto.PartyReminderTaskResponse> pagePartyReminderTasks(edu.ruc.platform.admin.dto.PartyReminderTaskFilterRequest request,
+                                                                                                    int page,
+                                                                                                    int size) {
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = Math.max(size, 1);
+        return new PageResponse<>(List.of(), 0, 0, normalizedPage, normalizedSize);
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.PartyReminderTaskResponse sendPartyReminder(Long id) {
+        throw new BusinessException("未实现：发送党团提醒");
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.PartyReminderTaskResponse resendPartyReminder(Long id) {
+        throw new BusinessException("未实现：重新发送党团提醒");
+    }
+
+    @Override
+    public edu.ruc.platform.admin.dto.PartyReminderTaskResponse cancelPartyReminder(Long id) {
+        throw new BusinessException("未实现：取消党团提醒");
     }
 
     private Long parseLong(Object value) {

@@ -7,9 +7,12 @@ import edu.ruc.platform.admin.dto.AdminKnowledgeStatsResponse;
 import edu.ruc.platform.admin.dto.AdminKnowledgeUpsertRequest;
 import edu.ruc.platform.admin.dto.KnowledgeAttachmentResponse;
 import edu.ruc.platform.admin.service.AdminApplicationService;
+import edu.ruc.platform.admin.service.AdminService;
+import edu.ruc.platform.admin.service.MockAdminService;
 import edu.ruc.platform.common.api.ApiResponse;
 import edu.ruc.platform.common.api.PageResponse;
 import edu.ruc.platform.common.enums.RoleType;
+import edu.ruc.platform.common.exception.BusinessException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -36,6 +40,23 @@ public class AdminKnowledgeController {
 
     private final AdminApplicationService adminService;
     private final CurrentUserService currentUserService;
+
+    record AdminKnowledgeDetailResponse(
+            Long id,
+            String title,
+            String category,
+            String tags,
+            String summary,
+            String content,
+            String officialUrl,
+            String sourceFileName,
+            String audienceScope,
+            String updatedBy,
+            boolean published,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt
+    ) {
+    }
 
     @GetMapping
     public ApiResponse<List<AdminKnowledgeItemResponse>> list() {
@@ -65,6 +86,39 @@ public class AdminKnowledgeController {
         return ApiResponse.success(adminService.knowledgeStats(
                 currentUserService.requireAnyRole(RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR, RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY),
                 new AdminKnowledgeFilterRequest(keyword, category, published)
+        ));
+    }
+
+    @GetMapping("/{id}/detail")
+    public ApiResponse<AdminKnowledgeDetailResponse> detail(@Positive(message = "知识条目ID必须大于 0") @PathVariable Long id) {
+        var user = currentUserService.requireAnyRole(RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR, RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY);
+        AdminKnowledgeItemResponse meta = adminService.listKnowledgeItems(user).stream()
+                .filter(item -> item != null && item.id() != null && item.id().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("知识条目不存在"));
+        String content = null;
+        String summary = null;
+        if (adminService instanceof MockAdminService mock) {
+            content = mock.getKnowledgeContent(id);
+            summary = mock.getKnowledgeSummary(id);
+        } else if (adminService instanceof AdminService svc) {
+            content = svc.getKnowledgeContent(id);
+            summary = svc.getKnowledgeSummary(id);
+        }
+        return ApiResponse.success(new AdminKnowledgeDetailResponse(
+                meta.id(),
+                meta.title(),
+                meta.category(),
+                meta.tags(),
+                summary,
+                content,
+                meta.officialUrl(),
+                meta.sourceFileName(),
+                meta.audienceScope(),
+                meta.updatedBy(),
+                meta.published(),
+                meta.createdAt(),
+                meta.updatedAt()
         ));
     }
 

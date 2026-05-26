@@ -97,6 +97,7 @@ public class MockAdminService implements AdminApplicationService {
             new KnowledgeAttachmentResponse(51L, 101L, "party-process.pdf", "application/pdf", 1024L, "/uploads/knowledge/101/party-process.pdf", "胡浩老师", LocalDateTime.of(2026, 3, 22, 11, 0))
     ));
     private final Map<Long, String> knowledgeContents = new HashMap<>();
+    private final Map<Long, String> knowledgeSummaries = new HashMap<>();
     private final List<DataImportErrorItemResponse> importErrors = new ArrayList<>(List.of(
             new DataImportErrorItemResponse(81L, 2L, 7, "title", "标题为空", null, LocalDateTime.of(2026, 3, 23, 9, 5)),
             new DataImportErrorItemResponse(82L, 2L, 12, "officialUrl", "URL 格式不合法", "htp://bad-url", LocalDateTime.of(2026, 3, 23, 9, 6))
@@ -116,6 +117,7 @@ public class MockAdminService implements AdminApplicationService {
         public List<AdminKnowledgeItemResponse> knowledgeItems;
         public List<KnowledgeAttachmentResponse> knowledgeAttachments;
         public Map<Long, String> knowledgeContents;
+        public Map<Long, String> knowledgeSummaries;
     }
 
     private static boolean isTestRuntime() {
@@ -174,6 +176,10 @@ public class MockAdminService implements AdminApplicationService {
                 knowledgeContents.clear();
                 knowledgeContents.putAll(state.knowledgeContents);
             }
+            if (state.knowledgeSummaries != null) {
+                knowledgeSummaries.clear();
+                knowledgeSummaries.putAll(state.knowledgeSummaries);
+            }
             long maxNoticeId = notices.stream().mapToLong(TargetedNoticeResponse::id).max().orElse(10L);
             long maxKnowledgeId = knowledgeItems.stream().mapToLong(AdminKnowledgeItemResponse::id).max().orElse(200L);
             long maxAttachmentId = knowledgeAttachments.stream().mapToLong(KnowledgeAttachmentResponse::id).max().orElse(50L);
@@ -195,9 +201,39 @@ public class MockAdminService implements AdminApplicationService {
             state.knowledgeItems = List.copyOf(knowledgeItems);
             state.knowledgeAttachments = List.copyOf(knowledgeAttachments);
             state.knowledgeContents = Map.copyOf(knowledgeContents);
+            state.knowledgeSummaries = Map.copyOf(knowledgeSummaries);
             stateMapper.writeValue(persistedStatePath.toFile(), state);
         } catch (Exception ignored) {
         }
+    }
+
+    public String getKnowledgeContent(Long id) {
+        ensureStateLoaded();
+        initializeKnowledgeItems();
+        return knowledgeContents.get(id);
+    }
+
+    public String getKnowledgeSummary(Long id) {
+        ensureStateLoaded();
+        initializeKnowledgeItems();
+        String summary = QueryFilterSupport.trimToNull(knowledgeSummaries.get(id));
+        if (summary != null) {
+            return summary;
+        }
+        String content = QueryFilterSupport.trimToNull(knowledgeContents.get(id));
+        return content == null ? null : buildSummary(content);
+    }
+
+    private String buildSummary(String content) {
+        String normalized = QueryFilterSupport.trimToNull(content);
+        if (normalized == null) {
+            return null;
+        }
+        String oneLine = normalized.replace("\r", "\n").replace("\n", " ").replaceAll("\\s+", " ").trim();
+        if (oneLine.length() <= 80) {
+            return oneLine;
+        }
+        return oneLine.substring(0, 80);
     }
 
     @Override
@@ -430,6 +466,8 @@ public class MockAdminService implements AdminApplicationService {
         );
         knowledgeItems.add(0, response);
         knowledgeContents.put(response.id(), request.content());
+        String summary = QueryFilterSupport.trimToNull(request.summary());
+        knowledgeSummaries.put(response.id(), summary == null ? buildSummary(request.content()) : summary.trim());
         writeOperationLog("KNOWLEDGE", "CREATE", response.title(), "SUCCESS", response.sourceFileName());
         persistState();
         return response;
@@ -462,6 +500,8 @@ public class MockAdminService implements AdminApplicationService {
                 );
                 knowledgeItems.set(i, updated);
                 knowledgeContents.put(id, request.content());
+                String summary = QueryFilterSupport.trimToNull(request.summary());
+                knowledgeSummaries.put(id, summary == null ? buildSummary(request.content()) : summary.trim());
                 writeOperationLog("KNOWLEDGE", "UPDATE", updated.title(), "SUCCESS", updated.sourceFileName());
                 persistState();
                 return updated;
@@ -481,6 +521,7 @@ public class MockAdminService implements AdminApplicationService {
         knowledgeItems.removeIf(item -> item.id().equals(id));
         knowledgeAttachments.removeIf(item -> item.knowledgeId().equals(id));
         knowledgeContents.remove(id);
+        knowledgeSummaries.remove(id);
         writeOperationLog("KNOWLEDGE", "DELETE", "knowledge#" + id, "SUCCESS", null);
         persistState();
     }
@@ -1175,15 +1216,20 @@ public class MockAdminService implements AdminApplicationService {
             return;
         }
         workflowDefinitions.addAll(List.of(
-                new WorkflowDefinitionResponse(1L, "AFFAIR_READ_CERT", "在读证明申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2023, 9, 1, 0, 0)),
-                new WorkflowDefinitionResponse(2L, "AFFAIR_LEAVE", "请假申请审批流", "AFFAIR", "请假管理", 3, true, LocalDateTime.of(2023, 9, 1, 0, 0)),
-                new WorkflowDefinitionResponse(3L, "AFFAIR_SCHOLARSHIP", "奖学金评审流程", "AFFAIR", "奖学金管理", 3, true, LocalDateTime.of(2023, 10, 15, 0, 0))
+                new WorkflowDefinitionResponse(1L, "AFFAIR_READ_CERT", "在读证明申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(2L, "AFFAIR_LEAVE", "请假申请审批流", "AFFAIR", "请假管理", 3, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(3L, "AFFAIR_SCHOLARSHIP", "奖学金评审流程", "AFFAIR", "奖学金管理", 3, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(4L, "AFFAIR_PARTY_IDENTITY_CERT", "党员身份证明申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2026, 3, 1, 0, 0))
         ));
         workflowNodes.addAll(List.of(
                 new WorkflowNodeResponse(11L, 1L, 1, "提交申请", "学生", 0, false),
                 new WorkflowNodeResponse(12L, 1L, 2, "辅导员审批", "辅导员", 24, true),
                 new WorkflowNodeResponse(13L, 1L, 3, "教务处审批", "教务处管理员", 48, true),
-                new WorkflowNodeResponse(14L, 1L, 4, "完成", "系统", 0, false)
+                new WorkflowNodeResponse(14L, 1L, 4, "完成", "系统", 0, false),
+                new WorkflowNodeResponse(41L, 4L, 1, "提交申请", "学生", 0, false),
+                new WorkflowNodeResponse(42L, 4L, 2, "辅导员审批", "辅导员", 24, true),
+                new WorkflowNodeResponse(43L, 4L, 3, "学院党务终审", "学院管理员", 48, true),
+                new WorkflowNodeResponse(44L, 4L, 4, "完成", "系统", 0, false)
         ));
         refreshWorkflowNodeCounts();
         workflowDefIdGenerator.set(100);
@@ -1249,7 +1295,10 @@ public class MockAdminService implements AdminApplicationService {
                         LocalDateTime.of(2026, 3, 20, 9, 0)
                 ))
                 .toList());
-        mockDataStore.knowledgeDocuments().forEach(item -> knowledgeContents.putIfAbsent(item.id(), item.answer()));
+        mockDataStore.knowledgeDocuments().forEach(item -> {
+            knowledgeContents.putIfAbsent(item.id(), item.answer());
+            knowledgeSummaries.putIfAbsent(item.id(), buildSummary(item.answer()));
+        });
         knowledgeItems.add(0, new AdminKnowledgeItemResponse(
                 299L,
                 "辅导员内部口径说明",
@@ -1265,6 +1314,7 @@ public class MockAdminService implements AdminApplicationService {
                 LocalDateTime.of(2026, 3, 18, 10, 0)
         ));
         knowledgeContents.putIfAbsent(299L, "仅内部可见：用于演示 mock 数据。");
+        knowledgeSummaries.putIfAbsent(299L, buildSummary(knowledgeContents.get(299L)));
         persistState();
     }
 
@@ -1787,9 +1837,9 @@ public class MockAdminService implements AdminApplicationService {
             return;
         }
         workflowInstances.addAll(List.of(
-                new WorkflowInstanceResponse(1L, "AFFAIR_READ_CERT", "在读证明申请流", "CERTIFICATE", "affair_request", 1001L, "running", 20001L, "张三", LocalDateTime.of(2026, 3, 20, 10, 0), null, LocalDateTime.of(2026, 3, 20, 10, 0)),
-                new WorkflowInstanceResponse(2L, "AFFAIR_LEAVE", "请假申请审批流", "AFFAIR", "affair_request", 1002L, "approved", 20002L, "李四", LocalDateTime.of(2026, 3, 19, 14, 0), LocalDateTime.of(2026, 3, 20, 9, 0), LocalDateTime.of(2026, 3, 19, 14, 0)),
-                new WorkflowInstanceResponse(3L, "AFFAIR_SCHOLARSHIP", "奖学金评审流程", "AFFAIR", "affair_request", 1003L, "rejected", 20003L, "王五", LocalDateTime.of(2026, 3, 18, 9, 0), LocalDateTime.of(2026, 3, 19, 16, 0), LocalDateTime.of(2026, 3, 18, 9, 0))
+                new WorkflowInstanceResponse(1L, "AFFAIR_READ_CERT", "在读证明申请流", "CERTIFICATE", "affair_request", 1001L, "running", 10001L, "张三", LocalDateTime.of(2026, 3, 20, 10, 30), null, LocalDateTime.of(2026, 3, 20, 10, 30)),
+                new WorkflowInstanceResponse(2L, "AFFAIR_PARTY_IDENTITY_CERT", "党员身份证明申请流", "CERTIFICATE", "affair_request", 1002L, "running", 10002L, "李四", LocalDateTime.of(2026, 3, 19, 15, 0), null, LocalDateTime.of(2026, 3, 19, 15, 0)),
+                new WorkflowInstanceResponse(3L, "AFFAIR_SCHOLARSHIP", "奖学金评审流程", "AFFAIR", "affair_request", 2001L, "rejected", 10003L, "王五", LocalDateTime.of(2026, 3, 18, 9, 0), LocalDateTime.of(2026, 3, 19, 16, 0), LocalDateTime.of(2026, 3, 18, 9, 0))
         ));
     }
 

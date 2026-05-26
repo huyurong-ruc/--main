@@ -10,6 +10,7 @@ import edu.ruc.platform.auth.dto.WechatLoginRequest;
 import edu.ruc.platform.auth.dto.AuthenticatedUser;
 import edu.ruc.platform.common.exception.BusinessException;
 import edu.ruc.platform.platform.dto.PlatformUserDetailResponse;
+import edu.ruc.platform.platform.dto.PlatformUserPasswordResetRequest;
 import edu.ruc.platform.platform.service.PlatformSecurityPolicyService;
 import edu.ruc.platform.platform.service.MockPlatformService;
 import lombok.RequiredArgsConstructor;
@@ -49,23 +50,23 @@ public class MockAuthService implements AuthApplicationService {
                 );
             }
         }
-        if ("admin".equals(request.username()) && defaultPassword.equals(request.password())) {
+        if (platformUser == null && "admin".equals(request.username()) && defaultPassword.equals(request.password())) {
             mockPlatformService.clearLoginFailures(request.username());
             return issueToken(new AuthenticatedUser(1L, null, "admin", "SUPER_ADMIN", null, "系统管理员", null, null), platformUser != null && Boolean.TRUE.equals(platformUser.passwordResetRequired()));
         }
-        if ("teacher01".equals(request.username()) && defaultPassword.equals(request.password())) {
+        if (platformUser == null && "teacher01".equals(request.username()) && defaultPassword.equals(request.password())) {
             mockPlatformService.clearLoginFailures(request.username());
             return issueToken(new AuthenticatedUser(20001L, null, "teacher01", "COUNSELOR", null, "胡浩老师", null, null), platformUser != null && Boolean.TRUE.equals(platformUser.passwordResetRequired()));
         }
-        if ("advisor01".equals(request.username()) && defaultPassword.equals(request.password())) {
+        if (platformUser == null && "advisor01".equals(request.username()) && defaultPassword.equals(request.password())) {
             mockPlatformService.clearLoginFailures(request.username());
             return issueToken(new AuthenticatedUser(20002L, null, "advisor01", "CLASS_ADVISOR", null, "王老师", null, "2023级"), platformUser != null && Boolean.TRUE.equals(platformUser.passwordResetRequired()));
         }
-        if ("2023100002".equals(request.username()) && defaultPassword.equals(request.password())) {
+        if (platformUser == null && "2023100002".equals(request.username()) && defaultPassword.equals(request.password())) {
             mockPlatformService.clearLoginFailures(request.username());
             return issueToken(new AuthenticatedUser(10002L, 10002L, "2023100002", "LEAGUE_SECRETARY", "2023100002", "李四", "计算机类", "2023级"), platformUser != null && Boolean.TRUE.equals(platformUser.passwordResetRequired()));
         }
-        if ("2023100001".equals(request.username()) && defaultPassword.equals(request.password())) {
+        if (platformUser == null && "2023100001".equals(request.username()) && defaultPassword.equals(request.password())) {
             mockPlatformService.clearLoginFailures(request.username());
             return issueToken(new AuthenticatedUser(10001L, 10001L, "2023100001", "STUDENT", "2023100001", "张三", "计算机类", "2023级"), platformUser != null && Boolean.TRUE.equals(platformUser.passwordResetRequired()));
         }
@@ -96,9 +97,13 @@ public class MockAuthService implements AuthApplicationService {
     @Override
     public ChangePasswordResponse changePassword(ChangePasswordRequest request) {
         AuthenticatedUser currentUser = currentUserService.requireCurrentUser();
-        if (!platformSecurityPolicyService.defaultPassword().equals(request.oldPassword())) {
+        if (request.newPassword() == null || request.newPassword().isBlank()) {
+            throw new BusinessException("新密码不能为空");
+        }
+        if (!mockPlatformService.passwordMatches(currentUser.username(), request.oldPassword())) {
             throw new BusinessException("旧密码错误");
         }
+        mockPlatformService.resetPassword(currentUser.userId(), new PlatformUserPasswordResetRequest(request.newPassword()));
         mockPlatformService.clearPasswordResetRequired(currentUser.username());
         return new ChangePasswordResponse(currentUser.userId(), currentUser.username(), false, LocalDateTime.now());
     }

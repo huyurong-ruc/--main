@@ -8,6 +8,8 @@ public record PlatformUserResponse(
         String studentNo,
         String name,
         String grade,
-        String major
+        String major,
+        Boolean wechatBound,
+        Boolean passwordSet
 ) {
 }
