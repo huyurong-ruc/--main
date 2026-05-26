@@ -32,6 +32,11 @@ public class CertificateController {
     private final CertificateApplicationService certificateService;
     private final CurrentUserService currentUserService;
 
+    @GetMapping("/types")
+    public ApiResponse<List<String>> listTypes() {
+        return ApiResponse.success(List.of("在读证明", "党员身份证明", "困难认定证明", "成绩单", "实习证明"));
+    }
+
     @PostMapping("/requests")
     public ApiResponse<CertificateRequestResponse> create(@Valid @RequestBody CertificateRequestCreateRequest request) {
         requireCertificateOwner(request.studentId());

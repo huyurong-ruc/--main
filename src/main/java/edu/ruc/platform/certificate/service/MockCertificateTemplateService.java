@@ -18,9 +18,40 @@ import java.util.concurrent.atomic.AtomicLong;
 @Profile("mock")
 public class MockCertificateTemplateService implements CertificateTemplateApplicationService {
 
-    private final AtomicLong idGenerator = new AtomicLong(1);
+    private final AtomicLong idGenerator = new AtomicLong(100);
     private final Map<Long, CertificateTemplateResponse> templatesById = new ConcurrentHashMap<>();
     private final Map<String, Long> idByCode = new ConcurrentHashMap<>();
+
+    public MockCertificateTemplateService() {
+        initializeDefaultTemplates();
+    }
+
+    private void initializeDefaultTemplates() {
+        createTemplate(1L, "CERT_001", "在读证明模板", "在读证明",
+                "兹证明{{studentName}}同学（学号：{{studentNo}}）系我院{{majorName}}专业{{gradeYear}}级学生，当前学籍状态为在读。",
+                "/templates/cert/study-certificate.pdf", "PDF", "用于学生在读状态证明");
+        createTemplate(2L, "CERT_002", "党员身份证明模板", "党员身份证明",
+                "兹证明{{studentName}}同学（学号：{{studentNo}}）系我院{{majorName}}专业学生，该生于{{joinDate}}加入中国共产党，当前党组织关系在我院。",
+                "/templates/cert/party-member-certificate.pdf", "PDF", "用于党员身份证明");
+        createTemplate(3L, "CERT_003", "困难认定证明模板", "困难认定证明",
+                "兹证明{{studentName}}同学（学号：{{studentNo}}）系我院{{majorName}}专业{{gradeYear}}级学生，经学院认定，该生家庭经济困难等级为{{difficultyLevel}}。",
+                "/templates/cert/difficulty-certificate.pdf", "PDF", "用于学生困难认定证明");
+        createTemplate(4L, "CERT_004", "成绩单模板", "成绩单",
+                "兹证明{{studentName}}同学（学号：{{studentNo}}）在我院{{majorName}}专业学习期间，各科成绩如下：{{grades}}",
+                "/templates/cert/transcript.pdf", "PDF", "用于学生成绩证明");
+        createTemplate(5L, "CERT_005", "实习证明模板", "实习证明",
+                "兹证明{{studentName}}同学（学号：{{studentNo}}）于{{startDate}}至{{endDate}}在{{companyName}}实习，实习岗位为{{position}}。",
+                "/templates/cert/internship-certificate.pdf", "PDF", "用于学生实习证明");
+    }
+
+    private void createTemplate(Long id, String code, String name, String type, String content, String filePath, String format, String desc) {
+        LocalDateTime now = LocalDateTime.now();
+        CertificateTemplateResponse template = new CertificateTemplateResponse(
+                id, code, name, type, content, filePath, format, true, desc, null, now, now
+        );
+        templatesById.put(id, template);
+        idByCode.put(code, id);
+    }
 
     @Override
     public List<CertificateTemplateResponse> listAll() {
