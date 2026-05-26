@@ -17,6 +17,8 @@ import edu.ruc.platform.admin.dto.AdvisorScopeFilterRequest;
 import edu.ruc.platform.admin.dto.AdvisorScopeBindingResponse;
 import edu.ruc.platform.admin.dto.AdvisorScopeBindingUpsertRequest;
 import edu.ruc.platform.admin.dto.AdvisorScopeStatsResponse;
+import edu.ruc.platform.admin.dto.CourseResponse;
+import edu.ruc.platform.admin.dto.CourseUpsertRequest;
 import edu.ruc.platform.admin.dto.DataImportErrorFilterRequest;
 import edu.ruc.platform.admin.dto.DataImportErrorItemCreateRequest;
 import edu.ruc.platform.admin.dto.DataImportErrorItemResponse;
@@ -26,8 +28,16 @@ import edu.ruc.platform.admin.dto.DataImportTaskCreateRequest;
 import edu.ruc.platform.admin.dto.DataImportTaskResponse;
 import edu.ruc.platform.admin.dto.DataImportTaskUpdateRequest;
 import edu.ruc.platform.admin.dto.KnowledgeAttachmentResponse;
+import edu.ruc.platform.admin.dto.PartyReminderTaskFilterRequest;
+import edu.ruc.platform.admin.dto.PartyReminderTaskResponse;
+import edu.ruc.platform.admin.dto.RoleResponse;
+import edu.ruc.platform.admin.dto.RoleUpsertRequest;
+import edu.ruc.platform.admin.dto.TermCourseResponse;
+import edu.ruc.platform.admin.dto.TermCourseUpsertRequest;
 import edu.ruc.platform.admin.dto.WorkflowDefinitionResponse;
 import edu.ruc.platform.admin.dto.WorkflowDefinitionUpsertRequest;
+import edu.ruc.platform.admin.dto.WorkflowInstanceFilterRequest;
+import edu.ruc.platform.admin.dto.WorkflowInstanceResponse;
 import edu.ruc.platform.admin.dto.WorkflowNodeResponse;
 import edu.ruc.platform.admin.dto.WorkflowNodeUpsertRequest;
 import edu.ruc.platform.auth.dto.AuthenticatedUser;
@@ -145,4 +155,60 @@ public interface AdminApplicationService {
     AdminCertTemplateResponse copyCertTemplate(Long id);
 
     void deleteCertTemplate(Long id);
+
+    List<RoleResponse> listRoles();
+
+    RoleResponse getRole(Long id);
+
+    RoleResponse createRole(RoleUpsertRequest request);
+
+    RoleResponse updateRole(Long id, RoleUpsertRequest request);
+
+    RoleResponse copyRole(Long id);
+
+    RoleResponse toggleRole(Long id);
+
+    void deleteRole(Long id);
+
+    List<WorkflowInstanceResponse> listWorkflowInstances(WorkflowInstanceFilterRequest request);
+
+    PageResponse<WorkflowInstanceResponse> pageWorkflowInstances(WorkflowInstanceFilterRequest request, int page, int size);
+
+    WorkflowInstanceResponse getWorkflowInstance(Long id);
+
+    WorkflowInstanceResponse cancelWorkflowInstance(Long id);
+
+    List<CourseResponse> listCourses(String keyword, String courseType);
+
+    PageResponse<CourseResponse> pageCourses(String keyword, String courseType, int page, int size);
+
+    CourseResponse getCourse(Long id);
+
+    CourseResponse createCourse(CourseUpsertRequest request);
+
+    CourseResponse updateCourse(Long id, CourseUpsertRequest request);
+
+    void deleteCourse(Long id);
+
+    List<TermCourseResponse> listTermCourses(String termCode, String keyword);
+
+    PageResponse<TermCourseResponse> pageTermCourses(String termCode, String keyword, int page, int size);
+
+    TermCourseResponse getTermCourse(Long id);
+
+    TermCourseResponse createTermCourse(TermCourseUpsertRequest request);
+
+    TermCourseResponse updateTermCourse(Long id, TermCourseUpsertRequest request);
+
+    void deleteTermCourse(Long id);
+
+    List<PartyReminderTaskResponse> listPartyReminderTasks(PartyReminderTaskFilterRequest request);
+
+    PageResponse<PartyReminderTaskResponse> pagePartyReminderTasks(PartyReminderTaskFilterRequest request, int page, int size);
+
+    PartyReminderTaskResponse sendPartyReminder(Long id);
+
+    PartyReminderTaskResponse resendPartyReminder(Long id);
+
+    PartyReminderTaskResponse cancelPartyReminder(Long id);
 }
