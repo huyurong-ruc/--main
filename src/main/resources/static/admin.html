@@ -789,6 +789,25 @@
       return json.data;
     }
 
+    function guessIconActionTitle(text) {
+      const t = (text == null ? "" : String(text)).trim();
+      if (!t) return null;
+      const map = {
+        "👁": "查看",
+        "✎": "编辑",
+        "🗑": "删除",
+        "⧉": "复制",
+        "📎": "附件",
+        "🚀": "发布",
+        "↩": "撤回为草稿",
+        "✅": "启用",
+        "⛔": "禁用",
+        "🔑": "重置密码",
+        "🔓": "解锁"
+      };
+      return map[t] || null;
+    }
+
     function el(tag, attrs, children) {
       const svgTags = new Set(["svg", "g", "path", "circle", "rect", "line", "polyline", "polygon", "text", "defs", "linearGradient", "stop"]);
       const node = svgTags.has(tag)
@@ -812,6 +831,16 @@
           if (typeof c === "string") node.appendChild(document.createTextNode(c));
           else node.appendChild(c);
         });
+      }
+      const tagName = node.tagName ? node.tagName.toLowerCase() : "";
+      if ((tagName === "button" || tagName === "a") && !node.getAttribute("title")) {
+        const cls = String(node.className || "");
+        if (cls.includes("iconAction")) {
+          const title = guessIconActionTitle(node.textContent);
+          if (title) {
+            node.setAttribute("title", title);
+          }
+        }
       }
       return node;
     }
