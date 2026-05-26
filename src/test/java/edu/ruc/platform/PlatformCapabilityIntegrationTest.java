@@ -115,7 +115,11 @@ class PlatformCapabilityIntegrationTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].role").isString())
-                .andExpect(jsonPath("$.data[0].dataScopes").isArray());
+                .andExpect(jsonPath("$.data[0].dataScopes").isArray())
+                .andExpect(jsonPath("$.data[4].role").value("CLASS_LEADER"))
+                .andExpect(jsonPath("$.data[4].dataScopes[0]").value("GRADE"))
+                .andExpect(jsonPath("$.data[6].role").value("STUDENT"))
+                .andExpect(jsonPath("$.data[7].role").value("ASSISTANT"));
 
         mockMvc.perform(get("/api/v1/platform/security-policy")
                         .header("Authorization", "Bearer " + token))
@@ -173,7 +177,36 @@ class PlatformCapabilityIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.studentId").value(10001))
                 .andExpect(jsonPath("$.data.studentNo").value("2023100001"))
-                .andExpect(jsonPath("$.data.sensitiveFields.maskedPhone").isString());
+                .andExpect(jsonPath("$.data.collegeName").value("信息学院"))
+                .andExpect(jsonPath("$.data.sensitiveFields.maskedPhone").isString())
+                .andExpect(jsonPath("$.data.growthModules").isArray())
+                .andExpect(jsonPath("$.data.growthModules[?(@.moduleCode=='award-support')]").isNotEmpty());
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
+    void platformCanImportAwardSupportRecordsFromXlsx() throws Exception {
+        String adminToken = loginAndExtractToken("admin", "123456");
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "award-support.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                createAwardSupportWorkbook()
+        );
+
+        mockMvc.perform(multipart("/api/v1/platform/students/award-support/import")
+                        .file(file)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.totalRows").value(1))
+                .andExpect(jsonPath("$.data.successRows").value(1))
+                .andExpect(jsonPath("$.data.failedRows").value(0));
+
+        mockMvc.perform(get("/api/v1/platform/students/10001")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.growthModules[?(@.moduleCode=='award-support')][0].records[?(@.rawFields.awardName=='国家奖学金')]").isNotEmpty());
     }
 
     @Test
@@ -621,6 +654,51 @@ class PlatformCapabilityIntegrationTest {
     }
 
     @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
+    void createdPlatformUserCanLoginInMockProfile() throws Exception {
+        String adminToken = loginAndExtractToken("admin", "123456");
+
+        mockMvc.perform(post("/api/v1/platform/users")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "assistant01",
+                                  "role": "ASSISTANT",
+                                  "enabled": true,
+                                  "rawPassword": "654321",
+                                  "passwordResetRequired": false
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.username").value("assistant01"))
+                .andExpect(jsonPath("$.data.role").value("ASSISTANT"));
+
+        String loginResponse = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "assistant01",
+                                  "password": "654321"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.username").value("assistant01"))
+                .andExpect(jsonPath("$.data.role").value("ASSISTANT"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String token = objectMapper.readTree(loginResponse).path("data").path("token").asText();
+
+        mockMvc.perform(get("/api/v1/auth/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.username").value("assistant01"))
+                .andExpect(jsonPath("$.data.role").value("ASSISTANT"));
+    }
+
+    @Test
     void roleAnnotationBlocksInsufficientPrivilege() throws Exception {
         String token = loginAndExtractToken("2023100001", "123456");
 
@@ -688,5 +766,22 @@ class PlatformCapabilityIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         return objectMapper.readTree(response).path("data").path("token").asText();
+    }
+
+    private byte[] createAwardSupportWorkbook() throws Exception {
+        try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
+            var sheet = workbook.createSheet("奖助情况");
+            String[] headers = {"学号", "评定学年", "奖学金名称", "批次名称", "奖励级别", "奖励等级", "奖学金额（元）", "奖励类型"};
+            String[] values = {"2023100001", "2025-2026", "国家奖学金", "第一批", "国家级", "一等奖", "8000", "奖学金"};
+            var headerRow = sheet.createRow(0);
+            var dataRow = sheet.createRow(1);
+            for (int i = 0; i < headers.length; i++) {
+                headerRow.createCell(i).setCellValue(headers[i]);
+                dataRow.createCell(i).setCellValue(values[i]);
+            }
+            var out = new java.io.ByteArrayOutputStream();
+            workbook.write(out);
+            return out.toByteArray();
+        }
     }
 }

@@ -62,6 +62,7 @@ import edu.ruc.platform.platform.dto.PlatformSecurityPolicyResponse;
 import edu.ruc.platform.platform.dto.PlatformSecurityPolicyUpdateRequest;
 import edu.ruc.platform.platform.dto.PlatformSessionResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentDataScopeResponse;
+import edu.ruc.platform.platform.dto.PlatformStudentDetailResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentScopeCheckResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentQueryResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentUiContractResponse;
@@ -82,6 +83,7 @@ import edu.ruc.platform.student.dto.StudentProfileFilterRequest;
 import edu.ruc.platform.student.dto.StudentProfileResponse;
 import edu.ruc.platform.student.domain.StudentProfile;
 import edu.ruc.platform.student.repository.StudentProfileRepository;
+import edu.ruc.platform.student.service.StudentGrowthApplicationService;
 import edu.ruc.platform.student.service.StudentProfileApplicationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
@@ -110,6 +112,7 @@ public class PlatformService implements PlatformApplicationService {
     private final UserAccountRepository userAccountRepository;
     private final StudentProfileRepository studentProfileRepository;
     private final StudentProfileApplicationService studentProfileService;
+    private final StudentGrowthApplicationService studentGrowthService;
     private final AdminApplicationService adminService;
     private final CertificateApplicationService certificateService;
     private final PasswordEncoder passwordEncoder;
@@ -236,8 +239,10 @@ public class PlatformService implements PlatformApplicationService {
                 new PlatformRoleResponse(RoleType.COLLEGE_ADMIN.name(), "学院管理员", List.of(DataScopeType.ALL.name())),
                 new PlatformRoleResponse(RoleType.COUNSELOR.name(), "辅导员", List.of(DataScopeType.ALL.name())),
                 new PlatformRoleResponse(RoleType.CLASS_ADVISOR.name(), "班主任", List.of(DataScopeType.GRADE.name(), DataScopeType.CLASS.name())),
+                new PlatformRoleResponse(RoleType.CLASS_LEADER.name(), "班长", List.of(DataScopeType.GRADE.name(), DataScopeType.SELF.name())),
                 new PlatformRoleResponse(RoleType.LEAGUE_SECRETARY.name(), "团支书", List.of(DataScopeType.GRADE.name(), DataScopeType.SELF.name())),
-                new PlatformRoleResponse(RoleType.STUDENT.name(), "普通学生", List.of(DataScopeType.SELF.name()))
+                new PlatformRoleResponse(RoleType.STUDENT.name(), "普通学生", List.of(DataScopeType.SELF.name())),
+                new PlatformRoleResponse(RoleType.ASSISTANT.name(), "学生助理", List.of(DataScopeType.SELF.name()))
         );
     }
 
@@ -450,6 +455,9 @@ public class PlatformService implements PlatformApplicationService {
     @Override
     public PlatformStudentQueryResponse getStudent(Long studentId) {
         return toPlatformStudent(studentProfileService.getStudent(studentId));
+    public PlatformStudentDetailResponse getStudent(Long studentId) {
+        StudentProfileResponse profile = studentProfileService.getStudent(studentId);
+        return toPlatformStudentDetail(profile, studentGrowthService.archiveByStudentId(studentId).modules());
     }
 
     @Override
@@ -870,6 +878,35 @@ public class PlatformService implements PlatformApplicationService {
         );
     }
 
+    private PlatformStudentDetailResponse toPlatformStudentDetail(
+            StudentProfileResponse item,
+            List<edu.ruc.platform.student.dto.StudentGrowthDtos.StudentGrowthModuleArchiveSectionResponse> growthModules
+    ) {
+        return new PlatformStudentDetailResponse(
+                item.id(),
+                item.studentNo(),
+                item.name(),
+                item.collegeName(),
+                item.major(),
+                item.grade(),
+                item.className(),
+                item.advisorScope(),
+                item.degreeLevel(),
+                item.status(),
+                item.graduated(),
+                item.majorChangedTo(),
+                item.email(),
+                new PlatformStudentDetailResponse.SensitiveFields(
+                        item.maskedIdCardNo(),
+                        item.maskedPhone(),
+                        item.maskedNativePlace(),
+                        item.maskedHouseholdAddress(),
+                        item.maskedSupervisor()
+                ),
+                growthModules
+        );
+    }
+
     private PlatformUserResponse toPlatformUser(UserAccount userAccount) {
         var studentProfile = studentProfileRepository.findByStudentNo(userAccount.getUsername()).orElse(null);
         return new PlatformUserResponse(
@@ -912,6 +949,10 @@ public class PlatformService implements PlatformApplicationService {
         }
         if (RoleType.CLASS_ADVISOR.name().equals(user.role())) {
             return List.of(DataScopeType.GRADE.name(), DataScopeType.CLASS.name());
+        }
+        if (RoleType.CLASS_LEADER.name().equals(user.role())
+                || RoleType.LEAGUE_SECRETARY.name().equals(user.role())) {
+            return List.of(DataScopeType.GRADE.name(), DataScopeType.SELF.name());
         }
         return List.of(DataScopeType.SELF.name());
     }

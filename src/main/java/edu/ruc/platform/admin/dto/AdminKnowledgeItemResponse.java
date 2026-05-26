@@ -6,6 +6,8 @@ public record AdminKnowledgeItemResponse(
         Long id,
         String title,
         String category,
+        String tags,
+        Integer version,
         boolean published,
         String officialUrl,
         String sourceFileName,

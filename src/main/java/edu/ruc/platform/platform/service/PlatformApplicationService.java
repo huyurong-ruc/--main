@@ -23,6 +23,7 @@ import edu.ruc.platform.platform.dto.PlatformSecurityPolicyResponse;
 import edu.ruc.platform.platform.dto.PlatformSecurityPolicyUpdateRequest;
 import edu.ruc.platform.platform.dto.PlatformSessionResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentDataScopeResponse;
+import edu.ruc.platform.platform.dto.PlatformStudentDetailResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentScopeCheckResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentQueryResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentUiContractResponse;
@@ -87,6 +88,7 @@ public interface PlatformApplicationService {
     PlatformUserStatsResponse userStats(String role, Boolean enabled, String keyword);
 
     PlatformStudentQueryResponse getStudent(Long studentId);
+    PlatformStudentDetailResponse getStudent(Long studentId);
 
     PageResponse<PlatformStudentQueryResponse> pageStudents(String grade, String className, String status, String keyword, int page, int size);
 

@@ -255,6 +255,7 @@ edu/ruc/platform/platform/service/PlatformUploadPolicyService.class
 edu/ruc/platform/party/service/PartyFlowConfigApplicationService.class
 edu/ruc/platform/auth/service/MockStudentDataScopeService.class
 edu/ruc/platform/academic/domain/AcademicTranscript.class
+edu/ruc/platform/platform/service/MockExcelImportExportService$1.class
 edu/ruc/platform/platform/domain/PlatformSystemSetting.class
 edu/ruc/platform/admin/dto/DataImportTaskUpdateRequest.class
 edu/ruc/platform/auth/service/TokenBlocklistRepositoryService.class

@@ -43,6 +43,7 @@ import edu.ruc.platform.platform.dto.PlatformSecurityPolicyResponse;
 import edu.ruc.platform.platform.dto.PlatformSecurityPolicyUpdateRequest;
 import edu.ruc.platform.platform.dto.PlatformSessionResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentDataScopeResponse;
+import edu.ruc.platform.platform.dto.PlatformStudentDetailResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentScopeCheckResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentQueryResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentUiContractResponse;
@@ -59,6 +60,7 @@ import edu.ruc.platform.platform.support.StudentActionPathRegistry;
 import edu.ruc.platform.platform.support.StudentUiMetaRegistry;
 import edu.ruc.platform.student.dto.StudentProfileFilterRequest;
 import edu.ruc.platform.student.dto.StudentProfileResponse;
+import edu.ruc.platform.student.service.StudentGrowthApplicationService;
 import edu.ruc.platform.student.service.StudentProfileApplicationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
@@ -71,6 +73,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
@@ -80,6 +83,7 @@ public class MockPlatformService implements PlatformApplicationService {
 
     private final CurrentUserService currentUserService;
     private final StudentProfileApplicationService studentProfileService;
+    private final StudentGrowthApplicationService studentGrowthService;
     private final AdminApplicationService adminService;
     private final CertificateApplicationService certificateService;
     private final PlatformSecurityPolicyService platformSecurityPolicyService;
@@ -92,6 +96,7 @@ public class MockPlatformService implements PlatformApplicationService {
     private final AtomicLong sessionIdGenerator = new AtomicLong(8000);
     private final List<PlatformFileUploadRecordResponse> uploadRecords = new ArrayList<>();
     private final Map<Long, PlatformFileDownloadPayload> uploadPayloads = new HashMap<>();
+    private final Map<String, String> userPasswords = new ConcurrentHashMap<>();
     private final List<PlatformLoginAuditLogResponse> loginAuditLogs = new ArrayList<>(List.of(
             new PlatformLoginAuditLogResponse(5001L, 1L, "admin", "SUPER_ADMIN", "LOGIN", "SUCCESS", null, LocalDateTime.of(2026, 3, 24, 9, 0)),
             new PlatformLoginAuditLogResponse(5002L, 10001L, "2023100001", "STUDENT", "LOGOUT", "SUCCESS", null, LocalDateTime.of(2026, 3, 24, 10, 0))
@@ -211,8 +216,10 @@ public class MockPlatformService implements PlatformApplicationService {
                 new PlatformRoleResponse(RoleType.COLLEGE_ADMIN.name(), "学院管理员", List.of(DataScopeType.ALL.name())),
                 new PlatformRoleResponse(RoleType.COUNSELOR.name(), "辅导员", List.of(DataScopeType.ALL.name())),
                 new PlatformRoleResponse(RoleType.CLASS_ADVISOR.name(), "班主任", List.of(DataScopeType.GRADE.name(), DataScopeType.CLASS.name())),
+                new PlatformRoleResponse(RoleType.CLASS_LEADER.name(), "班长", List.of(DataScopeType.GRADE.name(), DataScopeType.SELF.name())),
                 new PlatformRoleResponse(RoleType.LEAGUE_SECRETARY.name(), "团支书", List.of(DataScopeType.GRADE.name(), DataScopeType.SELF.name())),
-                new PlatformRoleResponse(RoleType.STUDENT.name(), "普通学生", List.of(DataScopeType.SELF.name()))
+                new PlatformRoleResponse(RoleType.STUDENT.name(), "普通学生", List.of(DataScopeType.SELF.name())),
+                new PlatformRoleResponse(RoleType.ASSISTANT.name(), "学生助理", List.of(DataScopeType.SELF.name()))
         );
     }
 
@@ -275,6 +282,7 @@ public class MockPlatformService implements PlatformApplicationService {
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );
+        userPasswords.put(created.username(), resolvePassword(request.rawPassword()));
         users.add(0, created);
         return created;
     }
@@ -303,6 +311,10 @@ public class MockPlatformService implements PlatformApplicationService {
                         LocalDateTime.now()
                 );
                 users.set(i, updated);
+                transferStoredPassword(item.username(), updated.username());
+                if (request.rawPassword() != null && !request.rawPassword().isBlank()) {
+                    userPasswords.put(updated.username(), request.rawPassword());
+                }
                 if (!Boolean.TRUE.equals(updated.enabled())) {
                     deactivateSessionsByUserId(updated.userId());
                 }
@@ -397,6 +409,7 @@ public class MockPlatformService implements PlatformApplicationService {
                         item.createdAt(),
                         LocalDateTime.now()
                 ));
+                userPasswords.put(item.username(), temporaryPassword);
                 break;
             }
         }
@@ -502,6 +515,36 @@ public class MockPlatformService implements PlatformApplicationService {
                 .orElse(null);
     }
 
+    public boolean passwordMatches(String username, String password) {
+        PlatformUserDetailResponse user = findUserByUsername(username);
+        if (user == null) {
+            return false;
+        }
+        String storedPassword = userPasswords.get(username);
+        if (storedPassword != null) {
+            return storedPassword.equals(password);
+        }
+        return platformSecurityPolicyService.defaultPassword().equals(password);
+    }
+
+    public AuthenticatedUser buildAuthenticatedUser(String username) {
+        PlatformUserDetailResponse user = users.stream()
+                .filter(item -> item.username().equals(username))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("平台用户不存在"));
+        Long studentId = resolveStudentId(user);
+        return new AuthenticatedUser(
+                user.userId(),
+                studentId,
+                user.username(),
+                user.role(),
+                user.studentNo(),
+                user.name(),
+                user.major(),
+                user.grade()
+        );
+    }
+
     public void markLoginFailure(String username, int maxFailedLoginAttempts) {
         for (int i = 0; i < users.size(); i++) {
             PlatformUserDetailResponse item = users.get(i);
@@ -582,6 +625,9 @@ public class MockPlatformService implements PlatformApplicationService {
     @Override
     public PlatformStudentQueryResponse getStudent(Long studentId) {
         return toPlatformStudent(studentProfileService.getStudent(studentId));
+    public PlatformStudentDetailResponse getStudent(Long studentId) {
+        StudentProfileResponse profile = studentProfileService.getStudent(studentId);
+        return toPlatformStudentDetail(profile, studentGrowthService.archiveByStudentId(studentId).modules());
     }
 
     @Override
@@ -618,6 +664,7 @@ public class MockPlatformService implements PlatformApplicationService {
         }
         PlatformFileUploadResponse response = new PlatformFileUploadResponse(
                 id,
+                uploadIdGenerator.incrementAndGet(),
                 normalizedBizType,
                 bizId,
                 originalFileName,
@@ -910,6 +957,35 @@ public class MockPlatformService implements PlatformApplicationService {
         );
     }
 
+    private PlatformStudentDetailResponse toPlatformStudentDetail(
+            StudentProfileResponse item,
+            List<edu.ruc.platform.student.dto.StudentGrowthDtos.StudentGrowthModuleArchiveSectionResponse> growthModules
+    ) {
+        return new PlatformStudentDetailResponse(
+                item.id(),
+                item.studentNo(),
+                item.name(),
+                item.collegeName(),
+                item.major(),
+                item.grade(),
+                item.className(),
+                item.advisorScope(),
+                item.degreeLevel(),
+                item.status(),
+                item.graduated(),
+                item.majorChangedTo(),
+                item.email(),
+                new PlatformStudentDetailResponse.SensitiveFields(
+                        item.maskedIdCardNo(),
+                        item.maskedPhone(),
+                        item.maskedNativePlace(),
+                        item.maskedHouseholdAddress(),
+                        item.maskedSupervisor()
+                ),
+                growthModules
+        );
+    }
+
     private PlatformUserResponse toUserResponse(PlatformUserDetailResponse item) {
         return new PlatformUserResponse(
                 item.userId(),
@@ -1056,7 +1132,33 @@ public class MockPlatformService implements PlatformApplicationService {
         if (RoleType.CLASS_ADVISOR.name().equals(user.role())) {
             return List.of(DataScopeType.GRADE.name(), DataScopeType.CLASS.name());
         }
+        if (RoleType.CLASS_LEADER.name().equals(user.role())
+                || RoleType.LEAGUE_SECRETARY.name().equals(user.role())) {
+            return List.of(DataScopeType.GRADE.name(), DataScopeType.SELF.name());
+        }
         return List.of(DataScopeType.SELF.name());
+    }
+
+    private void transferStoredPassword(String oldUsername, String newUsername) {
+        if (oldUsername.equals(newUsername)) {
+            return;
+        }
+        String storedPassword = userPasswords.remove(oldUsername);
+        if (storedPassword != null) {
+            userPasswords.put(newUsername, storedPassword);
+        }
+    }
+
+    private Long resolveStudentId(PlatformUserDetailResponse user) {
+        if (!StringUtils.hasText(user.studentNo())) {
+            return null;
+        }
+        if (RoleType.STUDENT.name().equals(user.role())
+                || RoleType.LEAGUE_SECRETARY.name().equals(user.role())
+                || RoleType.CLASS_LEADER.name().equals(user.role())) {
+            return user.userId();
+        }
+        return null;
     }
 
     private List<String> enumNames(Enum<?>[] values) {

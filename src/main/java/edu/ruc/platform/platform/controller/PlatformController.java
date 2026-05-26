@@ -26,6 +26,7 @@ import edu.ruc.platform.platform.dto.PlatformSecurityPolicyResponse;
 import edu.ruc.platform.platform.dto.PlatformSecurityPolicyUpdateRequest;
 import edu.ruc.platform.platform.dto.PlatformSessionResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentDataScopeResponse;
+import edu.ruc.platform.platform.dto.PlatformStudentDetailResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentScopeCheckResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentQueryResponse;
 import edu.ruc.platform.platform.dto.PlatformStudentUiContractResponse;
@@ -37,8 +38,9 @@ import edu.ruc.platform.platform.dto.PlatformUploadPolicyUpdateRequest;
 import edu.ruc.platform.platform.dto.PlatformUserResponse;
 import edu.ruc.platform.platform.dto.PlatformUserStatsResponse;
 import edu.ruc.platform.platform.dto.PlatformUserUpsertRequest;
-import edu.ruc.platform.platform.service.ExcelImportExportService;
 import edu.ruc.platform.platform.service.PlatformApplicationService;
+import edu.ruc.platform.platform.service.ExcelImportExportService;
+import edu.ruc.platform.platform.dto.BatchImportResultResponse;
 import edu.ruc.platform.certificate.dto.ApprovalHistoryResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -287,7 +289,7 @@ public class PlatformController {
             RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
             RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY, RoleType.STUDENT
     })
-    public ApiResponse<PlatformStudentQueryResponse> getStudent(@Positive(message = "学生ID必须大于 0") @PathVariable Long studentId) {
+    public ApiResponse<PlatformStudentDetailResponse> getStudent(@Positive(message = "学生ID必须大于 0") @PathVariable Long studentId) {
         return ApiResponse.success(platformService.getStudent(studentId));
     }
 
@@ -547,6 +549,18 @@ public class PlatformController {
                                @RequestParam(required = false) String className,
                                @RequestParam(required = false) String status,
                                HttpServletResponse response) throws IOException {
+    @PostMapping("/students/award-support/import")
+    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN})
+    public ApiResponse<BatchImportResultResponse> importAwardSupportRecords(@RequestParam("file") MultipartFile file) {
+        return ApiResponse.success("奖助情况导入完成", excelImportExportService.importAwardSupportRecords(file));
+    }
+
+    @GetMapping("/students/export")
+    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR})
+    public void exportStudents(@RequestParam(required = false) String grade,
+                              @RequestParam(required = false) String className,
+                              @RequestParam(required = false) String status,
+                              HttpServletResponse response) throws IOException {
         byte[] data = excelImportExportService.exportStudents(grade, className, status);
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition", "attachment; filename=students.xlsx");

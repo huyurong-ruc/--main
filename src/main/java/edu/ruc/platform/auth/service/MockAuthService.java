@@ -41,7 +41,15 @@ public class MockAuthService implements AuthApplicationService {
             if (platformUser.locked()) {
                 throw new BusinessException("账号已被锁定");
             }
+            if (mockPlatformService.passwordMatches(request.username(), request.password())) {
+                mockPlatformService.clearLoginFailures(request.username());
+                return issueToken(
+                        mockPlatformService.buildAuthenticatedUser(request.username()),
+                        Boolean.TRUE.equals(platformUser.passwordResetRequired())
+                );
+            }
         }
+        String defaultPassword = platformSecurityPolicyService.defaultPassword();
         if ("admin".equals(request.username()) && defaultPassword.equals(request.password())) {
             mockPlatformService.clearLoginFailures(request.username());
             return issueToken(new AuthenticatedUser(1L, null, "admin", "SUPER_ADMIN", null, "系统管理员", null, null), platformUser != null && Boolean.TRUE.equals(platformUser.passwordResetRequired()));
