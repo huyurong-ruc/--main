@@ -3454,10 +3454,21 @@
           if (!confirm("确认将该任务重新提交为待审批？")) return null;
           comment = "";
         }
-        await apiJson("/api/v1/admin/approvals/" + item.requestId + "/action", {
+        const first = await apiJson("/api/v1/admin/approvals/" + item.requestId + "/action", {
           method: "POST",
           body: JSON.stringify({ action: action, comment: comment })
         });
+        if (action === "approve") {
+          const me = getUser();
+          const role = me && me.role ? String(me.role).toUpperCase() : "";
+          const canFinalApprove = role === "SUPER_ADMIN" || role === "COLLEGE_ADMIN";
+          if (canFinalApprove && first && isTodoStatus(first.status)) {
+            await apiJson("/api/v1/admin/approvals/" + item.requestId + "/action", {
+              method: "POST",
+              body: JSON.stringify({ action: action, comment: "" })
+            });
+          }
+        }
         return true;
       }
 
@@ -7531,6 +7542,31 @@
         (list || []).forEach(it => {
           const actions = el("div", { class: "certActions" }, []);
           const st = String(it.status || "").toLowerCase();
+          const editBtn = el("div", { class: "instViewLink" }, [el("span", { text: "改时间" })]);
+          editBtn.addEventListener("click", async () => {
+            toast.textContent = "";
+            const raw = prompt("请输入计划时间（例如：2026-05-26 09:00）", "");
+            if (raw == null) return;
+            const trimmed = String(raw).trim();
+            if (!trimmed) {
+              toast.textContent = "未填写计划时间";
+              return;
+            }
+            let iso = trimmed.replace(" ", "T");
+            if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(iso)) {
+              iso = iso + ":00";
+            }
+            try {
+              await apiJson("/api/v1/admin/party-reminders/" + it.id, {
+                method: "PUT",
+                body: JSON.stringify({ dueAt: iso })
+              });
+              toast.textContent = "已更新计划时间";
+              await reload();
+            } catch (e) {
+              toast.textContent = e.message;
+            }
+          });
           if (st === "pending") {
             const sendBtn = el("button", { class: "certIconBtn green", type: "button", title: "发送" }, [svgIcon("send")]);
             const delBtn = el("button", { class: "certIconBtn red", type: "button", title: "删除" }, [svgIcon("x")]);
@@ -7554,6 +7590,7 @@
                 toast.textContent = e.message;
               }
             });
+            actions.appendChild(editBtn);
             actions.appendChild(sendBtn);
             actions.appendChild(delBtn);
           } else if (st === "failed") {
@@ -7579,6 +7616,7 @@
                 toast.textContent = e.message;
               }
             });
+            actions.appendChild(editBtn);
             actions.appendChild(retryBtn);
             actions.appendChild(cancelBtn);
           } else {

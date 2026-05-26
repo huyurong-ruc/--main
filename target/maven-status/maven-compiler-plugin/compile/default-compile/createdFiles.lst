@@ -516,6 +516,7 @@ edu/ruc/platform/platform/dto/PlatformStudentDetailResponse.class
 edu/ruc/platform/student/dto/StudentPortraitUpsertRequest.class
 edu/ruc/platform/admin/controller/AdminQaTicketController.class
 edu/ruc/platform/admin/service/MockAdminService$PersistedState.class
+edu/ruc/platform/admin/controller/AdminPartyReminderController$UpdatePartyReminderRequest.class
 edu/ruc/platform/platform/controller/PlatformController.class
 edu/ruc/platform/worklog/dto/WorklogGradeStatsResponse.class
 edu/ruc/platform/knowledge/repository/KnowledgeQaTicketRepository.class

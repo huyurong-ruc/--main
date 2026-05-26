@@ -14,6 +14,7 @@ import edu.ruc.platform.auth.service.CurrentUserService;
 import edu.ruc.platform.admin.dto.WorkflowDefinitionResponse;
 import edu.ruc.platform.admin.dto.WorkflowNodeResponse;
 import edu.ruc.platform.admin.service.AdminApplicationService;
+import edu.ruc.platform.admin.service.MockAdminService;
 import edu.ruc.platform.common.api.PageResponse;
 import edu.ruc.platform.common.enums.RoleType;
 import edu.ruc.platform.common.exception.BusinessException;
@@ -68,9 +69,9 @@ public class MockCertificateService implements CertificateApplicationService {
             long id = idGenerator.incrementAndGet();
             long studentId = 10000L + (id % 200);
             String studentName = "测试学生" + studentId;
-            String[] types = new String[]{"在读证明", "成绩单", "奖学金申请证明", "党员身份证明"};
+            String[] types = new String[]{"在读证明", "党员身份证明", "困难认定证明", "成绩单", "实习证明"};
             String certType = types[(int) (id % types.length)];
-            approvalTasks.add(0, new ApprovalTaskResponse(
+            ApprovalTaskResponse created = new ApprovalTaskResponse(
                     id,
                     studentId,
                     studentName,
@@ -78,7 +79,9 @@ public class MockCertificateService implements CertificateApplicationService {
                     "PENDING",
                     "演示生成的审批任务",
                     LocalDateTime.now()
-            ));
+            );
+            approvalTasks.add(0, created);
+            syncWorkflowInstance(created);
         }
         persistState();
     }
@@ -94,14 +97,17 @@ public class MockCertificateService implements CertificateApplicationService {
         }
         stateLoaded = true;
         if (!persistEnabled) {
+            approvalTasks.forEach(this::syncWorkflowInstance);
             return;
         }
         try {
             if (!Files.exists(persistedStatePath)) {
+                approvalTasks.forEach(this::syncWorkflowInstance);
                 return;
             }
             PersistedState state = stateMapper.readValue(persistedStatePath.toFile(), PersistedState.class);
             if (state == null) {
+                approvalTasks.forEach(this::syncWorkflowInstance);
                 return;
             }
             if (state.approvalTasks != null) {
@@ -122,6 +128,7 @@ public class MockCertificateService implements CertificateApplicationService {
             historyIdGenerator.set(Math.max(historyIdGenerator.get(), maxHistoryId));
         } catch (Exception ignored) {
         }
+        approvalTasks.forEach(this::syncWorkflowInstance);
     }
 
     private synchronized void persistState() {
@@ -170,7 +177,7 @@ public class MockCertificateService implements CertificateApplicationService {
         requireCertificateOwner(request.studentId());
         validateCertificateType(request.certificateType());
         long id = idGenerator.incrementAndGet();
-        approvalTasks.add(0, new ApprovalTaskResponse(
+        ApprovalTaskResponse created = new ApprovalTaskResponse(
                 id,
                 request.studentId(),
                 resolveStudentName(request.studentId()),
@@ -178,7 +185,9 @@ public class MockCertificateService implements CertificateApplicationService {
                 "PENDING",
                 request.reason(),
                 LocalDateTime.now()
-        ));
+        );
+        approvalTasks.add(0, created);
+        syncWorkflowInstance(created);
         persistState();
         return new CertificateRequestResponse(id, request.studentId(), normalizeCertificateType(request.certificateType()), "PENDING", null);
     }
@@ -267,11 +276,29 @@ public class MockCertificateService implements CertificateApplicationService {
                         request.comment(),
                         LocalDateTime.now()
                 ));
+                syncWorkflowInstance(updated);
                 persistState();
                 return updated;
             }
         }
         throw new BusinessException("审批单不存在: " + requestId);
+    }
+
+    private void syncWorkflowInstance(ApprovalTaskResponse task) {
+        if (task == null) {
+            return;
+        }
+        if (!(adminService instanceof MockAdminService mock)) {
+            return;
+        }
+        mock.upsertCertificateWorkflowInstance(
+                task.requestId(),
+                task.certificateType(),
+                task.studentId(),
+                task.studentName(),
+                task.status(),
+                task.submittedAt()
+        );
     }
 
     @Override
@@ -520,8 +547,8 @@ public class MockCertificateService implements CertificateApplicationService {
     }
 
     private void validateCertificateType(String certificateType) {
-        if (!List.of("在读证明", "党员身份证明", "困难认定证明").contains(normalizeCertificateType(certificateType))) {
-            throw new BusinessException("证明类型仅支持 在读证明、党员身份证明、困难认定证明");
+        if (!List.of("在读证明", "党员身份证明", "困难认定证明", "成绩单", "实习证明").contains(normalizeCertificateType(certificateType))) {
+            throw new BusinessException("证明类型仅支持 在读证明、党员身份证明、困难认定证明、成绩单、实习证明");
         }
     }
 
