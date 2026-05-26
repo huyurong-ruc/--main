@@ -15,10 +15,14 @@ import edu.ruc.platform.common.api.PageResponse;
 import edu.ruc.platform.common.enums.RoleType;
 import edu.ruc.platform.common.exception.BusinessException;
 import edu.ruc.platform.common.support.QueryFilterSupport;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,9 +44,92 @@ public class MockCertificateService implements CertificateApplicationService {
     private final List<ApprovalHistoryResponse> approvalHistories = new ArrayList<>(List.of(
             new ApprovalHistoryResponse(3001L, 1002L, 20001L, "胡浩老师", "COUNSELOR", "approve", "PENDING", "COUNSELOR_APPROVED", "初审通过", LocalDateTime.of(2026, 3, 20, 9, 0))
     ));
+    private final Path persistedStatePath = Paths.get(System.getProperty("user.home"), ".ssp", "mock", "certificate-state.json");
+    private final ObjectMapper stateMapper = new ObjectMapper().findAndRegisterModules();
+    private boolean stateLoaded = false;
+    private final boolean persistEnabled = !isTestRuntime();
+
+    private static class PersistedState {
+        public List<ApprovalTaskResponse> approvalTasks;
+        public List<ApprovalHistoryResponse> approvalHistories;
+    }
+
+    public void seedApprovalTasks(int count) {
+        ensureStateLoaded();
+        int n = Math.max(1, Math.min(count, 20));
+        for (int i = 0; i < n; i += 1) {
+            long id = idGenerator.incrementAndGet();
+            long studentId = 10000L + (id % 200);
+            String studentName = "测试学生" + studentId;
+            String[] types = new String[]{"在读证明", "成绩单", "奖学金申请证明", "党员身份证明"};
+            String certType = types[(int) (id % types.length)];
+            approvalTasks.add(0, new ApprovalTaskResponse(
+                    id,
+                    studentId,
+                    studentName,
+                    certType,
+                    "PENDING",
+                    "演示生成的审批任务",
+                    LocalDateTime.now()
+            ));
+        }
+        persistState();
+    }
+
+    private static boolean isTestRuntime() {
+        return System.getProperty("surefire.test.class.path") != null
+                || System.getProperty("surefire.real.class.path") != null;
+    }
+
+    private synchronized void ensureStateLoaded() {
+        if (stateLoaded) {
+            return;
+        }
+        stateLoaded = true;
+        if (!persistEnabled) {
+            return;
+        }
+        try {
+            if (!Files.exists(persistedStatePath)) {
+                return;
+            }
+            PersistedState state = stateMapper.readValue(persistedStatePath.toFile(), PersistedState.class);
+            if (state == null) {
+                return;
+            }
+            if (state.approvalTasks != null) {
+                approvalTasks.clear();
+                approvalTasks.addAll(state.approvalTasks);
+            }
+            if (state.approvalHistories != null) {
+                approvalHistories.clear();
+                approvalHistories.addAll(state.approvalHistories);
+            }
+            long maxTaskId = approvalTasks.stream().mapToLong(ApprovalTaskResponse::requestId).max().orElse(2000L);
+            long maxHistoryId = approvalHistories.stream().mapToLong(ApprovalHistoryResponse::id).max().orElse(3000L);
+            idGenerator.set(Math.max(idGenerator.get(), maxTaskId));
+            historyIdGenerator.set(Math.max(historyIdGenerator.get(), maxHistoryId));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private synchronized void persistState() {
+        if (!persistEnabled) {
+            return;
+        }
+        try {
+            Files.createDirectories(persistedStatePath.getParent());
+            PersistedState state = new PersistedState();
+            state.approvalTasks = List.copyOf(approvalTasks);
+            state.approvalHistories = List.copyOf(approvalHistories);
+            stateMapper.writeValue(persistedStatePath.toFile(), state);
+        } catch (Exception ignored) {
+        }
+    }
 
     @Override
     public CertificateRequestResponse create(CertificateRequestCreateRequest request) {
+        ensureStateLoaded();
         requireCertificateOwner(request.studentId());
         validateCertificateType(request.certificateType());
         long id = idGenerator.incrementAndGet();
@@ -55,11 +142,13 @@ public class MockCertificateService implements CertificateApplicationService {
                 request.reason(),
                 LocalDateTime.now()
         ));
+        persistState();
         return new CertificateRequestResponse(id, request.studentId(), normalizeCertificateType(request.certificateType()), "PENDING", null);
     }
 
     @Override
     public List<CertificateRequestResponse> listByStudentId(Long studentId) {
+        ensureStateLoaded();
         requireCertificateOwner(studentId);
         return approvalTasks.stream()
                 .filter(task -> task.studentId().equals(studentId))
@@ -75,6 +164,7 @@ public class MockCertificateService implements CertificateApplicationService {
 
     @Override
     public List<ApprovalTaskResponse> listApprovalTasks() {
+        ensureStateLoaded();
         AuthenticatedUser user = currentUserService.requireCurrentUser();
         return approvalTasks.stream()
                 .filter(item -> canAccessApprovalTask(user, item))
@@ -83,6 +173,7 @@ public class MockCertificateService implements CertificateApplicationService {
 
     @Override
     public PageResponse<ApprovalTaskResponse> pageApprovalTasks(ApprovalTaskFilterRequest request, int page, int size) {
+        ensureStateLoaded();
         List<ApprovalTaskResponse> filtered = filterApprovalTasks(request);
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = Math.max(size, 1);
@@ -94,6 +185,7 @@ public class MockCertificateService implements CertificateApplicationService {
 
     @Override
     public ApprovalTaskStatsResponse approvalTaskStats(ApprovalTaskFilterRequest request) {
+        ensureStateLoaded();
         List<ApprovalTaskResponse> filtered = filterApprovalTasks(request);
         return new ApprovalTaskStatsResponse(
                 filtered.size(),
@@ -107,6 +199,7 @@ public class MockCertificateService implements CertificateApplicationService {
 
     @Override
     public ApprovalTaskResponse handleApproval(Long requestId, ApprovalActionRequest request) {
+        ensureStateLoaded();
         for (int i = 0; i < approvalTasks.size(); i++) {
             ApprovalTaskResponse task = approvalTasks.get(i);
             if (task.requestId().equals(requestId)) {
@@ -137,6 +230,7 @@ public class MockCertificateService implements CertificateApplicationService {
                         request.comment(),
                         LocalDateTime.now()
                 ));
+                persistState();
                 return updated;
             }
         }
@@ -145,6 +239,7 @@ public class MockCertificateService implements CertificateApplicationService {
 
     @Override
     public List<ApprovalHistoryResponse> listApprovalHistory(Long requestId) {
+        ensureStateLoaded();
         AuthenticatedUser user = currentUserService.requireCurrentUser();
         ApprovalTaskResponse task = findTask(requestId);
         if (!canAccessApprovalTask(user, task)) {
@@ -157,6 +252,7 @@ public class MockCertificateService implements CertificateApplicationService {
 
     @Override
     public List<ApprovalHistoryResponse> listRequestHistory(Long requestId) {
+        ensureStateLoaded();
         ApprovalTaskResponse task = findTask(requestId);
         currentUserService.requireSelfOrAdmin(task.studentId(), RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR);
         return approvalHistories.stream()
@@ -166,6 +262,7 @@ public class MockCertificateService implements CertificateApplicationService {
 
     @Override
     public CertificatePreviewResponse preview(Long requestId) {
+        ensureStateLoaded();
         ApprovalTaskResponse task = findTask(requestId);
         currentUserService.requireSelfOrAdmin(task.studentId(), RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR);
         return toPreview(task);
@@ -226,7 +323,11 @@ public class MockCertificateService implements CertificateApplicationService {
         AuthenticatedUser operator = currentUserService.requireCurrentUser();
         String normalizedAction = action.toLowerCase();
         if ("withdraw".equals(normalizedAction) || "resubmit".equals(normalizedAction)) {
-            if (!operator.userId().equals(task.studentId())) {
+            boolean isOwner = operator.userId().equals(task.studentId());
+            boolean isAdmin = RoleType.SUPER_ADMIN.name().equals(operator.role())
+                    || RoleType.COLLEGE_ADMIN.name().equals(operator.role())
+                    || RoleType.COUNSELOR.name().equals(operator.role());
+            if (!isOwner && !isAdmin) {
                 throw new BusinessException("当前账号无权执行该审批动作");
             }
             return;

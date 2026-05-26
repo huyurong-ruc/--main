@@ -6,6 +6,7 @@ import edu.ruc.platform.admin.dto.DataImportTaskResponse;
 import edu.ruc.platform.certificate.dto.ApprovalHistoryResponse;
 import edu.ruc.platform.common.api.PageResponse;
 import edu.ruc.platform.platform.dto.PlatformContractResponse;
+import edu.ruc.platform.platform.dto.PlatformFileDownloadPayload;
 import edu.ruc.platform.platform.dto.PlatformFileUploadResponse;
 import edu.ruc.platform.platform.dto.PlatformFileUploadRecordResponse;
 import edu.ruc.platform.platform.dto.PlatformImportErrorCreateRequest;
@@ -96,6 +97,8 @@ public interface PlatformApplicationService {
     PlatformFileUploadRecordResponse archiveUploadRecord(Long id);
 
     void deleteUploadRecord(Long id);
+
+    PlatformFileDownloadPayload downloadUploadFile(Long id);
 
     PlatformImportTaskReceiptResponse createImportTask(PlatformImportTaskCreateRequest request);
 

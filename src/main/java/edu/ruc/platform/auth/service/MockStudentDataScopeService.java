@@ -42,7 +42,7 @@ public class MockStudentDataScopeService {
                     && (("advisor01".equals(user.username()) && studentId.equals(10001L))
                     || ("advisor02".equals(user.username()) && studentId.equals(10002L)));
         }
-        return "STUDENT".equals(user.role()) && studentId.equals(user.userId());
+        return "STUDENT".equals(user.role()) && studentId.equals(user.studentId());
     }
 
     public void requireGradeAccess(AuthenticatedUser user, String targetGrade) {
@@ -92,7 +92,7 @@ public class MockStudentDataScopeService {
             return new StudentDataScopeSnapshot(user.role(), true, false, null, java.util.List.of(), java.util.List.of());
         }
         if ("STUDENT".equals(user.role())) {
-            return new StudentDataScopeSnapshot(user.role(), false, true, user.grade(), java.util.List.of(), java.util.List.of(user.userId()));
+            return new StudentDataScopeSnapshot(user.role(), false, true, user.grade(), java.util.List.of(), java.util.List.of(user.studentId()));
         }
         if ("LEAGUE_SECRETARY".equals(user.role()) || "CLASS_LEADER".equals(user.role())) {
             return new StudentDataScopeSnapshot(user.role(), false, false, user.grade(), java.util.List.of(), java.util.List.of());

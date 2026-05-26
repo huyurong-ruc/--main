@@ -50,6 +50,12 @@ public interface AdminApplicationService {
 
     TargetedNoticeResponse createNotice(AdminNoticeCreateRequest request);
 
+    TargetedNoticeResponse updateNotice(Long id, AdminNoticeCreateRequest request);
+
+    TargetedNoticeResponse toggleNoticePublish(Long id, boolean published);
+
+    void deleteNotice(Long id);
+
     List<AdminKnowledgeItemResponse> listKnowledgeItems(AuthenticatedUser user);
 
     PageResponse<AdminKnowledgeItemResponse> pageKnowledgeItems(AuthenticatedUser user, AdminKnowledgeFilterRequest request, int page, int size);

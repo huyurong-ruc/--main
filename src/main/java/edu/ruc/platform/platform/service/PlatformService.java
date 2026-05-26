@@ -45,6 +45,7 @@ import edu.ruc.platform.common.support.QueryFilterSupport;
 import edu.ruc.platform.knowledge.domain.LatestFileObject;
 import edu.ruc.platform.knowledge.repository.LatestFileObjectRepository;
 import edu.ruc.platform.platform.dto.PlatformContractResponse;
+import edu.ruc.platform.platform.dto.PlatformFileDownloadPayload;
 import edu.ruc.platform.platform.dto.PlatformFileUploadResponse;
 import edu.ruc.platform.platform.dto.PlatformFileUploadRecordResponse;
 import edu.ruc.platform.platform.dto.PlatformImportErrorCreateRequest;
@@ -90,10 +91,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import org.springframework.util.StringUtils;
 
 @Service
@@ -472,14 +477,17 @@ public class PlatformService implements PlatformApplicationService {
         AuthenticatedUser user = currentUserService.requireCurrentUser();
         String normalizedBizType = (bizType == null || bizType.isBlank()) ? "COMMON" : bizType.trim().toUpperCase();
         String originalFileName = file.getOriginalFilename() == null ? "unknown-file" : file.getOriginalFilename();
+        String safeFileName = normalizeUploadFileName(originalFileName);
         if (isKingbaseProfile()) {
+            String storagePath = "/uploads/" + normalizedBizType.toLowerCase() + "/" + System.currentTimeMillis() + "-" + safeFileName;
+            persistUploadFile(storagePath, file);
             LatestFileObject fileObject = new LatestFileObject();
             fileObject.setPurpose("platform_upload");
             fileObject.setOriginalName(originalFileName);
             fileObject.setMimeType(file.getContentType());
             fileObject.setSizeBytes(file.getSize());
             fileObject.setStorageProvider("local");
-            fileObject.setStoragePath("/uploads/" + normalizedBizType.toLowerCase() + "/" + System.currentTimeMillis() + "-" + originalFileName);
+            fileObject.setStoragePath(storagePath);
             fileObject.setUploadedBy(user.userId());
             fileObject.setUploadedAt(LocalDateTime.now());
             fileObject.setIsDeleted(0);
@@ -497,13 +505,15 @@ public class PlatformService implements PlatformApplicationService {
                     fileObject.getUploadedAt()
             );
         }
+        String storagePath = "/uploads/" + normalizedBizType.toLowerCase() + "/" + System.currentTimeMillis() + "-" + safeFileName;
+        persistUploadFile(storagePath, file);
         PlatformFileUploadRecord record = new PlatformFileUploadRecord();
         record.setBizType(normalizedBizType);
         record.setBizId(bizId);
         record.setFileName(originalFileName);
         record.setContentType(file.getContentType());
         record.setFileSize(file.getSize());
-        record.setStoragePath("/uploads/" + normalizedBizType.toLowerCase() + "/" + System.currentTimeMillis() + "-" + originalFileName);
+        record.setStoragePath(storagePath);
         record.setUploadedById(user.userId());
         record.setUploadedBy(user.name());
         record.setArchived(Boolean.FALSE);
@@ -522,6 +532,53 @@ public class PlatformService implements PlatformApplicationService {
         );
         writePlatformOperationLog("PLATFORM_FILE", "UPLOAD", "file#" + response.id(), "SUCCESS", response.fileName());
         return response;
+    }
+
+    @Override
+    public PlatformFileDownloadPayload downloadUploadFile(Long id) {
+        if (id == null || id <= 0) {
+            throw new BusinessException("上传记录ID必须大于 0");
+        }
+        if (isKingbaseProfile()) {
+            LatestFileObject fileObject = latestFileObjectRepository.findById(id)
+                    .filter(item -> "platform_upload".equals(item.getPurpose()) && item.getIsDeleted() != null && item.getIsDeleted() == 0)
+                    .orElseThrow(() -> new BusinessException("上传记录不存在"));
+            Path path = resolveUploadPath(fileObject.getStoragePath());
+            if (!Files.exists(path) || !Files.isRegularFile(path)) {
+                throw new BusinessException("文件不存在或已被清理");
+            }
+            try {
+                byte[] bytes = Files.readAllBytes(path);
+                return new PlatformFileDownloadPayload(
+                        fileObject.getId(),
+                        fileObject.getOriginalName(),
+                        fileObject.getMimeType(),
+                        fileObject.getSizeBytes(),
+                        bytes
+                );
+            } catch (IOException e) {
+                throw new BusinessException("读取文件失败");
+            }
+        }
+        PlatformFileUploadRecord record = platformFileUploadRecordRepository.findById(id)
+                .filter(item -> !Boolean.TRUE.equals(item.getDeleted()))
+                .orElseThrow(() -> new BusinessException("上传记录不存在"));
+        Path path = resolveUploadPath(record.getStoragePath());
+        if (!Files.exists(path) || !Files.isRegularFile(path)) {
+            throw new BusinessException("文件不存在或已被清理");
+        }
+        try {
+            byte[] bytes = Files.readAllBytes(path);
+            return new PlatformFileDownloadPayload(
+                    record.getId(),
+                    record.getFileName(),
+                    record.getContentType(),
+                    record.getFileSize(),
+                    bytes
+            );
+        } catch (IOException e) {
+            throw new BusinessException("读取文件失败");
+        }
     }
 
     @Override
@@ -1267,6 +1324,47 @@ public class PlatformService implements PlatformApplicationService {
             }
         }
         return new PlatformUploadState(bizType, bizId, archived);
+    }
+
+    private String normalizeUploadFileName(String originalFileName) {
+        String name = StringUtils.getFilename(originalFileName);
+        if (name == null || name.isBlank()) {
+            return "unknown-file";
+        }
+        String cleaned = name.replaceAll("[\\r\\n\\t]", " ").trim();
+        cleaned = cleaned.replaceAll("[\\\\/]+", "_");
+        cleaned = cleaned.replaceAll("\\s+", "_");
+        return cleaned.isBlank() ? "unknown-file" : cleaned;
+    }
+
+    private void persistUploadFile(String storagePath, MultipartFile file) {
+        Path path = resolveUploadPath(storagePath);
+        try {
+            Files.createDirectories(path.getParent());
+            if (Files.exists(path)) {
+                Files.write(path, new byte[0], StandardOpenOption.TRUNCATE_EXISTING);
+            }
+            file.transferTo(path);
+        } catch (IOException e) {
+            throw new BusinessException("保存文件失败");
+        }
+    }
+
+    private Path resolveUploadPath(String storagePath) {
+        String normalized = storagePath == null ? "" : storagePath.trim();
+        if (normalized.isEmpty()) {
+            throw new BusinessException("文件路径为空");
+        }
+        String relative = normalized.startsWith("/") ? normalized.substring(1) : normalized;
+        String home = System.getProperty("user.home");
+        Path base = (home == null || home.isBlank())
+                ? Path.of(System.getProperty("java.io.tmpdir"), "ssp-uploads")
+                : Path.of(home, ".ssp", "uploads");
+        Path resolved = base.resolve(relative).normalize();
+        if (!resolved.startsWith(base)) {
+            throw new BusinessException("文件路径非法");
+        }
+        return resolved;
     }
 
     private void writeLatestPlatformFileLog(Long fileId,

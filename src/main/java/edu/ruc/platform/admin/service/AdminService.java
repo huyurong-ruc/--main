@@ -187,25 +187,98 @@ public class AdminService implements AdminApplicationService {
         if (isKingbaseProfile()) {
             return createLatestNotice(request);
         }
+        AuthenticatedUser operator = currentUserService.requireCurrentUser();
+        List<String> finalTags = mergePublisherTag(request.tags(), null, operator);
         Notice notice = new Notice();
         notice.setTitle(request.title());
         notice.setSummary(request.summary());
-        notice.setTag(String.join(",", request.tags()));
+        notice.setTag(String.join(",", finalTags));
         populateTargetFields(notice, request.targetDescription());
-        notice.setPublishTime(LocalDateTime.now());
+        notice.setPublishTime(resolveNoticePublishTime(request.published()));
         notice = noticeRepository.save(notice);
         writeOperationLog("NOTICE", "CREATE", notice.getTitle(), "SUCCESS", request.targetDescription());
         return new TargetedNoticeResponse(
                 notice.getId(),
                 notice.getTitle(),
                 notice.getSummary(),
-                request.tags(),
+                finalTags,
                 request.targetDescription(),
                 resolvePriority(notice),
                 resolveMatchedRules(notice),
                 resolveDeliveryChannels(notice),
                 notice.getPublishTime()
         );
+    }
+
+    @Override
+    public TargetedNoticeResponse updateNotice(Long id, AdminNoticeCreateRequest request) {
+        if (isKingbaseProfile()) {
+            throw new BusinessException("当前环境暂不支持更新通知");
+        }
+        Notice notice = noticeRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("通知不存在"));
+        AuthenticatedUser operator = currentUserService.requireCurrentUser();
+        List<String> finalTags = mergePublisherTag(request.tags(), notice.getTag(), operator);
+        notice.setTitle(request.title());
+        notice.setSummary(request.summary());
+        notice.setTag(String.join(",", finalTags));
+        notice.setTargetGraduateOnly(Boolean.FALSE);
+        notice.setTargetGrade(null);
+        notice.setTargetMajor(null);
+        populateTargetFields(notice, request.targetDescription());
+        if (request.published() != null) {
+            notice.setPublishTime(resolveNoticePublishTime(request.published()));
+        }
+        notice = noticeRepository.save(notice);
+        writeOperationLog("NOTICE", "UPDATE", notice.getTitle(), "SUCCESS", request.targetDescription());
+        return new TargetedNoticeResponse(
+                notice.getId(),
+                notice.getTitle(),
+                notice.getSummary(),
+                finalTags,
+                request.targetDescription(),
+                resolvePriority(notice),
+                resolveMatchedRules(notice),
+                resolveDeliveryChannels(notice),
+                notice.getPublishTime()
+        );
+    }
+
+    @Override
+    public TargetedNoticeResponse toggleNoticePublish(Long id, boolean published) {
+        if (isKingbaseProfile()) {
+            throw new BusinessException("当前环境暂不支持发布/撤回通知");
+        }
+        Notice notice = noticeRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("通知不存在"));
+        notice.setPublishTime(resolveNoticePublishTime(published));
+        notice = noticeRepository.save(notice);
+        writeOperationLog("NOTICE", published ? "PUBLISH" : "UNPUBLISH", notice.getTitle(), "SUCCESS", null);
+        List<String> tags = notice.getTag() == null || notice.getTag().isBlank()
+                ? List.of()
+                : Arrays.stream(notice.getTag().split(",")).map(String::trim).filter(item -> !item.isBlank()).toList();
+        return new TargetedNoticeResponse(
+                notice.getId(),
+                notice.getTitle(),
+                notice.getSummary(),
+                tags,
+                buildTargetDescription(notice),
+                resolvePriority(notice),
+                resolveMatchedRules(notice),
+                resolveDeliveryChannels(notice),
+                notice.getPublishTime()
+        );
+    }
+
+    @Override
+    public void deleteNotice(Long id) {
+        if (isKingbaseProfile()) {
+            throw new BusinessException("当前环境暂不支持删除通知");
+        }
+        Notice notice = noticeRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("通知不存在"));
+        noticeRepository.delete(notice);
+        writeOperationLog("NOTICE", "DELETE", notice.getTitle(), "SUCCESS", null);
     }
 
     @Override
@@ -224,7 +297,9 @@ public class AdminService implements AdminApplicationService {
                         item.getOfficialUrl(),
                         item.getSourceFileName(),
                         item.getAudienceScope(),
-                        item.getUpdatedBy()
+                        item.getUpdatedBy(),
+                        item.getCreatedAt(),
+                        item.getUpdatedAt()
                 ))
                 .toList();
     }
@@ -1264,7 +1339,9 @@ public class AdminService implements AdminApplicationService {
                 item.getOfficialUrl(),
                 item.getSourceFileName(),
                 item.getAudienceScope(),
-                item.getUpdatedBy()
+                item.getUpdatedBy(),
+                item.getCreatedAt(),
+                item.getUpdatedAt()
         );
     }
 
@@ -1491,7 +1568,9 @@ public class AdminService implements AdminApplicationService {
                 item.getSourceUrl(),
                 sourceFileName,
                 meta.get("audienceScope"),
-                meta.get("updatedBy")
+                meta.get("updatedBy"),
+                item.getCreatedAt(),
+                item.getUpdatedAt()
         );
     }
 
@@ -1828,7 +1907,7 @@ public class AdminService implements AdminApplicationService {
     }
 
     private List<TargetedNoticeResponse> listLatestNotices() {
-        return filterLatestNotices(new AdminNoticeFilterRequest(null, null, null));
+        return filterLatestNotices(new AdminNoticeFilterRequest(null, null, null, null));
     }
 
     private List<TargetedNoticeResponse> filterLatestNotices(AdminNoticeFilterRequest request) {
@@ -1839,12 +1918,14 @@ public class AdminService implements AdminApplicationService {
 
     private List<LatestAdminNoticeView> filterLatestNoticeViews(AdminNoticeFilterRequest request) {
         AuthenticatedUser user = currentUserService.requireCurrentUser();
+        String normalizedTab = QueryFilterSupport.normalizeUpper(request.tab());
         String normalizedKeyword = QueryFilterSupport.trimToNull(request.keyword());
         String normalizedTag = QueryFilterSupport.trimToNull(request.tag());
         String normalizedTargetKeyword = QueryFilterSupport.trimToNull(request.targetKeyword());
         return latestNoticeItemRepository.findByIsDeletedOrderByPublishAtDesc(0).stream()
                 .map(this::buildLatestNoticeView)
                 .filter(item -> canViewLatestNotice(user, item))
+                .filter(item -> matchesNoticeTab(normalizedTab, item.publishTime()))
                 .filter(item -> normalizedKeyword == null
                         || QueryFilterSupport.containsIgnoreCase(item.title(), normalizedKeyword)
                         || QueryFilterSupport.containsIgnoreCase(item.summary(), normalizedKeyword))
@@ -1857,11 +1938,13 @@ public class AdminService implements AdminApplicationService {
 
     private List<Notice> filterNoticeEntities(AdminNoticeFilterRequest request) {
         AuthenticatedUser user = currentUserService.requireCurrentUser();
+        String normalizedTab = QueryFilterSupport.normalizeUpper(request.tab());
         String normalizedKeyword = QueryFilterSupport.trimToNull(request.keyword());
         String normalizedTag = QueryFilterSupport.trimToNull(request.tag());
         String normalizedTargetKeyword = QueryFilterSupport.trimToNull(request.targetKeyword());
         return noticeRepository.findAllByOrderByPublishTimeDesc().stream()
                 .filter(item -> canViewNotice(user, item))
+                .filter(item -> matchesNoticeTab(normalizedTab, item.getPublishTime()))
                 .filter(item -> normalizedKeyword == null
                         || QueryFilterSupport.containsIgnoreCase(item.getTitle(), normalizedKeyword)
                         || QueryFilterSupport.containsIgnoreCase(item.getSummary(), normalizedKeyword))
@@ -1872,6 +1955,59 @@ public class AdminService implements AdminApplicationService {
                 .filter(item -> normalizedTargetKeyword == null
                         || QueryFilterSupport.containsIgnoreCase(buildTargetDescription(item), normalizedTargetKeyword))
                 .toList();
+    }
+
+    private LocalDateTime resolveNoticePublishTime(Boolean published) {
+        if (published == null || Boolean.TRUE.equals(published)) {
+            return LocalDateTime.now();
+        }
+        return LocalDateTime.now().plusYears(100);
+    }
+
+    private List<String> mergePublisherTag(List<String> requestTags, String persistedTagRaw, AuthenticatedUser operator) {
+        List<String> result = new java.util.ArrayList<>();
+        if (requestTags != null) {
+            requestTags.stream()
+                    .filter(value -> value != null && !value.isBlank())
+                    .map(String::trim)
+                    .filter(value -> !value.startsWith("发布人:"))
+                    .forEach(result::add);
+        }
+        String existingPublisher = null;
+        if (persistedTagRaw != null && !persistedTagRaw.isBlank()) {
+            for (String t : persistedTagRaw.split(",")) {
+                String tag = t == null ? null : t.trim();
+                if (tag != null && tag.startsWith("发布人:")) {
+                    existingPublisher = tag;
+                    break;
+                }
+            }
+        }
+        if (existingPublisher != null) {
+            result.add(0, existingPublisher);
+        } else if (operator != null) {
+            String displayName = operator.name() != null && !operator.name().isBlank() ? operator.name() : operator.username();
+            String username = operator.username() != null ? operator.username() : "";
+            result.add(0, "发布人:" + displayName + "|" + username);
+        }
+        return result;
+    }
+
+    private boolean matchesNoticeTab(String tab, LocalDateTime publishTime) {
+        if (tab == null || tab.isBlank() || "ALL".equals(tab)) {
+            return true;
+        }
+        if (publishTime == null) {
+            return false;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        return switch (tab) {
+            case "DRAFT" -> publishTime.isAfter(now);
+            case "PENDING" -> publishTime.isAfter(now);
+            case "PUBLISHED" -> !publishTime.isAfter(now) && !publishTime.isBefore(now.minusDays(30));
+            case "HISTORY" -> publishTime.isBefore(now.minusDays(30));
+            default -> true;
+        };
     }
 
     private boolean canViewNotice(AuthenticatedUser user, Notice notice) {

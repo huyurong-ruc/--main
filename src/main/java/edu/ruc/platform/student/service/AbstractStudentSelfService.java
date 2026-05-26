@@ -144,6 +144,6 @@ abstract class AbstractStudentSelfService implements StudentSelfApplicationServi
 
     protected Long currentStudentId() {
         AuthenticatedUser user = currentUserService.requireCurrentUser();
-        return user.userId();
+        return user.studentId() != null ? user.studentId() : user.userId();
     }
 }

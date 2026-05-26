@@ -1,5 +1,7 @@
 package edu.ruc.platform.admin.dto;
 
+import java.time.LocalDateTime;
+
 public record AdminKnowledgeItemResponse(
         Long id,
         String title,
@@ -8,6 +10,8 @@ public record AdminKnowledgeItemResponse(
         String officialUrl,
         String sourceFileName,
         String audienceScope,
-        String updatedBy
+        String updatedBy,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
 }

@@ -42,10 +42,14 @@ import edu.ruc.platform.common.exception.BusinessException;
 import edu.ruc.platform.common.mock.MockDataStore;
 import edu.ruc.platform.common.support.QueryFilterSupport;
 import edu.ruc.platform.notice.dto.TargetedNoticeResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -86,16 +90,86 @@ public class MockAdminService implements AdminApplicationService {
             new DataImportErrorItemResponse(81L, 2L, 7, "title", "标题为空", null, LocalDateTime.of(2026, 3, 23, 9, 5)),
             new DataImportErrorItemResponse(82L, 2L, 12, "officialUrl", "URL 格式不合法", "htp://bad-url", LocalDateTime.of(2026, 3, 23, 9, 6))
     ));
+    private final Path persistedStatePath = Paths.get(System.getProperty("user.home"), ".ssp", "mock", "admin-state.json");
+    private final ObjectMapper stateMapper = new ObjectMapper().findAndRegisterModules();
+    private boolean stateLoaded = false;
+    private final boolean persistEnabled = !isTestRuntime();
     private final Map<Long, ImportExecutionContext> importExecutionContexts = new HashMap<>();
     private final List<AdvisorScopeBindingResponse> advisorScopes = new ArrayList<>(List.of(
             new AdvisorScopeBindingResponse(1L, "advisor01", "王老师", "2023级", "计科一班", 10001L),
             new AdvisorScopeBindingResponse(2L, "advisor02", "赵老师", "2023级", "计科二班", 10002L)
     ));
 
+    private static class PersistedState {
+        public List<TargetedNoticeResponse> notices;
+        public List<AdminKnowledgeItemResponse> knowledgeItems;
+        public List<KnowledgeAttachmentResponse> knowledgeAttachments;
+    }
+
+    private static boolean isTestRuntime() {
+        return System.getProperty("surefire.test.class.path") != null
+                || System.getProperty("surefire.real.class.path") != null;
+    }
+
+    private synchronized void ensureStateLoaded() {
+        if (stateLoaded) {
+            return;
+        }
+        stateLoaded = true;
+        if (!persistEnabled) {
+            return;
+        }
+        try {
+            if (!Files.exists(persistedStatePath)) {
+                return;
+            }
+            PersistedState state = stateMapper.readValue(persistedStatePath.toFile(), PersistedState.class);
+            if (state == null) {
+                return;
+            }
+            if (state.notices != null) {
+                notices.clear();
+                notices.addAll(state.notices);
+            }
+            if (state.knowledgeItems != null) {
+                knowledgeItems.clear();
+                knowledgeItems.addAll(state.knowledgeItems);
+            }
+            if (state.knowledgeAttachments != null) {
+                knowledgeAttachments.clear();
+                knowledgeAttachments.addAll(state.knowledgeAttachments);
+            }
+            long maxNoticeId = notices.stream().mapToLong(TargetedNoticeResponse::id).max().orElse(10L);
+            long maxKnowledgeId = knowledgeItems.stream().mapToLong(AdminKnowledgeItemResponse::id).max().orElse(200L);
+            long maxAttachmentId = knowledgeAttachments.stream().mapToLong(KnowledgeAttachmentResponse::id).max().orElse(50L);
+            noticeIdGenerator.set(Math.max(noticeIdGenerator.get(), maxNoticeId));
+            knowledgeIdGenerator.set(Math.max(knowledgeIdGenerator.get(), maxKnowledgeId));
+            knowledgeAttachmentIdGenerator.set(Math.max(knowledgeAttachmentIdGenerator.get(), maxAttachmentId));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private synchronized void persistState() {
+        if (!persistEnabled) {
+            return;
+        }
+        try {
+            Files.createDirectories(persistedStatePath.getParent());
+            PersistedState state = new PersistedState();
+            state.notices = List.copyOf(notices);
+            state.knowledgeItems = List.copyOf(knowledgeItems);
+            state.knowledgeAttachments = List.copyOf(knowledgeAttachments);
+            stateMapper.writeValue(persistedStatePath.toFile(), state);
+        } catch (Exception ignored) {
+        }
+    }
+
     @Override
     public List<TargetedNoticeResponse> listNotices() {
+        ensureStateLoaded();
         if (notices.isEmpty()) {
             notices.addAll(mockDataStore.notices());
+            persistState();
         }
         AuthenticatedUser user = currentUserService.requireCurrentUser();
         return notices.stream()
@@ -127,24 +201,130 @@ public class MockAdminService implements AdminApplicationService {
 
     @Override
     public TargetedNoticeResponse createNotice(AdminNoticeCreateRequest request) {
+        ensureStateLoaded();
+        AuthenticatedUser operator = currentUserService.requireCurrentUser();
+        List<String> finalTags = mergePublisherTag(request.tags(), null, operator);
         TargetedNoticeResponse response = new TargetedNoticeResponse(
                 noticeIdGenerator.incrementAndGet(),
                 request.title(),
                 request.summary(),
-                request.tags(),
+                finalTags,
                 request.targetDescription(),
                 resolvePriority(request.tags(), request.targetDescription()),
                 resolveMatchedRules(request.targetDescription(), request.tags()),
                 resolveDeliveryChannels(request.tags()),
-                LocalDateTime.now()
+                resolveNoticePublishTime(request.published())
         );
         notices.add(0, response);
         writeOperationLog("NOTICE", "CREATE", response.title(), "SUCCESS", response.targetDescription());
+        persistState();
         return response;
     }
 
     @Override
+    public TargetedNoticeResponse updateNotice(Long id, AdminNoticeCreateRequest request) {
+        ensureStateLoaded();
+        for (int i = 0; i < notices.size(); i += 1) {
+            TargetedNoticeResponse item = notices.get(i);
+            if (item.id().equals(id)) {
+                AuthenticatedUser operator = currentUserService.requireCurrentUser();
+                List<String> finalTags = mergePublisherTag(request.tags(), item.tags(), operator);
+                TargetedNoticeResponse updated = new TargetedNoticeResponse(
+                        item.id(),
+                        request.title(),
+                        request.summary(),
+                        finalTags,
+                        request.targetDescription(),
+                        resolvePriority(request.tags(), request.targetDescription()),
+                        resolveMatchedRules(request.targetDescription(), request.tags()),
+                        resolveDeliveryChannels(request.tags()),
+                        request.published() == null ? item.publishTime() : resolveNoticePublishTime(request.published())
+                );
+                notices.set(i, updated);
+                writeOperationLog("NOTICE", "UPDATE", updated.title(), "SUCCESS", updated.targetDescription());
+                persistState();
+                return updated;
+            }
+        }
+        throw new BusinessException("通知不存在: " + id);
+    }
+
+    private LocalDateTime resolveNoticePublishTime(Boolean published) {
+        if (published == null || Boolean.TRUE.equals(published)) {
+            return LocalDateTime.now();
+        }
+        return LocalDateTime.now().plusYears(100);
+    }
+
+    private List<String> mergePublisherTag(List<String> requestTags, List<String> existingTags, AuthenticatedUser operator) {
+        List<String> result = new ArrayList<>();
+        if (requestTags != null) {
+            requestTags.stream()
+                    .filter(value -> value != null && !value.isBlank())
+                    .map(String::trim)
+                    .filter(value -> !value.startsWith("发布人:"))
+                    .forEach(result::add);
+        }
+        String existingPublisher = null;
+        if (existingTags != null) {
+            for (String t : existingTags) {
+                String tag = t == null ? null : t.trim();
+                if (tag != null && tag.startsWith("发布人:")) {
+                    existingPublisher = tag;
+                    break;
+                }
+            }
+        }
+        if (existingPublisher != null) {
+            result.add(0, existingPublisher);
+        } else if (operator != null) {
+            String displayName = operator.name() != null && !operator.name().isBlank() ? operator.name() : operator.username();
+            String username = operator.username() != null ? operator.username() : "";
+            result.add(0, "发布人:" + displayName + "|" + username);
+        }
+        return result;
+    }
+
+    @Override
+    public TargetedNoticeResponse toggleNoticePublish(Long id, boolean published) {
+        ensureStateLoaded();
+        for (int i = 0; i < notices.size(); i += 1) {
+            TargetedNoticeResponse item = notices.get(i);
+            if (item.id().equals(id)) {
+                TargetedNoticeResponse updated = new TargetedNoticeResponse(
+                        item.id(),
+                        item.title(),
+                        item.summary(),
+                        item.tags(),
+                        item.targetDescription(),
+                        item.priority(),
+                        item.matchedRules(),
+                        item.deliveryChannels(),
+                        resolveNoticePublishTime(published)
+                );
+                notices.set(i, updated);
+                writeOperationLog("NOTICE", published ? "PUBLISH" : "UNPUBLISH", updated.title(), "SUCCESS", null);
+                persistState();
+                return updated;
+            }
+        }
+        throw new BusinessException("通知不存在: " + id);
+    }
+
+    @Override
+    public void deleteNotice(Long id) {
+        ensureStateLoaded();
+        boolean removed = notices.removeIf(item -> item.id().equals(id));
+        if (!removed) {
+            throw new BusinessException("通知不存在: " + id);
+        }
+        writeOperationLog("NOTICE", "DELETE", "notice#" + id, "SUCCESS", null);
+        persistState();
+    }
+
+    @Override
     public List<AdminKnowledgeItemResponse> listKnowledgeItems(AuthenticatedUser user) {
+        ensureStateLoaded();
         initializeKnowledgeItems();
         return knowledgeItems.stream()
                 .filter(item -> canViewKnowledgeItem(user, item))
@@ -191,9 +371,11 @@ public class MockAdminService implements AdminApplicationService {
 
     @Override
     public AdminKnowledgeItemResponse createKnowledgeItem(AdminKnowledgeUpsertRequest request) {
+        ensureStateLoaded();
         initializeKnowledgeItems();
         validateKnowledgeRequest(request);
         AuthenticatedUser user = currentUserService.requireCurrentUser();
+        LocalDateTime now = LocalDateTime.now();
         AdminKnowledgeItemResponse response = new AdminKnowledgeItemResponse(
                 knowledgeIdGenerator.incrementAndGet(),
                 request.title(),
@@ -202,21 +384,26 @@ public class MockAdminService implements AdminApplicationService {
                 request.officialUrl(),
                 request.sourceFileName(),
                 request.audienceScope(),
-                user.name()
+                user.name(),
+                now,
+                now
         );
         knowledgeItems.add(0, response);
         writeOperationLog("KNOWLEDGE", "CREATE", response.title(), "SUCCESS", response.sourceFileName());
+        persistState();
         return response;
     }
 
     @Override
     public AdminKnowledgeItemResponse updateKnowledgeItem(Long id, AdminKnowledgeUpsertRequest request) {
+        ensureStateLoaded();
         initializeKnowledgeItems();
         validateKnowledgeRequest(request);
         AuthenticatedUser user = currentUserService.requireCurrentUser();
         for (int i = 0; i < knowledgeItems.size(); i++) {
             AdminKnowledgeItemResponse item = knowledgeItems.get(i);
             if (item.id().equals(id)) {
+                LocalDateTime now = LocalDateTime.now();
                 AdminKnowledgeItemResponse updated = new AdminKnowledgeItemResponse(
                         id,
                         request.title(),
@@ -225,10 +412,13 @@ public class MockAdminService implements AdminApplicationService {
                         request.officialUrl(),
                         request.sourceFileName(),
                         request.audienceScope(),
-                        user.name()
+                        user.name(),
+                        item.createdAt(),
+                        now
                 );
                 knowledgeItems.set(i, updated);
                 writeOperationLog("KNOWLEDGE", "UPDATE", updated.title(), "SUCCESS", updated.sourceFileName());
+                persistState();
                 return updated;
             }
         }
@@ -237,6 +427,7 @@ public class MockAdminService implements AdminApplicationService {
 
     @Override
     public void deleteKnowledgeItem(Long id) {
+        ensureStateLoaded();
         initializeKnowledgeItems();
         boolean exists = knowledgeItems.stream().anyMatch(item -> item.id().equals(id));
         if (!exists) {
@@ -245,6 +436,7 @@ public class MockAdminService implements AdminApplicationService {
         knowledgeItems.removeIf(item -> item.id().equals(id));
         knowledgeAttachments.removeIf(item -> item.knowledgeId().equals(id));
         writeOperationLog("KNOWLEDGE", "DELETE", "knowledge#" + id, "SUCCESS", null);
+        persistState();
     }
 
     @Override
@@ -261,6 +453,7 @@ public class MockAdminService implements AdminApplicationService {
 
     @Override
     public KnowledgeAttachmentResponse uploadKnowledgeAttachment(Long knowledgeId, MultipartFile file) {
+        ensureStateLoaded();
         initializeKnowledgeItems();
         boolean exists = knowledgeItems.stream().anyMatch(item -> item.id().equals(knowledgeId));
         if (!exists) {
@@ -286,17 +479,20 @@ public class MockAdminService implements AdminApplicationService {
         );
         knowledgeAttachments.add(0, response);
         writeOperationLog("KNOWLEDGE_ATTACHMENT", "UPLOAD", "knowledge#" + knowledgeId, "SUCCESS", response.fileName());
+        persistState();
         return response;
     }
 
     @Override
     public void deleteKnowledgeAttachment(Long attachmentId) {
+        ensureStateLoaded();
         KnowledgeAttachmentResponse target = knowledgeAttachments.stream()
                 .filter(item -> item.id().equals(attachmentId))
                 .findFirst()
                 .orElseThrow(() -> new BusinessException("知识附件不存在: " + attachmentId));
         knowledgeAttachments.removeIf(item -> item.id().equals(attachmentId));
         writeOperationLog("KNOWLEDGE_ATTACHMENT", "DELETE", "attachment#" + attachmentId, "SUCCESS", target.fileName());
+        persistState();
     }
 
     @Override
@@ -987,6 +1183,7 @@ public class MockAdminService implements AdminApplicationService {
     }
 
     private void initializeKnowledgeItems() {
+        ensureStateLoaded();
         if (!knowledgeItems.isEmpty()) {
             return;
         }
@@ -999,7 +1196,9 @@ public class MockAdminService implements AdminApplicationService {
                         item.officialUrl(),
                         item.title() + ".pdf",
                         "全体学生",
-                        "胡浩老师"
+                        "胡浩老师",
+                        LocalDateTime.of(2026, 3, 20, 9, 0),
+                        LocalDateTime.of(2026, 3, 20, 9, 0)
                 ))
                 .toList());
         knowledgeItems.add(0, new AdminKnowledgeItemResponse(
@@ -1010,8 +1209,11 @@ public class MockAdminService implements AdminApplicationService {
                 "https://example.edu/internal",
                 "internal-note.pdf",
                 "辅导员",
-                "系统管理员"
+                "系统管理员",
+                LocalDateTime.of(2026, 3, 18, 10, 0),
+                LocalDateTime.of(2026, 3, 18, 10, 0)
         ));
+        persistState();
     }
 
     private void initializeImportTasks() {
@@ -1075,10 +1277,12 @@ public class MockAdminService implements AdminApplicationService {
     }
 
     private List<TargetedNoticeResponse> filterNotices(AdminNoticeFilterRequest request) {
+        String normalizedTab = QueryFilterSupport.normalizeUpper(request.tab());
         String normalizedKeyword = QueryFilterSupport.trimToNull(request.keyword());
         String normalizedTag = QueryFilterSupport.trimToNull(request.tag());
         String normalizedTargetKeyword = QueryFilterSupport.trimToNull(request.targetKeyword());
         return listNotices().stream()
+                .filter(item -> matchesNoticeTab(normalizedTab, item.publishTime()))
                 .filter(item -> normalizedKeyword == null
                         || QueryFilterSupport.containsIgnoreCase(item.title(), normalizedKeyword)
                         || QueryFilterSupport.containsIgnoreCase(item.summary(), normalizedKeyword))
@@ -1087,6 +1291,23 @@ public class MockAdminService implements AdminApplicationService {
                 .filter(item -> normalizedTargetKeyword == null
                         || QueryFilterSupport.containsIgnoreCase(item.targetDescription(), normalizedTargetKeyword))
                 .toList();
+    }
+
+    private boolean matchesNoticeTab(String tab, LocalDateTime publishTime) {
+        if (tab == null || tab.isBlank() || "ALL".equals(tab)) {
+            return true;
+        }
+        if (publishTime == null) {
+            return false;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        return switch (tab) {
+            case "DRAFT" -> publishTime.isAfter(now);
+            case "PENDING" -> publishTime.isAfter(now);
+            case "PUBLISHED" -> !publishTime.isAfter(now) && !publishTime.isBefore(now.minusDays(30));
+            case "HISTORY" -> publishTime.isBefore(now.minusDays(30));
+            default -> true;
+        };
     }
 
     private boolean canViewNotice(AuthenticatedUser user, TargetedNoticeResponse item) {
@@ -1213,7 +1434,8 @@ public class MockAdminService implements AdminApplicationService {
 
     private void validateKnowledgeRequest(AdminKnowledgeUpsertRequest request) {
         boolean published = Boolean.TRUE.equals(request.published());
-        boolean isFaq = request.category() != null && "FAQ管理".equalsIgnoreCase(request.category().trim());
+        String category = request.category() == null ? null : request.category().trim();
+        boolean isFaq = category != null && "FAQ管理".equalsIgnoreCase(category);
         boolean hasOfficialUrl = request.officialUrl() != null && !request.officialUrl().isBlank();
         boolean hasSourceFile = request.sourceFileName() != null && !request.sourceFileName().isBlank();
         if (published && !isFaq && !hasOfficialUrl && !hasSourceFile) {

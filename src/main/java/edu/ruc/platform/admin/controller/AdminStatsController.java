@@ -20,7 +20,14 @@ public class AdminStatsController {
     @GetMapping
     public ApiResponse<AdminStatsResponse> stats() {
         int pending = (int) certificateService.listApprovalTasks().stream()
-                .filter(item -> "PENDING".equals(item.status()))
+                .filter(item -> {
+                    String status = item.status();
+                    if (status == null) {
+                        return false;
+                    }
+                    String upper = status.toUpperCase();
+                    return "PENDING".equals(upper) || "COUNSELOR_APPROVED".equals(upper);
+                })
                 .count();
         return ApiResponse.success(adminService.stats(pending));
     }

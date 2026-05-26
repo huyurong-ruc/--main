@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 
@@ -41,6 +42,7 @@ public class NoticeService implements NoticeApplicationService {
                 .orElseThrow(() -> new BusinessException("未找到学生信息"));
         return noticeRepository.findAllByOrderByPublishTimeDesc()
                 .stream()
+                .filter(notice -> notice.getPublishTime() != null && !notice.getPublishTime().isAfter(LocalDateTime.now()))
                 .filter(notice -> matchesStudent(notice, studentProfile))
                 .sorted(Comparator
                         .comparingInt((Notice notice) -> scoreNotice(notice, studentProfile))

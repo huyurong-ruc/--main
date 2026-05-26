@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ public class MockNoticeService implements NoticeApplicationService {
             throw new BusinessException("未找到学生信息");
         }
         return mockDataStore.notices().stream()
+                .filter(notice -> notice.publishTime() != null && !notice.publishTime().isAfter(LocalDateTime.now()))
                 .filter(notice -> !matchedRules(notice, user).isEmpty())
                 .sorted(Comparator
                         .comparingInt((TargetedNoticeResponse notice) -> scoreNotice(notice, user))

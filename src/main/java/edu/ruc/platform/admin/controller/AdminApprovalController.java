@@ -7,9 +7,11 @@ import edu.ruc.platform.certificate.dto.ApprovalTaskFilterRequest;
 import edu.ruc.platform.certificate.dto.ApprovalTaskStatsResponse;
 import edu.ruc.platform.certificate.dto.ApprovalTaskResponse;
 import edu.ruc.platform.certificate.service.CertificateApplicationService;
+import edu.ruc.platform.certificate.service.MockCertificateService;
 import edu.ruc.platform.common.api.ApiResponse;
 import edu.ruc.platform.common.api.PageResponse;
 import edu.ruc.platform.common.enums.RoleType;
+import edu.ruc.platform.common.exception.BusinessException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
@@ -77,5 +79,15 @@ public class AdminApprovalController {
                                                     @Valid @RequestBody ApprovalActionRequest request) {
         currentUserService.requireAnyRole(RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR);
         return ApiResponse.success("审批已处理", certificateService.handleApproval(requestId, request));
+    }
+
+    @PostMapping("/seed")
+    public ApiResponse<List<ApprovalTaskResponse>> seed(@RequestParam(defaultValue = "2") @Min(value = 1, message = "count 不能小于 1") int count) {
+        currentUserService.requireAnyRole(RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR);
+        if (!(certificateService instanceof MockCertificateService mock)) {
+            throw new BusinessException("仅 mock 环境支持生成模拟审批任务");
+        }
+        mock.seedApprovalTasks(count);
+        return ApiResponse.success("已生成模拟审批任务", certificateService.listApprovalTasks());
     }
 }

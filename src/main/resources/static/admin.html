@@ -81,6 +81,18 @@
     th, td { padding: 10px 10px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
     th { text-align: left; color: var(--muted); font-weight: 650; }
     td .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 12px; color: #334155; }
+    .noticeTable { table-layout: fixed; }
+    .noticeTable th, .noticeTable td { padding: 8px 8px; }
+    .noticeTable th:nth-child(1), .noticeTable td:nth-child(1) { width: 38%; }
+    .noticeTable th:nth-child(2), .noticeTable td:nth-child(2) { width: 10%; }
+    .noticeTable th:nth-child(3), .noticeTable td:nth-child(3) { width: 10%; }
+    .noticeTable th:nth-child(4), .noticeTable td:nth-child(4) { width: 10%; }
+    .noticeTable th:nth-child(5), .noticeTable td:nth-child(5) { width: 13%; }
+    .noticeTable th:nth-child(6), .noticeTable td:nth-child(6) { width: 19%; text-align: right; }
+    .noticeTitleMain { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .noticeTitleSub { color: var(--muted); font-size: 12px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .noticeTable .iconActions { justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+    .noticeTable .iconAction { padding: 5px 6px; border-radius: 9px; }
     .tag { display:inline-flex; align-items:center; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,.03); font-size: 12px; }
     .tag.ok { border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.12); }
     .tag.bad { border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.12); }
@@ -649,11 +661,13 @@
 
     function setToken(token) {
       localStorage.setItem(TOKEN_KEY, token);
+      document.cookie = "token=" + encodeURIComponent(token) + "; path=/; SameSite=Lax";
     }
 
     function clearAuth() {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
+      document.cookie = "token=; Max-Age=0; path=/; SameSite=Lax";
     }
 
     function setUser(user) {
@@ -737,7 +751,11 @@
       body.innerHTML = "";
       footer.innerHTML = "";
       (bodyNodes || []).forEach(n => body.appendChild(n));
-      (footerNodes || []).forEach(n => footer.appendChild(n));
+      const nodes = (footerNodes || []).filter(Boolean);
+      if (nodes.length === 1 && nodes[0] && nodes[0].tagName === "BUTTON" && nodes[0].textContent === "关闭") {
+        return;
+      }
+      nodes.forEach(n => footer.appendChild(n));
     }
 
     async function apiFetch(path, options) {
@@ -781,7 +799,11 @@
           if (k === "class") node.className = v;
           else if (k === "text") node.textContent = v;
           else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.substring(2).toLowerCase(), v);
-          else node.setAttribute(k, v);
+          else if (k === "disabled") node.disabled = !!v;
+          else if (k === "checked") node.checked = !!v;
+          else if (k === "selected") node.selected = !!v;
+          else if (v == null || v === false) return;
+          else node.setAttribute(k, String(v));
         });
       }
       if (children) {
@@ -996,6 +1018,47 @@
       localStorage.setItem(KNOWLEDGE_CONTENT_KEY, JSON.stringify(map));
     }
 
+    const NOTICE_READ_KEY = "ssp_notice_read_map";
+
+    function loadNoticeReadMap() {
+      try {
+        const raw = localStorage.getItem(NOTICE_READ_KEY);
+        if (!raw) return {};
+        const obj = JSON.parse(raw);
+        if (!obj || typeof obj !== "object") return {};
+        return obj;
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveNoticeReadMap(map) {
+      localStorage.setItem(NOTICE_READ_KEY, JSON.stringify(map || {}));
+    }
+
+    function markNoticeRead(noticeId) {
+      if (noticeId == null) return;
+      const map = loadNoticeReadMap();
+      map[String(noticeId)] = true;
+      saveNoticeReadMap(map);
+    }
+
+    function isNoticeRead(noticeId) {
+      const map = loadNoticeReadMap();
+      return map[String(noticeId)] === true;
+    }
+
+    function countUnreadNotices(notices) {
+      const list = Array.isArray(notices) ? notices : [];
+      let unread = 0;
+      list.forEach(n => {
+        const id = n && n.id != null ? n.id : null;
+        if (id == null) return;
+        if (!isNoticeRead(id)) unread += 1;
+      });
+      return unread;
+    }
+
     function normalizeUrlForInput(value) {
       const s = String(value || "").replaceAll("`", "").trim();
       return s || "";
@@ -1038,12 +1101,12 @@
       return { date: y + "年" + m + "月" + day + "日", weekday: w };
     }
 
-    function renderDashboard(stats, knowledgeStats, noticeStats, operationLogsPage) {
+    function renderDashboard(stats, faqStats, notices, operationLogsPage) {
       const now = formatDateCN(new Date());
 
       const pendingApprovals = stats && stats.pendingApprovals != null ? stats.pendingApprovals : "-";
-      const unpublishedKnowledge = knowledgeStats && knowledgeStats.unpublishedItems != null ? knowledgeStats.unpublishedItems : "-";
-      const totalNotices = noticeStats && noticeStats.totalNotices != null ? noticeStats.totalNotices : "-";
+      const unpublishedKnowledge = faqStats && faqStats.unpublishedItems != null ? faqStats.unpublishedItems : "-";
+      const unreadNotices = notices ? countUnreadNotices(notices) : "-";
       const logs = operationLogsPage && operationLogsPage.content ? operationLogsPage.content : [];
 
       const header = el("div", { class: "dashHeader" }, [
@@ -1077,7 +1140,7 @@
         el("div", { class: "todoGrid" }, [
           todoCard("background: rgba(245,158,11,.18); color: #b45309;", "!", "待审批", pendingApprovals, async () => { await switchView("approvals", { status: "PENDING" }); }),
           todoCard("background: rgba(34,197,94,.14); color: #166534;", "⩍", "FAQ待处理提醒", unpublishedKnowledge, async () => { await switchView("knowledgeFaqs", { published: "false" }); }),
-          todoCard("background: rgba(239,68,68,.14); color: #b91c1c;", "✉", "未读重要通知", totalNotices, async () => { await switchView("notices"); })
+          todoCard("background: rgba(239,68,68,.14); color: #b91c1c;", "✉", "未读通知", unreadNotices, async () => { await switchView("notices"); })
         ])
       ]);
 
@@ -1492,6 +1555,7 @@
 
       content.appendChild(header);
       content.appendChild(container);
+      content.appendChild(toast);
 
       let allPolicies = [];
 
@@ -1543,9 +1607,72 @@
       async function loadPolicyDetail(policy) {
         detailPanel.innerHTML = "";
         
+        async function togglePublish(nextPublished) {
+          const user = getUser();
+          const updatedBy = user ? (user.name || user.username) : "系统管理员";
+          let contentText = getKnowledgeContent(policy.id);
+          if (!contentText) {
+            try {
+              const detail = await apiJson("/api/v1/knowledge/" + policy.id);
+              if (detail && detail.answer) contentText = String(detail.answer);
+            } catch (e) {}
+          }
+          contentText = (contentText || "").trim();
+          if (!contentText) {
+            toast.textContent = "未找到政策正文内容，无法发布/撤回";
+            return;
+          }
+          const body = {
+            title: (policy.title || "").trim(),
+            category: (policy.category || "政策管理").trim(),
+            content: contentText,
+            officialUrl: normalizeUrl(policy.officialUrl),
+            sourceFileName: normalizeText(policy.sourceFileName),
+            audienceScope: normalizeText(policy.audienceScope),
+            updatedBy: updatedBy,
+            published: !!nextPublished
+          };
+          Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
+          await apiJson("/api/v1/admin/knowledge/" + policy.id, { method: "PUT", body: JSON.stringify(body) });
+          const updated = Object.assign({}, policy, { published: !!nextPublished, updatedBy: updatedBy });
+          allPolicies = (allPolicies || []).map(x => String(x.id) === String(policy.id) ? updated : x);
+          await loadPoliciesList();
+          await loadPolicyDetail(updated);
+        }
+
+        async function doDeletePolicy() {
+          toast.textContent = "";
+          if (!confirm("确认删除该政策？删除后不可恢复")) return;
+          try {
+            await apiJson("/api/v1/admin/knowledge/" + policy.id, { method: "DELETE" });
+            deleteKnowledgeContent(policy.id);
+            allPolicies = (allPolicies || []).filter(x => String(x.id) !== String(policy.id));
+            s.selectedId = null;
+            await loadPoliciesList();
+            detailPanel.innerHTML = "";
+            detailPanel.appendChild(el("div", { style: "text-align: center; color: #64748b; padding: 60px 20px;" }, [
+              el("div", { style: "font-size: 48px; margin-bottom: 12px;" }, [el("span", { text: "✅" })]),
+              el("div", { text: "已删除政策" })
+            ]));
+          } catch (e) {
+            toast.textContent = e.message;
+          }
+        }
+
         const titleRow = el("div", { style: "display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);" }, [
           el("h3", { text: policy.title || "-", style: "margin: 0; font-size: 18px; font-weight: 700; flex: 1;" }),
           el("div", { class: "iconActions", style: "gap: 6px; flex: none;" }, [
+            el("button", { class: "btn", text: policy.published ? "撤回" : "发布", onclick: async () => {
+              toast.textContent = "";
+              try {
+                const ok = confirm(policy.published ? "确认撤回该政策为未发布状态？" : "确认发布该政策？");
+                if (!ok) return;
+                await togglePublish(!policy.published);
+              } catch (e) {
+                toast.textContent = e.message;
+              }
+            }}),
+            el("button", { class: "btn", text: "删除", onclick: async () => { await doDeletePolicy(); } }),
             el("button", { class: "iconAction", text: "✎", onclick: async () => { await openEditPolicy(policy); } }),
             el("button", { class: "iconAction", text: "👁", onclick: async () => { await openPreviewPolicy(policy); } })
           ])
@@ -1845,7 +1972,7 @@
         toast
       ]);
 
-      const tableCard = el("div", { class: "card", style: "margin-top: 12px;" }, [el("div", { text: "加载中..." })]);
+      const tableCard = el("div", { class: "card", style: "margin-top: 12px; overflow-x: auto;" }, [el("div", { text: "加载中..." })]);
       content.appendChild(header);
       content.appendChild(filterCard);
       content.appendChild(tableCard);
@@ -1975,6 +2102,29 @@
         }
       }
 
+      async function toggleFaqPublish(item, nextPublished) {
+        toast.textContent = "";
+        try {
+          const answer = await tryLoadAnswer(item.id);
+          const body = {
+            title: (item.title || "").trim(),
+            category: "FAQ管理",
+            content: String(answer || "").trim(),
+            updatedBy: getUpdatedBy(),
+            published: !!nextPublished,
+            officialUrl: normalizeUrl(item.officialUrl),
+            sourceFileName: normalizeText(item.sourceFileName),
+            audienceScope: normalizeText(item.audienceScope)
+          };
+          Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
+          await apiJson("/api/v1/admin/knowledge/" + item.id, { method: "PUT", body: JSON.stringify(body) });
+          if (body.content) saveKnowledgeContent(item.id, body.content);
+          await loadFaqManage(Object.assign({}, s));
+        } catch (e) {
+          toast.textContent = e.message;
+        }
+      }
+
       function renderFaqTable(pageData) {
         const table = el("table", null, []);
         table.appendChild(el("thead", null, [el("tr", null, [
@@ -1989,14 +2139,19 @@
           const statusText = item.published ? "已发布" : "草稿";
           const statusSpan = el("span", { class: "statusPill " + (item.published ? "ok" : "warn"), text: statusText });
           const related = el("a", { href: "#", onclick: (e) => { e.preventDefault(); }, style: "color:#2563eb; text-decoration:none;" }, [item.officialUrl || "-"]);
+          const pubBtn = el("button", { class: "iconAction", text: item.published ? "撤回" : "发布", type: "button", onclick: async () => {
+            const ok = confirm(item.published ? "确认撤回该 FAQ 为草稿？" : "确认发布该 FAQ？");
+            if (!ok) return;
+            await toggleFaqPublish(item, !item.published);
+          }});
           const editBtn = el("button", { class: "iconAction", text: "✎", type: "button", onclick: async () => await openEditFaq(item) });
           const delBtn = el("button", { class: "iconAction", text: "🗑", type: "button", onclick: async () => await doDeleteFaq(item) });
           tbody.appendChild(el("tr", null, [
             el("td", null, [el("div", { style: "font-weight: 800;", text: item.title || "-" })]),
             el("td", null, [statusSpan]),
             el("td", null, [related]),
-            el("td", null, [el("div", { class: "mono", text: "-" })]),
-            el("td", null, [el("div", { class: "iconActions", style: "justify-content:flex-end;" }, [editBtn, delBtn])])
+            el("td", null, [el("div", { class: "mono", text: formatDateTimeText(item.createdAt || item.updatedAt) })]),
+            el("td", null, [el("div", { class: "iconActions", style: "justify-content:flex-end;" }, [pubBtn, editBtn, delBtn])])
           ]));
         });
         table.appendChild(tbody);
@@ -2498,6 +2653,19 @@
       return v || null;
     }
 
+    function getNoticePublisher(tags) {
+      const arr = Array.isArray(tags) ? tags : [];
+      const hit = arr.find(t => String(t || "").startsWith("发布人:"));
+      if (!hit) return { name: null, username: null };
+      const v = String(hit).slice(4).trim();
+      if (!v) return { name: null, username: null };
+      const parts = v.split("|");
+      return {
+        name: (parts[0] || "").trim() || null,
+        username: (parts[1] || "").trim() || null
+      };
+    }
+
     function withNoticeSource(tags, source) {
       const arr = Array.isArray(tags) ? tags.slice() : [];
       const filtered = arr.filter(t => !String(t || "").startsWith("来源:"));
@@ -2507,12 +2675,24 @@
       return filtered;
     }
 
+    function withNoticePublisher(tags, user) {
+      const arr = Array.isArray(tags) ? tags.slice() : [];
+      const filtered = arr.filter(t => !String(t || "").startsWith("发布人:"));
+      const u = user || getUser() || null;
+      if (!u) return filtered;
+      const displayName = (u.name || u.username || "").trim();
+      const username = (u.username || "").trim();
+      if (!displayName && !username) return filtered;
+      filtered.unshift("发布人:" + (displayName || username) + "|" + username);
+      return filtered;
+    }
+
     async function loadNoticeList(state) {
       document.getElementById("pageTitle").textContent = "通知列表";
       const content = document.getElementById("content");
       content.innerHTML = "";
 
-      const s = Object.assign({ keyword: "", source: "", tag: "", page: 0, size: 10 }, state || {});
+      const s = Object.assign({ tab: "ALL", keyword: "", source: "", tag: "", page: 0, size: 10 }, state || {});
 
       const keywordInput = el("input", { value: s.keyword, placeholder: "搜索通知标题" });
       const sourceSelect = el("select", null, [
@@ -2543,11 +2723,11 @@
       content.appendChild(header);
 
       const tabs = el("div", { class: "noticeTabs" }, [
-        el("button", { class: "noticeTab active", type: "button", text: "全部" }),
-        el("button", { class: "noticeTab", type: "button", text: "草稿" }),
-        el("button", { class: "noticeTab", type: "button", text: "待发布" }),
-        el("button", { class: "noticeTab", type: "button", text: "已发布" }),
-        el("button", { class: "noticeTab", type: "button", text: "历史通知" })
+        el("button", { class: "noticeTab" + (s.tab === "ALL" ? " active" : ""), type: "button", text: "全部" }),
+        el("button", { class: "noticeTab" + (s.tab === "DRAFT" ? " active" : ""), type: "button", text: "草稿" }),
+        el("button", { class: "noticeTab" + (s.tab === "PENDING" ? " active" : ""), type: "button", text: "待发布" }),
+        el("button", { class: "noticeTab" + (s.tab === "PUBLISHED" ? " active" : ""), type: "button", text: "已发布" }),
+        el("button", { class: "noticeTab" + (s.tab === "HISTORY" ? " active" : ""), type: "button", text: "历史通知" })
       ]);
 
       const filterCard = el("div", { class: "card" }, [
@@ -2559,6 +2739,7 @@
           el("button", { class: "btn primary", text: "搜索", onclick: async () => {
             const selectedSource = sourceSelect.value;
             await loadNoticeList({
+              tab: s.tab,
               keyword: keywordInput.value.trim(),
               source: selectedSource,
               tag: selectedSource ? ("来源:" + selectedSource) : "",
@@ -2574,48 +2755,158 @@
       content.appendChild(filterCard);
       content.appendChild(tableCard);
 
+      const tabButtons = Array.from(tabs.querySelectorAll("button.noticeTab"));
+      function setTab(next) {
+        s.tab = next;
+        tabButtons.forEach((b, idx) => {
+          const t = idx === 0 ? "ALL" : idx === 1 ? "DRAFT" : idx === 2 ? "PENDING" : idx === 3 ? "PUBLISHED" : "HISTORY";
+          b.classList.toggle("active", t === next);
+        });
+        loadNoticeList(Object.assign({}, s, { page: 0 }));
+      }
+      tabButtons[0].addEventListener("click", () => setTab("ALL"));
+      tabButtons[1].addEventListener("click", () => setTab("DRAFT"));
+      tabButtons[2].addEventListener("click", () => setTab("PENDING"));
+      tabButtons[3].addEventListener("click", () => setTab("PUBLISHED"));
+      tabButtons[4].addEventListener("click", () => setTab("HISTORY"));
+
       function openView(item) {
+        if (item && item.id != null && String(item.id) !== "__local_draft__") {
+          markNoticeRead(item.id);
+        }
         const tags = Array.isArray(item.tags) ? item.tags : [];
-        const source = getNoticeSource(tags) || "-";
+        const pub = getNoticePublisher(tags);
+        const publisherText = pub.name ? pub.name : (pub.username || "-");
         const body = el("div", { class: "cfgForm" }, [
           el("div", null, [el("div", { class: "cfgLabel", text: "标题" }), el("div", { text: item.title || "-" })]),
-          el("div", null, [el("div", { class: "cfgLabel", text: "来源" }), el("div", { text: source })]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "发布人" }), el("div", { text: publisherText })]),
           el("div", null, [el("div", { class: "cfgLabel", text: "发布时间" }), el("div", { class: "mono", text: item.publishTime ? String(item.publishTime).slice(0, 10) : "-" })]),
           el("div", null, [el("div", { class: "cfgLabel", text: "正文内容" }), el("div", { text: item.summary || "-" })]),
-          el("div", null, [el("div", { class: "cfgLabel", text: "标签" }), el("div", { class: "mono", text: tags.filter(t => !String(t || "").startsWith("来源:")).join(", ") || "-" })]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "标签" }), el("div", { class: "mono", text: tags.filter(t => !String(t || "").startsWith("来源:") && !String(t || "").startsWith("发布人:")).join(", ") || "-" })]),
           el("div", null, [el("div", { class: "cfgLabel", text: "目标人群" }), el("div", { text: item.targetDescription || "-" })])
         ]);
         showUserOverlay("通知详情");
-        setUserModalContent([body], [el("button", { class: "btn", text: "关闭", type: "button", onclick: () => hideUserOverlay() })]);
+        setUserModalContent([body], []);
       }
 
       function renderListTable(pageData) {
-        const table = el("table", null, []);
+        const table = el("table", { class: "noticeTable" }, []);
         table.appendChild(el("thead", null, [el("tr", null, [
           el("th", { text: "标题" }),
-          el("th", { text: "来源" }),
-          el("th", { text: "状态" }),
+          el("th", { text: "发布状态" }),
+          el("th", { text: "阅读状态" }),
           el("th", { text: "发布时间" }),
           el("th", { text: "标签" }),
-          el("th", { text: "阅读量" }),
           el("th", { text: "操作", style: "text-align:right;" })
         ])]));
         const tbody = el("tbody", null, []);
+        const localDraftRaw = localStorage.getItem("ssp_notice_draft");
+        if (localDraftRaw && (s.tab === "ALL" || s.tab === "DRAFT")) {
+          try {
+            const draft = JSON.parse(localDraftRaw);
+            if (draft && typeof draft === "object") {
+              const draftItem = {
+                id: "__local_draft__",
+                title: draft.title || "（未命名草稿）",
+                summary: draft.content || "",
+                tags: withNoticePublisher(withNoticeSource(parseTags(draft.tags) || [], draft.source || ""), getUser()),
+                targetDescription: draft.target || ""
+              };
+              const source = getNoticeSource(draftItem.tags) || "-";
+              const pub = getNoticePublisher(draftItem.tags);
+              const publisherText = pub.name ? pub.name : (pub.username || "-");
+              const statusSpan = el("span", { class: "statusPill warn", text: "草稿" });
+              const readSpan = el("span", { class: "tag", text: "-" });
+              const viewBtn = el("button", { class: "iconAction", text: "👁", type: "button", onclick: () => openView(draftItem) });
+              const editBtn = el("button", { class: "iconAction", text: "✎", type: "button", onclick: async () => await switchView("noticePublish") });
+              const publishBtn = el("button", { class: "iconAction", text: "🚀", type: "button", onclick: async () => {
+                toast.textContent = "";
+                try {
+                  if (!confirm("确认发布本地草稿？发布后将清除本地草稿")) return;
+                  await apiJson("/api/v1/admin/notices", {
+                    method: "POST",
+                    body: JSON.stringify({
+                      title: (draft.title || "").trim(),
+                      summary: (draft.content || "").trim(),
+                      tags: draftItem.tags,
+                      targetDescription: (draft.target || "").trim()
+                    })
+                  });
+                  localStorage.removeItem("ssp_notice_draft");
+                  await loadNoticeList(Object.assign({}, s, { page: 0 }));
+                } catch (e) {
+                  toast.textContent = e.message;
+                }
+              }});
+              const delBtn = el("button", { class: "iconAction", text: "🗑", type: "button", onclick: async () => {
+                if (!confirm("确认删除本地草稿？")) return;
+                localStorage.removeItem("ssp_notice_draft");
+                await loadNoticeList(Object.assign({}, s));
+              }});
+              tbody.appendChild(el("tr", null, [
+                el("td", null, [el("div", { class: "noticeTitleMain", text: draftItem.title || "-" }), el("div", { class: "noticeTitleSub", text: draftItem.summary || "" })]),
+                el("td", null, [statusSpan]),
+                el("td", null, [readSpan]),
+                el("td", null, [el("div", { class: "mono", text: draft.savedAt ? String(draft.savedAt).slice(0, 10) : "-" })]),
+                el("td", null, [el("div", { class: "mono", text: (Array.isArray(draftItem.tags) ? draftItem.tags.filter(t => !String(t || "").startsWith("来源:") && !String(t || "").startsWith("发布人:")).join(", ") : "") || "-" })]),
+                el("td", null, [el("div", { class: "iconActions" }, [viewBtn, editBtn, publishBtn, delBtn])])
+              ]));
+            }
+          } catch (e) {}
+        }
+        if (s.tab === "DRAFT") {
+          if (!localDraftRaw) {
+            tbody.appendChild(el("tr", null, [
+              el("td", { colspan: "6", style: "color:#94a3b8; padding: 16px; text-align:center;" }, [el("span", { text: "暂无草稿" })])
+            ]));
+          }
+          table.appendChild(tbody);
+          return table;
+        }
+
         (pageData.content || []).forEach(item => {
-          const source = getNoticeSource(item.tags) || "-";
-          const status = item.publishTime ? "已发布" : "草稿";
-          const statusSpan = el("span", { class: "statusPill " + (status === "已发布" ? "ok" : "warn"), text: status });
-          const viewBtn = el("button", { class: "iconAction", text: "👁", onclick: () => openView(item) });
+          const pub = getNoticePublisher(item.tags);
+          const publishTime = item.publishTime || item.createdAt || null;
+          const published = publishTime && (new Date(publishTime).getTime() <= Date.now());
+          const publishSpan = el("span", { class: "statusPill " + (published ? "ok" : "warn"), text: published ? "已发布" : "待发布" });
+          const current = getUser();
+          const canManage = !!(current && ["SUPER_ADMIN", "COLLEGE_ADMIN", "COUNSELOR"].includes(String(current.role || "").toUpperCase()));
+          const isMine = !!(current && pub.username && current.username && pub.username === current.username);
+          const read = isNoticeRead(item.id);
+          const readSpan = isMine
+                  ? el("span", { class: "tag", text: "-" })
+                  : el("span", { class: "statusPill " + (read ? "ok" : "warn"), text: read ? "已读" : "未读" });
+          const viewBtn = el("button", { class: "iconAction", text: "👁", onclick: async () => { openView(item); await loadNoticeList(Object.assign({}, s)); } });
           const editBtn = el("button", { class: "iconAction", text: "✎", onclick: async () => await switchView("noticePublish", { noticeId: item.id }) });
           const copyBtn = el("button", { class: "iconAction", text: "⧉", onclick: async () => await switchView("noticePublish", { copyFromId: item.id }) });
+          const pubBtn = !canManage ? null : el("button", { class: "iconAction", text: published ? "↩" : "🚀", onclick: async () => {
+            toast.textContent = "";
+            const ok = confirm(published ? "确认撤回该通知为草稿（待发布）？" : "确认发布该通知？");
+            if (!ok) return;
+            try {
+              await apiJson("/api/v1/admin/notices/" + item.id + "/publish?" + buildQuery({ published: !published }), { method: "POST" });
+              await loadNoticeList(Object.assign({}, s));
+            } catch (e) {
+              toast.textContent = e.message;
+            }
+          }});
+          const delBtn = el("button", { class: "iconAction", text: "🗑", onclick: async () => {
+            toast.textContent = "";
+            if (!confirm("确认删除通知：" + (item.title || "-") + "？删除后不可恢复")) return;
+            try {
+              await apiJson("/api/v1/admin/notices/" + item.id, { method: "DELETE" });
+              await loadNoticeList(Object.assign({}, s, { page: 0 }));
+            } catch (e) {
+              toast.textContent = e.message;
+            }
+          }});
           tbody.appendChild(el("tr", null, [
-            el("td", null, [el("div", { text: item.title || "-" }), el("div", { class: "sub", text: item.summary || "" })]),
-            el("td", null, [el("div", { text: source })]),
-            el("td", null, [statusSpan]),
-            el("td", null, [el("div", { class: "mono", text: item.publishTime ? String(item.publishTime).slice(0, 10) : "-" })]),
-            el("td", null, [el("div", { class: "mono", text: (Array.isArray(item.tags) ? item.tags.filter(t => !String(t || "").startsWith("来源:")).join(", ") : "") || "-" })]),
-            el("td", null, [el("div", { class: "mono", text: "-" })]),
-            el("td", null, [el("div", { class: "iconActions" }, [viewBtn, editBtn, copyBtn])])
+            el("td", null, [el("div", { class: "noticeTitleMain", text: item.title || "-" }), el("div", { class: "noticeTitleSub", text: item.summary || "" })]),
+            el("td", null, [publishSpan]),
+            el("td", null, [readSpan]),
+            el("td", null, [el("div", { class: "mono", text: publishTime ? String(publishTime).slice(0, 10) : "-" })]),
+            el("td", null, [el("div", { class: "mono", text: (Array.isArray(item.tags) ? item.tags.filter(t => !String(t || "").startsWith("来源:") && !String(t || "").startsWith("发布人:")).join(", ") : "") || "-" })]),
+            el("td", null, [el("div", { class: "iconActions" }, [viewBtn, editBtn, copyBtn, pubBtn, delBtn])])
           ]));
         });
         table.appendChild(tbody);
@@ -2623,7 +2914,13 @@
       }
 
       try {
+        if (s.tab === "DRAFT") {
+          tableCard.innerHTML = "";
+          tableCard.appendChild(renderListTable({ content: [] }));
+          return;
+        }
         const params = {
+          tab: s.tab,
           keyword: s.keyword,
           tag: s.tag || null,
           targetKeyword: null,
@@ -2726,25 +3023,28 @@
       const actionsCard = el("div", { class: "noticeCard" }, [
         el("div", { class: "sectionTitle", text: "操作" }),
         el("div", { class: "noticeActions" }, [
-          el("button", { class: "noticePrimaryBtn", text: "立即发布", type: "button", onclick: async () => {
+          el("button", { class: "noticePrimaryBtn", text: s.noticeId && !s.copyFromId ? "保存修改" : "立即发布", type: "button", onclick: async () => {
             msg.textContent = "";
             try {
               const tags = withNoticeSource(parseTags(tagsInput.value) || [], sourceSelect.value);
-              await apiJson("/api/v1/admin/notices", {
-                method: "POST",
-                body: JSON.stringify({
-                  title: titleInput.value.trim(),
-                  summary: contentInput.value.trim(),
-                  tags: tags,
-                  targetDescription: targetInput.value.trim()
-                })
-              });
+              const body = {
+                title: titleInput.value.trim(),
+                summary: contentInput.value.trim(),
+                tags: tags,
+                targetDescription: targetInput.value.trim()
+              };
+              if (s.noticeId && !s.copyFromId) {
+                await apiJson("/api/v1/admin/notices/" + s.noticeId, { method: "PUT", body: JSON.stringify(body) });
+              } else {
+                await apiJson("/api/v1/admin/notices", { method: "POST", body: JSON.stringify(body) });
+              }
+              localStorage.removeItem("ssp_notice_draft");
               await switchView("noticeList");
             } catch (e) {
               msg.textContent = e.message;
             }
           }}),
-          el("button", { class: "noticeSecondaryBtn", text: "保存草稿", type: "button", onclick: () => {
+          (s.noticeId && !s.copyFromId) ? null : el("button", { class: "noticeSecondaryBtn", text: "保存草稿", type: "button", onclick: () => {
             msg.textContent = "";
             const draft = {
               title: titleInput.value,
@@ -2811,11 +3111,6 @@
           msg.textContent = e.message;
         }
       }
-
-      titleInput.addEventListener("input", renderPreview);
-      sourceSelect.addEventListener("change", renderPreview);
-      contentInput.addEventListener("input", renderPreview);
-      tagsInput.addEventListener("input", renderPreview);
 
       renderPreview();
     }
@@ -2926,7 +3221,19 @@
       board.appendChild(el("div", { class: "approvalTop" }, [tabs]));
       board.appendChild(el("div", { class: "approvalFilterRow" }, [
         el("div", { style: "min-width: 160px;" }, [typeSelect]),
-        bulkBtn
+        bulkBtn,
+        el("button", { class: "approvalBulkBtn", type: "button", onclick: async () => {
+          toast.textContent = "";
+          try {
+            const raw = prompt("生成多少条模拟审批任务？（1-20）", "3");
+            if (raw == null) return;
+            const count = Math.max(1, Math.min(20, parseInt(raw, 10) || 3));
+            await apiJson("/api/v1/admin/approvals/seed?count=" + count, { method: "POST" });
+            await reload();
+          } catch (e) {
+            toast.textContent = e.message;
+          }
+        }}, [el("span", { text: "➕" }), el("span", { text: "生成模拟任务" })])
       ]));
       board.appendChild(listWrap);
 
@@ -2949,11 +3256,102 @@
 
       async function onAction(item, action) {
         toast.textContent = "";
-        const comment = prompt(action === "approve" ? "通过备注（可空）" : "驳回原因（建议填写）", "") || "";
+        let comment = "";
+        if (action === "approve") {
+          const raw = prompt("通过备注（可空）", "");
+          if (raw == null) return null;
+          comment = raw || "";
+        } else if (action === "reject") {
+          const raw = prompt("驳回原因（可空）", "");
+          if (raw == null) return null;
+          comment = raw || "";
+        } else if (action === "resubmit") {
+          if (!confirm("确认将该任务重新提交为待审批？")) return null;
+          comment = "";
+        }
         await apiJson("/api/v1/admin/approvals/" + item.requestId + "/action", {
           method: "POST",
           body: JSON.stringify({ action: action, comment: comment })
         });
+        return true;
+      }
+
+      async function openAssignDialog(item) {
+        toast.textContent = "";
+        showUserOverlay("转派审批任务");
+        const keywordInput = el("input", { placeholder: "输入老师姓名或工号/账号进行搜索" });
+        const listBox = el("div", { style: "border: 1px solid var(--border); border-radius: 10px; padding: 10px; max-height: 240px; overflow:auto; background:#fff;" }, []);
+        const msg = el("div", { class: "toast" }, []);
+        let selected = null;
+        let timer = null;
+
+        function renderList(users) {
+          listBox.innerHTML = "";
+          const arr = Array.isArray(users) ? users : [];
+          if (!arr.length) {
+            listBox.appendChild(el("div", { style: "color:#94a3b8; padding: 8px; text-align:center;", text: "无匹配老师" }));
+            return;
+          }
+          arr.slice(0, 10).forEach(u => {
+            const name = u.name || "-";
+            const username = u.username || "-";
+            const role = roleLabel(u.role);
+            const row = el("div", { style: "display:flex; justify-content: space-between; align-items:center; padding: 8px 10px; border-radius: 8px; cursor:pointer; background:" + (selected && String(selected.userId) === String(u.userId) ? "rgba(37,99,235,.08)" : "transparent") }, [
+              el("div", null, [
+                el("div", { style: "font-weight: 800;", text: name + "（" + username + "）" }),
+                el("div", { class: "sub", text: role })
+              ]),
+              el("span", { class: "tag", text: String(u.userId ?? "-") })
+            ]);
+            row.addEventListener("click", () => {
+              selected = u;
+              renderList(arr);
+            });
+            listBox.appendChild(row);
+          });
+        }
+
+        async function loadUsersByKeyword(kw) {
+          const qs = buildQuery({ keyword: kw || null });
+          const users = await apiJson("/api/v1/platform/users" + (qs ? ("?" + qs) : ""));
+          const filtered = (users || []).filter(u => {
+            const r = String(u.role || "").toUpperCase();
+            return r === "COUNSELOR" || r === "COLLEGE_ADMIN" || r === "CLASS_ADVISOR" || r === "SUPER_ADMIN";
+          });
+          renderList(filtered);
+        }
+
+        keywordInput.addEventListener("input", () => {
+          msg.textContent = "";
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(async () => {
+            try {
+              await loadUsersByKeyword(keywordInput.value.trim());
+            } catch (e) {
+              msg.textContent = e.message;
+            }
+          }, 250);
+        });
+
+        setUserModalContent([
+          el("div", { class: "row" }, [
+            el("div", { class: "field", style: "flex:1; min-width: 520px;" }, [el("label", { text: "目标老师" }), keywordInput])
+          ]),
+          listBox,
+          msg
+        ], [
+          el("button", { class: "btn", text: "取消", type: "button", onclick: () => hideUserOverlay() }),
+          el("button", { class: "btn primary", text: "确认转派", type: "button", onclick: async () => {
+            msg.textContent = "";
+            if (!selected) {
+              msg.textContent = "请先选择目标老师";
+              return;
+            }
+            alert("转派接口暂未接入（已选择：" + (selected.name || "-") + "（" + (selected.username || "-") + "））");
+            hideUserOverlay();
+          }})
+        ]);
+        await loadUsersByKeyword("");
       }
 
       function render() {
@@ -3011,6 +3409,11 @@
             el("span", { text: "⛔" }),
             el("span", { text: "驳回" })
           ]);
+          const canResubmit = String(item.status || "").toUpperCase() === "REJECTED" || String(item.status || "").toUpperCase() === "WITHDRAWN";
+          const btnResubmit = el("button", { class: "approvalBtn", type: "button", disabled: loading || !canResubmit }, [
+            el("span", { text: "↺" }),
+            el("span", { text: "重新提交" })
+          ]);
           const btnAssign = el("button", { class: "approvalBtn blue", type: "button", disabled: loading }, [
             el("span", { text: "✈" }),
             el("span", { text: "转派" })
@@ -3020,7 +3423,8 @@
             loading = true;
             render();
             try {
-              await onAction(item, "approve");
+              const ok = await onAction(item, "approve");
+              if (!ok) return;
               await reload();
             } catch (e) {
               toast.textContent = e.message;
@@ -3033,7 +3437,22 @@
             loading = true;
             render();
             try {
-              await onAction(item, "reject");
+              const ok = await onAction(item, "reject");
+              if (!ok) return;
+              await reload();
+            } catch (e) {
+              toast.textContent = e.message;
+            } finally {
+              loading = false;
+              render();
+            }
+          });
+          btnResubmit.addEventListener("click", async () => {
+            loading = true;
+            render();
+            try {
+              const ok = await onAction(item, "resubmit");
+              if (!ok) return;
               await reload();
             } catch (e) {
               toast.textContent = e.message;
@@ -3043,12 +3462,10 @@
             }
           });
           btnAssign.addEventListener("click", async () => {
-            const to = prompt("转派给（输入老师姓名/账号）", "");
-            if (to == null) return;
-            alert("转派接口暂未接入（已记录输入：" + to + "）");
+            await openAssignDialog(item);
           });
 
-          const right = el("div", { class: "approvalBtns" }, [btnApprove, btnReject, btnAssign]);
+          const right = el("div", { class: "approvalBtns" }, s.tab === "DONE" ? [btnResubmit, btnAssign] : [btnApprove, btnReject, btnAssign]);
           card.appendChild(left);
           card.appendChild(right);
           listWrap.appendChild(card);
@@ -3065,11 +3482,30 @@
         loading = true;
         render();
         try {
+          const me = getUser();
+          const role = me && me.role ? String(me.role).toUpperCase() : "";
+          const canFinalApprove = role === "SUPER_ADMIN" || role === "COLLEGE_ADMIN";
+          let okCount = 0;
+          let failCount = 0;
           for (const item of filtered) {
-            await apiJson("/api/v1/admin/approvals/" + item.requestId + "/action", {
-              method: "POST",
-              body: JSON.stringify({ action: "approve", comment: "" })
-            });
+            try {
+              const first = await apiJson("/api/v1/admin/approvals/" + item.requestId + "/action", {
+                method: "POST",
+                body: JSON.stringify({ action: "approve", comment: "" })
+              });
+              okCount += 1;
+              if (canFinalApprove && first && isTodoStatus(first.status)) {
+                await apiJson("/api/v1/admin/approvals/" + item.requestId + "/action", {
+                  method: "POST",
+                  body: JSON.stringify({ action: "approve", comment: "" })
+                });
+              }
+            } catch (e) {
+              failCount += 1;
+            }
+          }
+          if (failCount) {
+            toast.textContent = "批量处理完成：成功 " + okCount + " 条，失败 " + failCount + " 条（可能是权限/状态限制）";
           }
           await reload();
         } catch (e) {
@@ -3665,7 +4101,105 @@
       }});
 
       const importBtn = el("button", { class: "btn green", text: "批量导入", onclick: async () => {
-        alert("批量导入接口暂未接入（后续可对接导入任务/文件上传）");
+        const msg = el("div", { class: "toast" }, []);
+        const fileInput = el("input", { type: "file", accept: ".csv" });
+        const hint = el("div", { class: "sub", text: "仅支持 CSV：首行为表头，至少包含 username、role，可选 enabled、rawPassword、passwordResetRequired。示例：username,role,enabled" });
+
+        function parseCsvLine(line) {
+          const out = [];
+          let cur = "";
+          let inQuote = false;
+          for (let i = 0; i < line.length; i += 1) {
+            const ch = line[i];
+            if (ch === "\"") {
+              if (inQuote && line[i + 1] === "\"") {
+                cur += "\"";
+                i += 1;
+              } else {
+                inQuote = !inQuote;
+              }
+              continue;
+            }
+            if (!inQuote && ch === ",") {
+              out.push(cur);
+              cur = "";
+              continue;
+            }
+            cur += ch;
+          }
+          out.push(cur);
+          return out.map(s => String(s || "").trim());
+        }
+
+        async function doImport() {
+          msg.textContent = "";
+          const f = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+          if (!f) {
+            msg.textContent = "请先选择 CSV 文件";
+            return;
+          }
+          const text = await f.text();
+          const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+          if (lines.length < 2) {
+            msg.textContent = "CSV 内容为空或仅有表头";
+            return;
+          }
+          const header = parseCsvLine(lines[0]).map(x => String(x).toLowerCase());
+          const colIndex = (name) => header.indexOf(String(name).toLowerCase());
+          const idxUsername = colIndex("username");
+          const idxRole = colIndex("role");
+          const idxEnabled = colIndex("enabled");
+          const idxPwd = colIndex("rawpassword");
+          const idxReset = colIndex("passwordresetrequired");
+          if (idxUsername < 0 || idxRole < 0) {
+            msg.textContent = "CSV 表头必须包含 username、role";
+            return;
+          }
+          let success = 0;
+          let failed = 0;
+          const errors = [];
+          for (let i = 1; i < lines.length; i += 1) {
+            const cols = parseCsvLine(lines[i]);
+            const username = (cols[idxUsername] || "").trim();
+            const role = (cols[idxRole] || "").trim();
+            if (!username || !role) {
+              failed += 1;
+              errors.push("第 " + (i + 1) + " 行：username/role 为空");
+              continue;
+            }
+            const body = {
+              username: username,
+              role: role,
+              enabled: idxEnabled >= 0 ? normalizeBool(cols[idxEnabled]) : true,
+              rawPassword: idxPwd >= 0 && cols[idxPwd] ? cols[idxPwd] : null,
+              passwordResetRequired: idxReset >= 0 ? normalizeBool(cols[idxReset]) : false
+            };
+            Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
+            try {
+              await apiJson("/api/v1/platform/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+              success += 1;
+            } catch (e) {
+              failed += 1;
+              if (errors.length < 8) errors.push("第 " + (i + 1) + " 行：" + e.message);
+            }
+          }
+          msg.textContent = "导入完成：成功 " + success + "，失败 " + failed + (errors.length ? ("；示例错误：" + errors.join("；")) : "");
+          if (success) {
+            await loadUsers(Object.assign({}, s, { page: 0 }));
+          }
+        }
+
+        showUserOverlay("批量导入用户");
+        setUserModalContent([
+          el("div", { class: "row" }, [
+            el("div", { class: "field", style: "flex:1; min-width: 520px;" }, [el("label", { text: "选择 CSV 文件" }), fileInput]),
+          ]),
+          hint,
+          msg
+        ], [
+          el("button", { class: "btn", text: "取消", type: "button", onclick: () => hideUserOverlay() }),
+          el("button", { class: "btn primary", text: "开始导入", type: "button", onclick: async () => { await doImport(); } })
+        ]);
       }});
 
       const header = el("div", { class: "pageHeader" }, [
@@ -4230,14 +4764,14 @@
       const wrap = el("div", null, [el("div", { class: "card" }, [el("div", { text: "加载中..." })])]);
       content.appendChild(wrap);
       try {
-        const [stats, knowledgeStats, noticeStats, operationLogsPage] = await Promise.all([
+        const [stats, faqStats, notices, operationLogsPage] = await Promise.all([
           apiJson("/api/v1/admin/stats"),
-          apiJson("/api/v1/admin/knowledge/stats").catch(() => null),
-          apiJson("/api/v1/admin/notices/stats").catch(() => null),
+          apiJson("/api/v1/admin/knowledge/stats?" + buildQuery({ category: "FAQ管理" })).catch(() => null),
+          apiJson("/api/v1/admin/notices").catch(() => []),
           apiJson("/api/v1/admin/operation-logs/page?" + buildQuery({ page: 0, size: 20 })).catch(() => null)
         ]);
         content.innerHTML = "";
-        content.appendChild(renderDashboard(stats, knowledgeStats, noticeStats, operationLogsPage));
+        content.appendChild(renderDashboard(stats, faqStats, notices, operationLogsPage));
       } catch (e) {
         content.innerHTML = "";
         content.appendChild(el("div", { class: "card" }, [el("div", { class: "toast", text: e.message })]));

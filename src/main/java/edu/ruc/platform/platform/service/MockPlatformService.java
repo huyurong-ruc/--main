@@ -26,6 +26,7 @@ import edu.ruc.platform.common.enums.StudentActionPriority;
 import edu.ruc.platform.common.exception.BusinessException;
 import edu.ruc.platform.common.support.QueryFilterSupport;
 import edu.ruc.platform.platform.dto.PlatformContractResponse;
+import edu.ruc.platform.platform.dto.PlatformFileDownloadPayload;
 import edu.ruc.platform.platform.dto.PlatformFileUploadResponse;
 import edu.ruc.platform.platform.dto.PlatformFileUploadRecordResponse;
 import edu.ruc.platform.platform.dto.PlatformImportErrorCreateRequest;
@@ -67,7 +68,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
@@ -88,6 +91,7 @@ public class MockPlatformService implements PlatformApplicationService {
     private final AtomicLong loginAuditIdGenerator = new AtomicLong(5000);
     private final AtomicLong sessionIdGenerator = new AtomicLong(8000);
     private final List<PlatformFileUploadRecordResponse> uploadRecords = new ArrayList<>();
+    private final Map<Long, PlatformFileDownloadPayload> uploadPayloads = new HashMap<>();
     private final List<PlatformLoginAuditLogResponse> loginAuditLogs = new ArrayList<>(List.of(
             new PlatformLoginAuditLogResponse(5001L, 1L, "admin", "SUPER_ADMIN", "LOGIN", "SUCCESS", null, LocalDateTime.of(2026, 3, 24, 9, 0)),
             new PlatformLoginAuditLogResponse(5002L, 10001L, "2023100001", "STUDENT", "LOGOUT", "SUCCESS", null, LocalDateTime.of(2026, 3, 24, 10, 0))
@@ -605,8 +609,15 @@ public class MockPlatformService implements PlatformApplicationService {
         AuthenticatedUser user = currentUserService.requireCurrentUser();
         String normalizedBizType = (bizType == null || bizType.isBlank()) ? "COMMON" : bizType.trim().toUpperCase();
         String originalFileName = file.getOriginalFilename() == null ? "unknown-file" : file.getOriginalFilename();
+        long id = uploadIdGenerator.incrementAndGet();
+        byte[] bytes;
+        try {
+            bytes = file.getBytes();
+        } catch (Exception e) {
+            throw new BusinessException("读取上传文件失败");
+        }
         PlatformFileUploadResponse response = new PlatformFileUploadResponse(
-                uploadIdGenerator.incrementAndGet(),
+                id,
                 normalizedBizType,
                 bizId,
                 originalFileName,
@@ -616,6 +627,13 @@ public class MockPlatformService implements PlatformApplicationService {
                 user.name(),
                 LocalDateTime.now()
         );
+        uploadPayloads.put(id, new PlatformFileDownloadPayload(
+                id,
+                response.fileName(),
+                response.contentType(),
+                response.fileSize(),
+                bytes
+        ));
         uploadRecords.add(0, new PlatformFileUploadRecordResponse(
                 response.id(),
                 response.bizType(),
@@ -631,6 +649,15 @@ public class MockPlatformService implements PlatformApplicationService {
                 response.uploadedAt()
         ));
         return response;
+    }
+
+    @Override
+    public PlatformFileDownloadPayload downloadUploadFile(Long id) {
+        PlatformFileDownloadPayload payload = uploadPayloads.get(id);
+        if (payload == null) {
+            throw new BusinessException("文件不存在或已被清理");
+        }
+        return payload;
     }
 
     @Override
@@ -678,6 +705,7 @@ public class MockPlatformService implements PlatformApplicationService {
         for (int i = 0; i < uploadRecords.size(); i++) {
             PlatformFileUploadRecordResponse item = uploadRecords.get(i);
             if (item.id().equals(id)) {
+                uploadPayloads.remove(id);
                 uploadRecords.set(i, new PlatformFileUploadRecordResponse(
                         item.id(),
                         item.bizType(),

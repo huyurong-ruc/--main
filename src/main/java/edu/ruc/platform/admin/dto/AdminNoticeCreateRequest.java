@@ -9,6 +9,7 @@ public record AdminNoticeCreateRequest(
         @NotBlank(message = "标题不能为空") String title,
         @NotBlank(message = "摘要不能为空") String summary,
         @NotEmpty(message = "标签不能为空") List<String> tags,
-        @NotBlank(message = "目标人群不能为空") String targetDescription
+        @NotBlank(message = "目标人群不能为空") String targetDescription,
+        Boolean published
 ) {
 }

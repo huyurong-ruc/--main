@@ -10,6 +10,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Cookie;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,6 +20,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Component
@@ -33,8 +36,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
+        String token = null;
         if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
+            token = header.substring(7);
+        } else if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("token".equals(cookie.getName()) && cookie.getValue() != null && !cookie.getValue().isBlank()) {
+                    token = URLDecoder.decode(cookie.getValue(), StandardCharsets.UTF_8);
+                    if (token.startsWith("Bearer ")) {
+                        token = token.substring(7);
+                    }
+                    break;
+                }
+            }
+        }
+        if (token != null && !token.isBlank()) {
             try {
                 if (tokenBlocklistService.isRevoked(token)) {
                     throw new BusinessException("登录令牌已失效");
@@ -48,10 +64,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (BusinessException ex) {
                 SecurityContextHolder.clearContext();
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json;charset=UTF-8");
-                objectMapper.writeValue(response.getWriter(), ApiResponse.fail(ex.getMessage()));
-                return;
+                String uri = request.getRequestURI();
+                if (uri != null && uri.startsWith("/api/")) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    objectMapper.writeValue(response.getWriter(), ApiResponse.fail(ex.getMessage()));
+                    return;
+                }
             }
         }
         filterChain.doFilter(request, response);

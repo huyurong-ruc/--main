@@ -13,10 +13,15 @@ import edu.ruc.platform.notice.service.NoticeApplicationService;
 import edu.ruc.platform.party.service.PartyProgressApplicationService;
 import edu.ruc.platform.student.dto.StudentProfileResponse;
 import edu.ruc.platform.student.service.StudentProfileApplicationService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -32,6 +37,40 @@ public class MockKnowledgeService implements KnowledgeApplicationService {
     private final NoticeApplicationService noticeService;
     private final CertificateApplicationService certificateService;
     private final PartyProgressApplicationService partyProgressService;
+    private final ObjectMapper stateMapper = new ObjectMapper().findAndRegisterModules();
+    private final Path searchLogPath = Paths.get(System.getProperty("user.home"), ".ssp", "mock", "search-query-log.jsonl");
+    private final boolean persistEnabled = !isTestRuntime();
+
+    private static boolean isTestRuntime() {
+        return System.getProperty("surefire.test.class.path") != null
+                || System.getProperty("surefire.real.class.path") != null;
+    }
+
+    private static class SearchLogEntry {
+        public String keyword;
+        public int resultCount;
+        public LocalDateTime createdAt;
+    }
+
+    private void recordSearch(String keyword, int resultCount) {
+        if (!persistEnabled) {
+            return;
+        }
+        String k = QueryFilterSupport.trimToNull(keyword);
+        if (k == null) {
+            return;
+        }
+        try {
+            Files.createDirectories(searchLogPath.getParent());
+            SearchLogEntry entry = new SearchLogEntry();
+            entry.keyword = k;
+            entry.resultCount = Math.max(resultCount, 0);
+            entry.createdAt = LocalDateTime.now();
+            String line = stateMapper.writeValueAsString(entry) + "\n";
+            Files.writeString(searchLogPath, line, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND);
+        } catch (Exception ignored) {
+        }
+    }
 
     @Override
     public List<KnowledgeSearchResponse> search(String keyword) {
@@ -39,13 +78,15 @@ public class MockKnowledgeService implements KnowledgeApplicationService {
         if (normalizedKeyword == null) {
             return List.of();
         }
-        return mockDataStore.knowledgeDocuments()
+        List<KnowledgeSearchResponse> result = mockDataStore.knowledgeDocuments()
                 .stream()
                 .filter(item -> QueryFilterSupport.containsIgnoreCase(item.title(), normalizedKeyword)
                         || QueryFilterSupport.containsIgnoreCase(item.category(), normalizedKeyword)
                         || QueryFilterSupport.containsIgnoreCase(item.answer(), normalizedKeyword))
                 .map(this::toSafeSearchResponse)
                 .toList();
+        recordSearch(normalizedKeyword, result.size());
+        return result;
     }
 
     @Override

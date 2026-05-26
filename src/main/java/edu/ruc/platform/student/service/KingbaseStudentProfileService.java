@@ -191,13 +191,13 @@ public class KingbaseStudentProfileService implements StudentProfileApplicationS
         StudentProfileResponse profile = getStudent(studentId);
         if (!canAccessStudent(user, profile)
                 && !"LEAGUE_SECRETARY".equals(user.role())
-                && !("STUDENT".equals(user.role()) && studentId.equals(user.userId()))) {
+                && !("STUDENT".equals(user.role()) && studentId.equals(user.studentId()))) {
             throw new BusinessException("学生不存在或无权访问");
         }
         return studentPortraitRepository.findByStudentId(studentId)
                 .map(item -> enforcePortraitAccess(user, profile, item))
                 .map(this::toPortraitResponse)
-                .orElse(new StudentPortraitResponse(studentId, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false));
+                .orElse(new StudentPortraitResponse(studentId, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false));
     }
 
     @Override
@@ -214,6 +214,7 @@ public class KingbaseStudentProfileService implements StudentProfileApplicationS
         portrait.setVolunteerService(request.volunteerService());
         portrait.setResearchExperience(request.researchExperience());
         portrait.setDisciplineRecords(request.disciplineRecords());
+        portrait.setLeadershipRoles(request.leadershipRoles());
         portrait.setDailyPerformance(request.dailyPerformance());
         portrait.setGpa(request.gpa());
         portrait.setGradeRank(request.gradeRank());
@@ -528,7 +529,7 @@ public class KingbaseStudentProfileService implements StudentProfileApplicationS
                 && !("SUPER_ADMIN".equals(user.role())
                 || "COLLEGE_ADMIN".equals(user.role())
                 || "COUNSELOR".equals(user.role())
-                || ("STUDENT".equals(user.role()) && profile.id().equals(user.userId())))) {
+                || ("STUDENT".equals(user.role()) && profile.id().equals(user.studentId())))) {
             throw new BusinessException("当前无权查看该学生画像");
         }
         return portrait;
@@ -546,6 +547,7 @@ public class KingbaseStudentProfileService implements StudentProfileApplicationS
                 item.getVolunteerService(),
                 item.getResearchExperience(),
                 item.getDisciplineRecords(),
+                item.getLeadershipRoles(),
                 item.getDailyPerformance(),
                 item.getGpa(),
                 item.getGradeRank(),
