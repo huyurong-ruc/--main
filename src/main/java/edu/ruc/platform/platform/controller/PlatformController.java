@@ -515,6 +515,22 @@ public class PlatformController {
         response.getOutputStream().flush();
     }
 
+    @GetMapping("/users/stats/export")
+    @RequireRoles({
+            RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR
+    })
+    public void exportUserStats(@RequestParam(required = false) String role,
+                                @RequestParam(required = false) Boolean enabled,
+                                @RequestParam(required = false) String keyword,
+                                @RequestParam(required = false) String grade,
+                                HttpServletResponse response) throws IOException {
+        byte[] data = excelImportExportService.exportUserStats(role, enabled, keyword, grade);
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=user-stats.xlsx");
+        response.getOutputStream().write(data);
+        response.getOutputStream().flush();
+    }
+
     @PostMapping("/students/import")
     @RequireRoles({
             RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR

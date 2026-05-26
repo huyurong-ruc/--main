@@ -4102,97 +4102,38 @@
 
       const importBtn = el("button", { class: "btn green", text: "批量导入", onclick: async () => {
         const msg = el("div", { class: "toast" }, []);
-        const fileInput = el("input", { type: "file", accept: ".csv" });
-        const hint = el("div", { class: "sub", text: "仅支持 CSV：首行为表头，至少包含 username、role，可选 enabled、rawPassword、passwordResetRequired。示例：username,role,enabled" });
-
-        function parseCsvLine(line) {
-          const out = [];
-          let cur = "";
-          let inQuote = false;
-          for (let i = 0; i < line.length; i += 1) {
-            const ch = line[i];
-            if (ch === "\"") {
-              if (inQuote && line[i + 1] === "\"") {
-                cur += "\"";
-                i += 1;
-              } else {
-                inQuote = !inQuote;
-              }
-              continue;
-            }
-            if (!inQuote && ch === ",") {
-              out.push(cur);
-              cur = "";
-              continue;
-            }
-            cur += ch;
-          }
-          out.push(cur);
-          return out.map(s => String(s || "").trim());
-        }
+        const fileInput = el("input", { type: "file", accept: ".xlsx,.xls" });
+        const hint = el("div", { class: "sub", text: "仅支持 Excel（.xlsx/.xls）：Sheet1 第一行为表头。列：用户名(username)、姓名(name)、角色(role)、初始密码(rawPassword)。角色支持中文（学生/辅导员等）或枚举（STUDENT/COUNSELOR 等）。" });
 
         async function doImport() {
           msg.textContent = "";
           const f = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
           if (!f) {
-            msg.textContent = "请先选择 CSV 文件";
+            msg.textContent = "请先选择 Excel 文件";
             return;
           }
-          const text = await f.text();
-          const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-          if (lines.length < 2) {
-            msg.textContent = "CSV 内容为空或仅有表头";
-            return;
+
+          const fd = new FormData();
+          fd.append("file", f);
+          const resp = await apiFetch("/api/v1/platform/users/import", { method: "POST", body: fd, headers: { "Accept": "application/json" } });
+          const json = await resp.json().catch(() => null);
+          if (!resp.ok || !json || !json.success) {
+            throw new Error((json && json.message) ? json.message : ("导入失败(" + resp.status + ")"));
           }
-          const header = parseCsvLine(lines[0]).map(x => String(x).toLowerCase());
-          const colIndex = (name) => header.indexOf(String(name).toLowerCase());
-          const idxUsername = colIndex("username");
-          const idxRole = colIndex("role");
-          const idxEnabled = colIndex("enabled");
-          const idxPwd = colIndex("rawpassword");
-          const idxReset = colIndex("passwordresetrequired");
-          if (idxUsername < 0 || idxRole < 0) {
-            msg.textContent = "CSV 表头必须包含 username、role";
-            return;
-          }
-          let success = 0;
-          let failed = 0;
-          const errors = [];
-          for (let i = 1; i < lines.length; i += 1) {
-            const cols = parseCsvLine(lines[i]);
-            const username = (cols[idxUsername] || "").trim();
-            const role = (cols[idxRole] || "").trim();
-            if (!username || !role) {
-              failed += 1;
-              errors.push("第 " + (i + 1) + " 行：username/role 为空");
-              continue;
-            }
-            const body = {
-              username: username,
-              role: role,
-              enabled: idxEnabled >= 0 ? normalizeBool(cols[idxEnabled]) : true,
-              rawPassword: idxPwd >= 0 && cols[idxPwd] ? cols[idxPwd] : null,
-              passwordResetRequired: idxReset >= 0 ? normalizeBool(cols[idxReset]) : false
-            };
-            Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
-            try {
-              await apiJson("/api/v1/platform/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-              success += 1;
-            } catch (e) {
-              failed += 1;
-              if (errors.length < 8) errors.push("第 " + (i + 1) + " 行：" + e.message);
-            }
-          }
-          msg.textContent = "导入完成：成功 " + success + "，失败 " + failed + (errors.length ? ("；示例错误：" + errors.join("；")) : "");
-          if (success) {
-            await loadUsers(Object.assign({}, s, { page: 0 }));
-          }
+          const data = json.data || {};
+          const total = data.totalRows ?? 0;
+          const success = data.successRows ?? 0;
+          const failed = data.failedRows ?? 0;
+          const errors = Array.isArray(data.errors) ? data.errors : [];
+          const samples = errors.slice(0, 8).map(e => "第 " + e.rowNumber + " 行：" + (e.errorMessage || "失败"));
+          msg.textContent = "导入完成：总 " + total + "，成功 " + success + "，失败 " + failed + (samples.length ? ("；示例错误：" + samples.join("；")) : "");
+          if (success) await loadUsers(Object.assign({}, s, { page: 0 }));
         }
 
         showUserOverlay("批量导入用户");
         setUserModalContent([
           el("div", { class: "row" }, [
-            el("div", { class: "field", style: "flex:1; min-width: 520px;" }, [el("label", { text: "选择 CSV 文件" }), fileInput]),
+            el("div", { class: "field", style: "flex:1; min-width: 520px;" }, [el("label", { text: "选择 Excel 文件" }), fileInput]),
           ]),
           hint,
           msg
@@ -4200,6 +4141,42 @@
           el("button", { class: "btn", text: "取消", type: "button", onclick: () => hideUserOverlay() }),
           el("button", { class: "btn primary", text: "开始导入", type: "button", onclick: async () => { await doImport(); } })
         ]);
+      }});
+
+      const exportStatsBtn = el("button", { class: "btn", text: "导出统计", onclick: async () => {
+        toast.textContent = "";
+        try {
+          const qs = buildQuery({
+            role: roleSelect.value || null,
+            enabled: enabledSelect.value === "" ? null : normalizeBool(enabledSelect.value),
+            keyword: keywordInput.value.trim() || null,
+            grade: gradeSelect.value || null
+          });
+          const url = "/api/v1/platform/users/stats/export" + (qs ? ("?" + qs) : "");
+          const resp = await apiFetch(url, { headers: { "Accept": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } });
+          if (!resp.ok) {
+            const raw = await resp.text().catch(() => "");
+            let json = null;
+            try {
+              json = raw ? (JSON.parse(raw) || null) : null;
+            } catch (e) {
+              json = null;
+            }
+            const msg = json && json.message ? json.message : ("导出失败(" + resp.status + ")");
+            throw new Error(msg);
+          }
+          const blob = await resp.blob();
+          const dlUrl = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = dlUrl;
+          a.download = "user-stats.xlsx";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(dlUrl);
+        } catch (e) {
+          toast.textContent = e.message;
+        }
       }});
 
       const header = el("div", { class: "pageHeader" }, [
@@ -4234,7 +4211,7 @@
             }}),
             el("div", { class: "field", style: "min-width: 120px;" }, [el("label", { text: "每页" }), sizeSelect])
           ]),
-          importBtn
+          el("div", { class: "row", style: "flex-wrap: wrap;" }, [exportStatsBtn, importBtn])
         ]),
         toast
       ]);

@@ -124,6 +124,138 @@ public class ExcelImportExportServiceImpl implements ExcelImportExportService {
     }
 
     @Override
+    public byte[] exportUserStats(String role, Boolean enabled, String keyword, String grade) {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet summary = workbook.createSheet("用户统计");
+            Sheet byRole = workbook.createSheet("角色统计");
+
+            Row header = summary.createRow(0);
+            header.createCell(0).setCellValue("指标");
+            header.createCell(1).setCellValue("数值");
+
+            String normalizedKeyword = keyword == null ? null : keyword.trim();
+            String normalizedGrade = grade == null ? null : grade.trim();
+
+            int totalUsers = 0;
+            int enabledUsers = 0;
+            int disabledUsers = 0;
+            int studentUsers = 0;
+            int teacherUsers = 0;
+
+            java.util.Map<String, Integer> roleCounter = new java.util.HashMap<>();
+
+            List<UserAccount> users = userAccountRepository.findAll();
+            for (UserAccount user : users) {
+                if (user == null) {
+                    continue;
+                }
+                if (role != null && !role.isBlank()) {
+                    if (user.getRole() == null || !role.equalsIgnoreCase(user.getRole().name())) {
+                        continue;
+                    }
+                }
+                if (enabled != null && !enabled.equals(user.getEnabled())) {
+                    continue;
+                }
+
+                StudentProfile profile = studentProfileRepository.findByStudentNo(user.getUsername()).orElse(null);
+                if (normalizedGrade != null && !normalizedGrade.isBlank()) {
+                    String userGrade = profile == null ? null : profile.getGrade();
+                    if (userGrade == null || !normalizedGrade.equals(userGrade)) {
+                        continue;
+                    }
+                }
+
+                if (normalizedKeyword != null && !normalizedKeyword.isBlank()) {
+                    boolean hit = containsIgnoreCase(user.getUsername(), normalizedKeyword)
+                            || containsIgnoreCase(profile == null ? null : profile.getName(), normalizedKeyword)
+                            || containsIgnoreCase(profile == null ? null : profile.getStudentNo(), normalizedKeyword);
+                    if (!hit) {
+                        continue;
+                    }
+                }
+
+                totalUsers += 1;
+                if (Boolean.TRUE.equals(user.getEnabled())) {
+                    enabledUsers += 1;
+                } else {
+                    disabledUsers += 1;
+                }
+
+                String roleName = user.getRole() == null ? "" : user.getRole().name();
+                roleCounter.put(roleName, roleCounter.getOrDefault(roleName, 0) + 1);
+
+                boolean isStudentLike = RoleType.STUDENT.name().equals(roleName) || RoleType.LEAGUE_SECRETARY.name().equals(roleName);
+                if (isStudentLike) {
+                    studentUsers += 1;
+                } else {
+                    teacherUsers += 1;
+                }
+            }
+
+            int rowIdx = 1;
+            Row f0 = summary.createRow(rowIdx++);
+            f0.createCell(0).setCellValue("筛选角色");
+            f0.createCell(1).setCellValue(role == null || role.isBlank() ? "全部" : role);
+
+            Row f1 = summary.createRow(rowIdx++);
+            f1.createCell(0).setCellValue("筛选状态");
+            f1.createCell(1).setCellValue(enabled == null ? "全部" : (enabled ? "启用" : "停用"));
+
+            Row f2 = summary.createRow(rowIdx++);
+            f2.createCell(0).setCellValue("筛选关键词");
+            f2.createCell(1).setCellValue(normalizedKeyword == null || normalizedKeyword.isBlank() ? "—" : normalizedKeyword);
+
+            Row f3 = summary.createRow(rowIdx++);
+            f3.createCell(0).setCellValue("筛选年级");
+            f3.createCell(1).setCellValue(normalizedGrade == null || normalizedGrade.isBlank() ? "全部" : normalizedGrade);
+
+            Row r0 = summary.createRow(rowIdx++);
+            r0.createCell(0).setCellValue("总用户数");
+            r0.createCell(1).setCellValue(totalUsers);
+
+            Row r1 = summary.createRow(rowIdx++);
+            r1.createCell(0).setCellValue("启用用户数");
+            r1.createCell(1).setCellValue(enabledUsers);
+
+            Row r2 = summary.createRow(rowIdx++);
+            r2.createCell(0).setCellValue("停用用户数");
+            r2.createCell(1).setCellValue(disabledUsers);
+
+            Row r3 = summary.createRow(rowIdx++);
+            r3.createCell(0).setCellValue("学生端用户数");
+            r3.createCell(1).setCellValue(studentUsers);
+
+            Row r4 = summary.createRow(rowIdx++);
+            r4.createCell(0).setCellValue("管理端用户数");
+            r4.createCell(1).setCellValue(teacherUsers);
+
+            Row r5 = summary.createRow(rowIdx++);
+            r5.createCell(0).setCellValue("统计时间");
+            r5.createCell(1).setCellValue(LocalDateTime.now().toString());
+
+            Row roleHeader = byRole.createRow(0);
+            roleHeader.createCell(0).setCellValue("角色");
+            roleHeader.createCell(1).setCellValue("数量");
+
+            int byRoleRow = 1;
+            List<java.util.Map.Entry<String, Integer>> roleEntries = new java.util.ArrayList<>(roleCounter.entrySet());
+            roleEntries.sort(java.util.Map.Entry.comparingByKey());
+            for (java.util.Map.Entry<String, Integer> entry : roleEntries) {
+                Row row = byRole.createRow(byRoleRow++);
+                row.createCell(0).setCellValue(roleLabel(parseRoleSafely(entry.getKey())));
+                row.createCell(1).setCellValue(entry.getValue());
+            }
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new BusinessException("导出Excel失败: " + e.getMessage());
+        }
+    }
+
+    @Override
     public BatchImportResultResponse importStudents(MultipartFile file) {
         List<BatchImportResultResponse.ImportErrorItem> errors = new ArrayList<>();
         int totalRows = 0;
@@ -262,5 +394,26 @@ public class ExcelImportExportServiceImpl implements ExcelImportExportService {
             case SUPER_ADMIN -> "超级管理员";
             case ASSISTANT -> "助理";
         };
+    }
+
+    private RoleType parseRoleSafely(String role) {
+        if (role == null || role.isBlank()) {
+            return null;
+        }
+        try {
+            return RoleType.valueOf(role.trim().toUpperCase());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private boolean containsIgnoreCase(String value, String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return true;
+        }
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        return value.toLowerCase().contains(keyword.toLowerCase());
     }
 }
