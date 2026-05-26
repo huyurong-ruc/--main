@@ -11,6 +11,10 @@ import edu.ruc.platform.certificate.dto.CertificateRequestCreateRequest;
 import edu.ruc.platform.certificate.dto.CertificateRequestResponse;
 import edu.ruc.platform.auth.dto.AuthenticatedUser;
 import edu.ruc.platform.auth.service.CurrentUserService;
+import edu.ruc.platform.admin.dto.WorkflowDefinitionResponse;
+import edu.ruc.platform.admin.dto.WorkflowNodeResponse;
+import edu.ruc.platform.admin.service.AdminApplicationService;
+import edu.ruc.platform.admin.service.MockAdminService;
 import edu.ruc.platform.common.api.PageResponse;
 import edu.ruc.platform.common.enums.RoleType;
 import edu.ruc.platform.common.exception.BusinessException;
@@ -25,6 +29,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -35,6 +40,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class MockCertificateService implements CertificateApplicationService {
 
     private final CurrentUserService currentUserService;
+    private final AdminApplicationService adminService;
     private final AtomicLong idGenerator = new AtomicLong(2000);
     private final AtomicLong historyIdGenerator = new AtomicLong(3000);
     private final List<ApprovalTaskResponse> approvalTasks = new ArrayList<>(List.of(
@@ -44,6 +50,7 @@ public class MockCertificateService implements CertificateApplicationService {
     private final List<ApprovalHistoryResponse> approvalHistories = new ArrayList<>(List.of(
             new ApprovalHistoryResponse(3001L, 1002L, 20001L, "胡浩老师", "COUNSELOR", "approve", "PENDING", "COUNSELOR_APPROVED", "初审通过", LocalDateTime.of(2026, 3, 20, 9, 0))
     ));
+    private final Map<Long, Long> assignedToUserIds = new HashMap<>();
     private final Path persistedStatePath = Paths.get(System.getProperty("user.home"), ".ssp", "mock", "certificate-state.json");
     private final ObjectMapper stateMapper = new ObjectMapper().findAndRegisterModules();
     private boolean stateLoaded = false;
@@ -52,6 +59,7 @@ public class MockCertificateService implements CertificateApplicationService {
     private static class PersistedState {
         public List<ApprovalTaskResponse> approvalTasks;
         public List<ApprovalHistoryResponse> approvalHistories;
+        public Map<Long, Long> assignedToUserIds;
     }
 
     public void seedApprovalTasks(int count) {
@@ -61,9 +69,9 @@ public class MockCertificateService implements CertificateApplicationService {
             long id = idGenerator.incrementAndGet();
             long studentId = 10000L + (id % 200);
             String studentName = "测试学生" + studentId;
-            String[] types = new String[]{"在读证明", "成绩单", "奖学金申请证明", "党员身份证明"};
+            String[] types = new String[]{"在读证明", "党员身份证明", "困难认定证明", "成绩单", "实习证明"};
             String certType = types[(int) (id % types.length)];
-            approvalTasks.add(0, new ApprovalTaskResponse(
+            ApprovalTaskResponse created = new ApprovalTaskResponse(
                     id,
                     studentId,
                     studentName,
@@ -71,7 +79,9 @@ public class MockCertificateService implements CertificateApplicationService {
                     "PENDING",
                     "演示生成的审批任务",
                     LocalDateTime.now()
-            ));
+            );
+            approvalTasks.add(0, created);
+            syncWorkflowInstance(created);
         }
         persistState();
     }
@@ -87,14 +97,17 @@ public class MockCertificateService implements CertificateApplicationService {
         }
         stateLoaded = true;
         if (!persistEnabled) {
+            approvalTasks.forEach(this::syncWorkflowInstance);
             return;
         }
         try {
             if (!Files.exists(persistedStatePath)) {
+                approvalTasks.forEach(this::syncWorkflowInstance);
                 return;
             }
             PersistedState state = stateMapper.readValue(persistedStatePath.toFile(), PersistedState.class);
             if (state == null) {
+                approvalTasks.forEach(this::syncWorkflowInstance);
                 return;
             }
             if (state.approvalTasks != null) {
@@ -105,12 +118,17 @@ public class MockCertificateService implements CertificateApplicationService {
                 approvalHistories.clear();
                 approvalHistories.addAll(state.approvalHistories);
             }
+            if (state.assignedToUserIds != null) {
+                assignedToUserIds.clear();
+                assignedToUserIds.putAll(state.assignedToUserIds);
+            }
             long maxTaskId = approvalTasks.stream().mapToLong(ApprovalTaskResponse::requestId).max().orElse(2000L);
             long maxHistoryId = approvalHistories.stream().mapToLong(ApprovalHistoryResponse::id).max().orElse(3000L);
             idGenerator.set(Math.max(idGenerator.get(), maxTaskId));
             historyIdGenerator.set(Math.max(historyIdGenerator.get(), maxHistoryId));
         } catch (Exception ignored) {
         }
+        approvalTasks.forEach(this::syncWorkflowInstance);
     }
 
     private synchronized void persistState() {
@@ -122,9 +140,35 @@ public class MockCertificateService implements CertificateApplicationService {
             PersistedState state = new PersistedState();
             state.approvalTasks = List.copyOf(approvalTasks);
             state.approvalHistories = List.copyOf(approvalHistories);
+            state.assignedToUserIds = Map.copyOf(assignedToUserIds);
             stateMapper.writeValue(persistedStatePath.toFile(), state);
         } catch (Exception ignored) {
         }
+    }
+
+    public ApprovalTaskResponse assignApprovalTask(Long requestId, Long targetUserId, String targetName) {
+        ensureStateLoaded();
+        if (targetUserId == null || targetUserId <= 0) {
+            throw new BusinessException("目标用户无效");
+        }
+        ApprovalTaskResponse task = findTask(requestId);
+        assignedToUserIds.put(requestId, targetUserId);
+        AuthenticatedUser operator = currentUserService.requireCurrentUser();
+        String name = targetName == null ? "" : targetName.trim();
+        approvalHistories.add(new ApprovalHistoryResponse(
+                historyIdGenerator.incrementAndGet(),
+                requestId,
+                operator.userId(),
+                operator.name(),
+                operator.role(),
+                "assign",
+                task.status(),
+                task.status(),
+                name.isBlank() ? ("转派给 user#" + targetUserId) : ("转派给 " + name),
+                LocalDateTime.now()
+        ));
+        persistState();
+        return task;
     }
 
     @Override
@@ -133,7 +177,7 @@ public class MockCertificateService implements CertificateApplicationService {
         requireCertificateOwner(request.studentId());
         validateCertificateType(request.certificateType());
         long id = idGenerator.incrementAndGet();
-        approvalTasks.add(0, new ApprovalTaskResponse(
+        ApprovalTaskResponse created = new ApprovalTaskResponse(
                 id,
                 request.studentId(),
                 resolveStudentName(request.studentId()),
@@ -141,7 +185,9 @@ public class MockCertificateService implements CertificateApplicationService {
                 "PENDING",
                 request.reason(),
                 LocalDateTime.now()
-        ));
+        );
+        approvalTasks.add(0, created);
+        syncWorkflowInstance(created);
         persistState();
         return new CertificateRequestResponse(id, request.studentId(), normalizeCertificateType(request.certificateType()), "PENDING", null);
     }
@@ -230,11 +276,29 @@ public class MockCertificateService implements CertificateApplicationService {
                         request.comment(),
                         LocalDateTime.now()
                 ));
+                syncWorkflowInstance(updated);
                 persistState();
                 return updated;
             }
         }
         throw new BusinessException("审批单不存在: " + requestId);
+    }
+
+    private void syncWorkflowInstance(ApprovalTaskResponse task) {
+        if (task == null) {
+            return;
+        }
+        if (!(adminService instanceof MockAdminService mock)) {
+            return;
+        }
+        mock.upsertCertificateWorkflowInstance(
+                task.requestId(),
+                task.certificateType(),
+                task.studentId(),
+                task.studentName(),
+                task.status(),
+                task.submittedAt()
+        );
     }
 
     @Override
@@ -483,8 +547,8 @@ public class MockCertificateService implements CertificateApplicationService {
     }
 
     private void validateCertificateType(String certificateType) {
-        if (!List.of("在读证明", "党员身份证明", "困难认定证明").contains(normalizeCertificateType(certificateType))) {
-            throw new BusinessException("证明类型仅支持 在读证明、党员身份证明、困难认定证明");
+        if (!List.of("在读证明", "党员身份证明", "困难认定证明", "成绩单", "实习证明").contains(normalizeCertificateType(certificateType))) {
+            throw new BusinessException("证明类型仅支持 在读证明、党员身份证明、困难认定证明、成绩单、实习证明");
         }
     }
 
@@ -501,15 +565,80 @@ public class MockCertificateService implements CertificateApplicationService {
     }
 
     private boolean canAccessApprovalTask(AuthenticatedUser user, ApprovalTaskResponse task) {
-        if ("SUPER_ADMIN".equals(user.role()) || "COLLEGE_ADMIN".equals(user.role()) || "COUNSELOR".equals(user.role())) {
+        if ("SUPER_ADMIN".equals(user.role()) || "COLLEGE_ADMIN".equals(user.role())) {
             return true;
         }
-        if (!"CLASS_ADVISOR".equals(user.role())) {
-            return false;
+        Long assignedTo = assignedToUserIds.get(task.requestId());
+        if (assignedTo != null) {
+            return user.userId().equals(assignedTo);
         }
-        return user.grade() != null && (
-                ("advisor01".equals(user.username()) && task.studentId().equals(10001L))
-                        || ("advisor02".equals(user.username()) && task.studentId().equals(10002L))
-        );
+        String expectedRole = resolveCurrentApproverRole(task);
+        return expectedRole != null && expectedRole.equalsIgnoreCase(user.role());
+    }
+
+    private String resolveCurrentApproverRole(ApprovalTaskResponse task) {
+        if (task == null) {
+            return null;
+        }
+        String status = QueryFilterSupport.normalizeUpper(task.status());
+        if ("APPROVED".equals(status) || "REJECTED".equals(status) || "WITHDRAWN".equals(status)) {
+            return null;
+        }
+        WorkflowDefinitionResponse def = findWorkflowDefinition(task);
+        if (def == null) {
+            if ("PENDING".equals(status)) {
+                return RoleType.COUNSELOR.name();
+            }
+            if ("COUNSELOR_APPROVED".equals(status)) {
+                return RoleType.COLLEGE_ADMIN.name();
+            }
+            return null;
+        }
+        int seqNo = "COUNSELOR_APPROVED".equals(status) ? 3 : 2;
+        List<WorkflowNodeResponse> nodes = adminService.listWorkflowNodes(def.id());
+        WorkflowNodeResponse node = nodes.stream()
+                .filter(n -> n != null && n.seqNo() == seqNo)
+                .findFirst()
+                .orElse(null);
+        if (node == null) {
+            return null;
+        }
+        return mapApproverRole(node.approverRole());
+    }
+
+    private WorkflowDefinitionResponse findWorkflowDefinition(ApprovalTaskResponse task) {
+        String certType = QueryFilterSupport.trimToNull(task.certificateType());
+        if (certType == null) {
+            return null;
+        }
+        return adminService.listWorkflowDefinitions().stream()
+                .filter(def -> def != null && "CERTIFICATE".equalsIgnoreCase(def.wfType()))
+                .filter(def -> QueryFilterSupport.containsIgnoreCase(def.wfName(), certType)
+                        || QueryFilterSupport.containsIgnoreCase(def.wfCode(), certType))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String mapApproverRole(String approverRole) {
+        String role = QueryFilterSupport.trimToNull(approverRole);
+        if (role == null) {
+            return null;
+        }
+        if (role.contains("辅导员")) {
+            return RoleType.COUNSELOR.name();
+        }
+        if (role.contains("学院管理员") || role.contains("教务处")) {
+            return RoleType.COLLEGE_ADMIN.name();
+        }
+        if (role.contains("班主任")) {
+            return RoleType.CLASS_ADVISOR.name();
+        }
+        if (role.contains("团支书")) {
+            return RoleType.LEAGUE_SECRETARY.name();
+        }
+        if (role.contains("学生")) {
+            return RoleType.STUDENT.name();
+        }
+        return null;
     }
 }

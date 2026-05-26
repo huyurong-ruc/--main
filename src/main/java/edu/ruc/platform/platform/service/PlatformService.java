@@ -920,7 +920,9 @@ public class PlatformService implements PlatformApplicationService {
                 studentProfile == null ? null : studentProfile.getStudentNo(),
                 studentProfile == null ? userAccount.getUsername() : studentProfile.getName(),
                 studentProfile == null ? null : studentProfile.getGrade(),
-                studentProfile == null ? null : studentProfile.getMajor()
+                studentProfile == null ? null : studentProfile.getMajor(),
+                userAccount.getWechatOpenId() != null && !userAccount.getWechatOpenId().isBlank(),
+                userAccount.getPasswordHash() != null && !userAccount.getPasswordHash().isBlank()
         );
     }
 

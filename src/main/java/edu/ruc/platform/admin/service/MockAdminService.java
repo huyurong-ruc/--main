@@ -97,6 +97,7 @@ public class MockAdminService implements AdminApplicationService {
             new KnowledgeAttachmentResponse(51L, 101L, "party-process.pdf", "application/pdf", 1024L, "/uploads/knowledge/101/party-process.pdf", "胡浩老师", LocalDateTime.of(2026, 3, 22, 11, 0))
     ));
     private final Map<Long, String> knowledgeContents = new HashMap<>();
+    private final Map<Long, String> knowledgeSummaries = new HashMap<>();
     private final List<DataImportErrorItemResponse> importErrors = new ArrayList<>(List.of(
             new DataImportErrorItemResponse(81L, 2L, 7, "title", "标题为空", null, LocalDateTime.of(2026, 3, 23, 9, 5)),
             new DataImportErrorItemResponse(82L, 2L, 12, "officialUrl", "URL 格式不合法", "htp://bad-url", LocalDateTime.of(2026, 3, 23, 9, 6))
@@ -116,6 +117,7 @@ public class MockAdminService implements AdminApplicationService {
         public List<AdminKnowledgeItemResponse> knowledgeItems;
         public List<KnowledgeAttachmentResponse> knowledgeAttachments;
         public Map<Long, String> knowledgeContents;
+        public Map<Long, String> knowledgeSummaries;
     }
 
     private static boolean isTestRuntime() {
@@ -174,6 +176,10 @@ public class MockAdminService implements AdminApplicationService {
                 knowledgeContents.clear();
                 knowledgeContents.putAll(state.knowledgeContents);
             }
+            if (state.knowledgeSummaries != null) {
+                knowledgeSummaries.clear();
+                knowledgeSummaries.putAll(state.knowledgeSummaries);
+            }
             long maxNoticeId = notices.stream().mapToLong(TargetedNoticeResponse::id).max().orElse(10L);
             long maxKnowledgeId = knowledgeItems.stream().mapToLong(AdminKnowledgeItemResponse::id).max().orElse(200L);
             long maxAttachmentId = knowledgeAttachments.stream().mapToLong(KnowledgeAttachmentResponse::id).max().orElse(50L);
@@ -195,9 +201,39 @@ public class MockAdminService implements AdminApplicationService {
             state.knowledgeItems = List.copyOf(knowledgeItems);
             state.knowledgeAttachments = List.copyOf(knowledgeAttachments);
             state.knowledgeContents = Map.copyOf(knowledgeContents);
+            state.knowledgeSummaries = Map.copyOf(knowledgeSummaries);
             stateMapper.writeValue(persistedStatePath.toFile(), state);
         } catch (Exception ignored) {
         }
+    }
+
+    public String getKnowledgeContent(Long id) {
+        ensureStateLoaded();
+        initializeKnowledgeItems();
+        return knowledgeContents.get(id);
+    }
+
+    public String getKnowledgeSummary(Long id) {
+        ensureStateLoaded();
+        initializeKnowledgeItems();
+        String summary = QueryFilterSupport.trimToNull(knowledgeSummaries.get(id));
+        if (summary != null) {
+            return summary;
+        }
+        String content = QueryFilterSupport.trimToNull(knowledgeContents.get(id));
+        return content == null ? null : buildSummary(content);
+    }
+
+    private String buildSummary(String content) {
+        String normalized = QueryFilterSupport.trimToNull(content);
+        if (normalized == null) {
+            return null;
+        }
+        String oneLine = normalized.replace("\r", "\n").replace("\n", " ").replaceAll("\\s+", " ").trim();
+        if (oneLine.length() <= 80) {
+            return oneLine;
+        }
+        return oneLine.substring(0, 80);
     }
 
     @Override
@@ -430,6 +466,8 @@ public class MockAdminService implements AdminApplicationService {
         );
         knowledgeItems.add(0, response);
         knowledgeContents.put(response.id(), request.content());
+        String summary = QueryFilterSupport.trimToNull(request.summary());
+        knowledgeSummaries.put(response.id(), summary == null ? buildSummary(request.content()) : summary.trim());
         writeOperationLog("KNOWLEDGE", "CREATE", response.title(), "SUCCESS", response.sourceFileName());
         persistState();
         return response;
@@ -462,6 +500,8 @@ public class MockAdminService implements AdminApplicationService {
                 );
                 knowledgeItems.set(i, updated);
                 knowledgeContents.put(id, request.content());
+                String summary = QueryFilterSupport.trimToNull(request.summary());
+                knowledgeSummaries.put(id, summary == null ? buildSummary(request.content()) : summary.trim());
                 writeOperationLog("KNOWLEDGE", "UPDATE", updated.title(), "SUCCESS", updated.sourceFileName());
                 persistState();
                 return updated;
@@ -481,6 +521,7 @@ public class MockAdminService implements AdminApplicationService {
         knowledgeItems.removeIf(item -> item.id().equals(id));
         knowledgeAttachments.removeIf(item -> item.knowledgeId().equals(id));
         knowledgeContents.remove(id);
+        knowledgeSummaries.remove(id);
         writeOperationLog("KNOWLEDGE", "DELETE", "knowledge#" + id, "SUCCESS", null);
         persistState();
     }
@@ -1175,15 +1216,35 @@ public class MockAdminService implements AdminApplicationService {
             return;
         }
         workflowDefinitions.addAll(List.of(
-                new WorkflowDefinitionResponse(1L, "AFFAIR_READ_CERT", "在读证明申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2023, 9, 1, 0, 0)),
-                new WorkflowDefinitionResponse(2L, "AFFAIR_LEAVE", "请假申请审批流", "AFFAIR", "请假管理", 3, true, LocalDateTime.of(2023, 9, 1, 0, 0)),
-                new WorkflowDefinitionResponse(3L, "AFFAIR_SCHOLARSHIP", "奖学金评审流程", "AFFAIR", "奖学金管理", 3, true, LocalDateTime.of(2023, 10, 15, 0, 0))
+                new WorkflowDefinitionResponse(1L, "AFFAIR_READ_CERT", "在读证明申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(2L, "AFFAIR_LEAVE", "请假申请审批流", "AFFAIR", "请假管理", 3, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(3L, "AFFAIR_SCHOLARSHIP", "奖学金评审流程", "AFFAIR", "奖学金管理", 3, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(4L, "AFFAIR_PARTY_IDENTITY_CERT", "党员身份证明申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(5L, "AFFAIR_DIFFICULTY_CERT", "困难认定证明申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(6L, "AFFAIR_TRANSCRIPT_CERT", "成绩单申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(7L, "AFFAIR_INTERNSHIP_CERT", "实习证明申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2026, 3, 1, 0, 0))
         ));
         workflowNodes.addAll(List.of(
                 new WorkflowNodeResponse(11L, 1L, 1, "提交申请", "学生", 0, false),
                 new WorkflowNodeResponse(12L, 1L, 2, "辅导员审批", "辅导员", 24, true),
                 new WorkflowNodeResponse(13L, 1L, 3, "教务处审批", "教务处管理员", 48, true),
-                new WorkflowNodeResponse(14L, 1L, 4, "完成", "系统", 0, false)
+                new WorkflowNodeResponse(14L, 1L, 4, "完成", "系统", 0, false),
+                new WorkflowNodeResponse(41L, 4L, 1, "提交申请", "学生", 0, false),
+                new WorkflowNodeResponse(42L, 4L, 2, "辅导员审批", "辅导员", 24, true),
+                new WorkflowNodeResponse(43L, 4L, 3, "学院党务终审", "学院管理员", 48, true),
+                new WorkflowNodeResponse(44L, 4L, 4, "完成", "系统", 0, false),
+                new WorkflowNodeResponse(51L, 5L, 1, "提交申请", "学生", 0, false),
+                new WorkflowNodeResponse(52L, 5L, 2, "辅导员审批", "辅导员", 24, true),
+                new WorkflowNodeResponse(53L, 5L, 3, "资助中心复核", "学院管理员", 48, true),
+                new WorkflowNodeResponse(54L, 5L, 4, "完成", "系统", 0, false),
+                new WorkflowNodeResponse(61L, 6L, 1, "提交申请", "学生", 0, false),
+                new WorkflowNodeResponse(62L, 6L, 2, "辅导员审批", "辅导员", 24, true),
+                new WorkflowNodeResponse(63L, 6L, 3, "教务处审批", "教务处管理员", 48, true),
+                new WorkflowNodeResponse(64L, 6L, 4, "完成", "系统", 0, false),
+                new WorkflowNodeResponse(71L, 7L, 1, "提交申请", "学生", 0, false),
+                new WorkflowNodeResponse(72L, 7L, 2, "辅导员审批", "辅导员", 24, true),
+                new WorkflowNodeResponse(73L, 7L, 3, "实践教学审核", "学院管理员", 48, true),
+                new WorkflowNodeResponse(74L, 7L, 4, "完成", "系统", 0, false)
         ));
         refreshWorkflowNodeCounts();
         workflowDefIdGenerator.set(100);
@@ -1249,7 +1310,10 @@ public class MockAdminService implements AdminApplicationService {
                         LocalDateTime.of(2026, 3, 20, 9, 0)
                 ))
                 .toList());
-        mockDataStore.knowledgeDocuments().forEach(item -> knowledgeContents.putIfAbsent(item.id(), item.answer()));
+        mockDataStore.knowledgeDocuments().forEach(item -> {
+            knowledgeContents.putIfAbsent(item.id(), item.answer());
+            knowledgeSummaries.putIfAbsent(item.id(), buildSummary(item.answer()));
+        });
         knowledgeItems.add(0, new AdminKnowledgeItemResponse(
                 299L,
                 "辅导员内部口径说明",
@@ -1265,6 +1329,7 @@ public class MockAdminService implements AdminApplicationService {
                 LocalDateTime.of(2026, 3, 18, 10, 0)
         ));
         knowledgeContents.putIfAbsent(299L, "仅内部可见：用于演示 mock 数据。");
+        knowledgeSummaries.putIfAbsent(299L, buildSummary(knowledgeContents.get(299L)));
         persistState();
     }
 
@@ -1782,14 +1847,107 @@ public class MockAdminService implements AdminApplicationService {
         throw new BusinessException("流程实例不存在: " + id);
     }
 
+    public synchronized WorkflowInstanceResponse upsertCertificateWorkflowInstance(Long requestId,
+                                                                                  String certificateType,
+                                                                                  Long studentUserId,
+                                                                                  String studentName,
+                                                                                  String approvalStatus,
+                                                                                  LocalDateTime submittedAt) {
+        initializeWorkflowConfigs();
+        initializeWorkflowInstances();
+        if (requestId == null || requestId <= 0) {
+            throw new BusinessException("业务ID无效");
+        }
+        String status = QueryFilterSupport.normalizeUpper(approvalStatus);
+        String instanceStatus;
+        LocalDateTime endedAt = null;
+        if ("APPROVED".equals(status)) {
+            instanceStatus = "approved";
+            endedAt = LocalDateTime.now();
+        } else if ("REJECTED".equals(status)) {
+            instanceStatus = "rejected";
+            endedAt = LocalDateTime.now();
+        } else if ("WITHDRAWN".equals(status)) {
+            instanceStatus = "canceled";
+            endedAt = LocalDateTime.now();
+        } else {
+            instanceStatus = "running";
+        }
+
+        WorkflowDefinitionResponse def = resolveCertificateWorkflowDefinition(certificateType);
+        String wfCode = def == null ? "AFFAIR_CERT_GENERIC" : def.wfCode();
+        String wfName = def == null ? ((certificateType == null || certificateType.isBlank()) ? "证明申请流程" : (certificateType.trim() + "申请流")) : def.wfName();
+
+        for (int i = 0; i < workflowInstances.size(); i++) {
+            WorkflowInstanceResponse item = workflowInstances.get(i);
+            if (item != null
+                    && "CERTIFICATE".equalsIgnoreCase(item.businessType())
+                    && item.businessId() != null
+                    && item.businessId().equals(requestId)) {
+                WorkflowInstanceResponse updated = new WorkflowInstanceResponse(
+                        item.id(),
+                        wfCode,
+                        wfName,
+                        "CERTIFICATE",
+                        item.businessTable(),
+                        item.businessId(),
+                        instanceStatus,
+                        studentUserId == null ? item.startedBy() : studentUserId,
+                        (studentName == null || studentName.isBlank()) ? item.startedByName() : studentName,
+                        submittedAt == null ? item.startedAt() : submittedAt,
+                        endedAt,
+                        item.createdAt()
+                );
+                workflowInstances.set(i, updated);
+                return updated;
+            }
+        }
+
+        long nextId = workflowInstances.stream()
+                .filter(x -> x != null && x.id() != null)
+                .mapToLong(WorkflowInstanceResponse::id)
+                .max()
+                .orElse(0L) + 1L;
+        LocalDateTime now = LocalDateTime.now();
+        WorkflowInstanceResponse created = new WorkflowInstanceResponse(
+                nextId,
+                wfCode,
+                wfName,
+                "CERTIFICATE",
+                "certificate_request",
+                requestId,
+                instanceStatus,
+                studentUserId,
+                studentName,
+                submittedAt == null ? now : submittedAt,
+                endedAt,
+                now
+        );
+        workflowInstances.add(0, created);
+        return created;
+    }
+
+    private WorkflowDefinitionResponse resolveCertificateWorkflowDefinition(String certificateType) {
+        String t = QueryFilterSupport.trimToNull(certificateType);
+        if (t == null) {
+            return null;
+        }
+        return workflowDefinitions.stream()
+                .filter(def -> def != null && "CERTIFICATE".equalsIgnoreCase(def.wfType()))
+                .filter(def -> QueryFilterSupport.containsIgnoreCase(def.wfName(), t)
+                        || QueryFilterSupport.containsIgnoreCase(def.wfCode(), t))
+                .findFirst()
+                .orElse(null);
+    }
+
     private void initializeWorkflowInstances() {
         if (!workflowInstances.isEmpty()) {
             return;
         }
         workflowInstances.addAll(List.of(
-                new WorkflowInstanceResponse(1L, "AFFAIR_READ_CERT", "在读证明申请流", "CERTIFICATE", "affair_request", 1001L, "running", 20001L, "张三", LocalDateTime.of(2026, 3, 20, 10, 0), null, LocalDateTime.of(2026, 3, 20, 10, 0)),
-                new WorkflowInstanceResponse(2L, "AFFAIR_LEAVE", "请假申请审批流", "AFFAIR", "affair_request", 1002L, "approved", 20002L, "李四", LocalDateTime.of(2026, 3, 19, 14, 0), LocalDateTime.of(2026, 3, 20, 9, 0), LocalDateTime.of(2026, 3, 19, 14, 0)),
-                new WorkflowInstanceResponse(3L, "AFFAIR_SCHOLARSHIP", "奖学金评审流程", "AFFAIR", "affair_request", 1003L, "rejected", 20003L, "王五", LocalDateTime.of(2026, 3, 18, 9, 0), LocalDateTime.of(2026, 3, 19, 16, 0), LocalDateTime.of(2026, 3, 18, 9, 0))
+                new WorkflowInstanceResponse(1L, "AFFAIR_READ_CERT", "在读证明申请流", "CERTIFICATE", "affair_request", 1001L, "running", 10001L, "张三", LocalDateTime.of(2026, 3, 20, 10, 30), null, LocalDateTime.of(2026, 3, 20, 10, 30)),
+                new WorkflowInstanceResponse(2L, "AFFAIR_PARTY_IDENTITY_CERT", "党员身份证明申请流", "CERTIFICATE", "affair_request", 1002L, "running", 10002L, "李四", LocalDateTime.of(2026, 3, 19, 15, 0), null, LocalDateTime.of(2026, 3, 19, 15, 0)),
+                new WorkflowInstanceResponse(3L, "AFFAIR_SCHOLARSHIP", "奖学金评审流程", "AFFAIR", "affair_request", 2001L, "rejected", 10003L, "王五", LocalDateTime.of(2026, 3, 18, 9, 0), LocalDateTime.of(2026, 3, 19, 16, 0), LocalDateTime.of(2026, 3, 18, 9, 0))
         ));
     }
 
@@ -2167,15 +2325,47 @@ public class MockAdminService implements AdminApplicationService {
         throw new BusinessException("提醒任务不存在: " + id);
     }
 
+    public PartyReminderTaskResponse updatePartyReminderDueAt(Long id, LocalDateTime dueAt) {
+        initializePartyReminderTasks();
+        if (dueAt == null) {
+            throw new BusinessException("请提供计划时间");
+        }
+        for (int i = 0; i < partyReminderTasks.size(); i++) {
+            PartyReminderTaskResponse item = partyReminderTasks.get(i);
+            if (item.id().equals(id)) {
+                PartyReminderTaskResponse updated = new PartyReminderTaskResponse(
+                        item.id(),
+                        item.progressId(),
+                        item.nodeId(),
+                        item.nodeName(),
+                        item.studentUserId(),
+                        item.studentName(),
+                        item.studentNo(),
+                        dueAt,
+                        item.channel(),
+                        item.status(),
+                        item.sentAt(),
+                        item.errorMessage(),
+                        item.createdAt()
+                );
+                partyReminderTasks.set(i, updated);
+                writeOperationLog("PARTY_REMINDER", "UPDATE_DUE_AT", "reminder#" + id, "SUCCESS", null);
+                return updated;
+            }
+        }
+        throw new BusinessException("提醒任务不存在: " + id);
+    }
+
     private void initializePartyReminderTasks() {
         if (!partyReminderTasks.isEmpty()) {
             return;
         }
+        LocalDateTime now = LocalDateTime.now();
         partyReminderTasks.addAll(List.of(
-                new PartyReminderTaskResponse(1L, 101L, 11L, "提交入党申请书", 20001L, "张三", "2024010001", LocalDateTime.of(2026, 4, 15, 0, 0), "miniprogram", "pending", null, null, LocalDateTime.of(2026, 3, 15, 0, 0)),
-                new PartyReminderTaskResponse(2L, 102L, 12L, "党课学习", 20002L, "李四", "2024010002", LocalDateTime.of(2026, 4, 20, 0, 0), "miniprogram", "sent", LocalDateTime.of(2026, 3, 10, 10, 0), null, LocalDateTime.of(2026, 3, 10, 0, 0)),
-                new PartyReminderTaskResponse(3L, 103L, 13L, "思想汇报", 20003L, "王五", "2024010003", LocalDateTime.of(2026, 4, 10, 0, 0), "sms", "failed", LocalDateTime.of(2026, 3, 12, 14, 0), "用户未绑定手机号", LocalDateTime.of(2026, 3, 12, 0, 0)),
-                new PartyReminderTaskResponse(4L, 104L, 14L, "预备党员转正", 20004L, "赵六", "2024010004", LocalDateTime.of(2026, 5, 1, 0, 0), "email", "pending", null, null, LocalDateTime.of(2026, 3, 20, 0, 0))
+                new PartyReminderTaskResponse(1L, 101L, 11L, "提交入党申请书", 20001L, "张三", "2026010001", now.plusDays(7).withHour(9).withMinute(0).withSecond(0).withNano(0), "miniprogram", "pending", null, null, now),
+                new PartyReminderTaskResponse(2L, 102L, 12L, "党课学习", 20002L, "李四", "2026010002", now.plusDays(10).withHour(9).withMinute(0).withSecond(0).withNano(0), "miniprogram", "sent", now.minusDays(2), null, now.minusDays(2)),
+                new PartyReminderTaskResponse(3L, 103L, 13L, "思想汇报", 20003L, "王五", "2026010003", now.plusDays(3).withHour(9).withMinute(0).withSecond(0).withNano(0), "sms", "failed", now.minusDays(1), "用户未绑定手机号", now.minusDays(1)),
+                new PartyReminderTaskResponse(4L, 104L, 14L, "预备党员转正", 20004L, "赵六", "2026010004", now.plusDays(21).withHour(9).withMinute(0).withSecond(0).withNano(0), "email", "pending", null, null, now.minusDays(3))
         ));
     }
 

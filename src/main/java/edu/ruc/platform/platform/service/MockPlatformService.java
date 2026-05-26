@@ -997,7 +997,9 @@ public class MockPlatformService implements PlatformApplicationService {
                 item.studentNo(),
                 item.name(),
                 item.grade(),
-                item.major()
+                item.major(),
+                item.wechatBound(),
+                userPasswords.containsKey(item.username())
         );
     }
 

@@ -93,7 +93,9 @@ edu/ruc/platform/common/exception/BusinessException.class
 edu/ruc/platform/notice/domain/LatestNoticeDelivery.class
 edu/ruc/platform/admin/dto/AdvisorScopeFilterRequest.class
 edu/ruc/platform/worklog/dto/StudentWorkloadSummaryResponse.class
+edu/ruc/platform/admin/controller/AdminCourseController.class
 edu/ruc/platform/certificate/controller/CertificateExportController.class
+edu/ruc/platform/admin/dto/PartyReminderTaskFilterRequest.class
 edu/ruc/platform/student/service/StudentActionRecommendationAssembler$1.class
 edu/ruc/platform/certificate/domain/LatestAffairRequest.class
 edu/ruc/platform/admin/repository/LatestSysOperationLogRepository.class
@@ -101,6 +103,7 @@ edu/ruc/platform/admin/dto/WorkflowDefinitionResponse.class
 edu/ruc/platform/admin/controller/AdminKnowledgeController.class
 edu/ruc/platform/party/service/PartyMaterialApplicationService.class
 edu/ruc/platform/auth/security/JwtAuthenticationFilter.class
+edu/ruc/platform/admin/dto/WorkflowInstanceFilterRequest.class
 edu/ruc/platform/academic/repository/LatestAcademicTermCourseRepository.class
 edu/ruc/platform/student/dto/StudentStatusHistoryCreateRequest.class
 edu/ruc/platform/certificate/repository/LatestAffairRequestRepository.class
@@ -131,10 +134,12 @@ edu/ruc/platform/student/dto/StudentPortraitCareerStatsResponse.class
 edu/ruc/platform/student/service/StudentGrowthService.class
 edu/ruc/platform/student/service/MockStudentGrowthService$1.class
 edu/ruc/platform/student/dto/StudentDashboardResponse.class
+edu/ruc/platform/admin/dto/WorkflowInstanceResponse.class
 edu/ruc/platform/platform/dto/PlatformUserUpsertRequest.class
 edu/ruc/platform/knowledge/service/KingbaseKnowledgeService.class
 edu/ruc/platform/honor/domain/HonorRecipient.class
 edu/ruc/platform/academic/dto/AuditReportResponse.class
+edu/ruc/platform/admin/controller/AdminRoleController.class
 edu/ruc/platform/knowledge/domain/KnowledgeQaTicket.class
 edu/ruc/platform/admin/dto/AdminOperationLogModuleStatsResponse.class
 edu/ruc/platform/admin/service/MockQaTicketService.class
@@ -171,6 +176,7 @@ edu/ruc/platform/certificate/domain/LatestWorkflowNode.class
 edu/ruc/platform/certificate/repository/CertificateTemplateRepository.class
 edu/ruc/platform/party/service/MockPartyQuizService.class
 edu/ruc/platform/certificate/dto/ApprovalTaskFilterRequest.class
+edu/ruc/platform/admin/dto/CourseUpsertRequest.class
 edu/ruc/platform/worklog/dto/WorklogDailyTrendResponse.class
 edu/ruc/platform/notice/domain/LatestNoticeDeliveryTarget.class
 edu/ruc/platform/worklog/dto/WorklogOverviewResponse.class
@@ -281,6 +287,7 @@ edu/ruc/platform/certificate/repository/LatestWorkflowNodeRepository.class
 edu/ruc/platform/admin/dto/AdminOperationLogResponse.class
 edu/ruc/platform/certificate/dto/ApprovalActionRequest.class
 edu/ruc/platform/platform/dto/PlatformImportTaskCreateRequest.class
+edu/ruc/platform/admin/dto/PartyReminderTaskResponse.class
 edu/ruc/platform/certificate/service/CertificateTemplateApplicationService.class
 edu/ruc/platform/auth/dto/WechatLoginRequest.class
 edu/ruc/platform/auth/dto/LoginRequest.class
@@ -293,6 +300,7 @@ edu/ruc/platform/platform/service/PlatformUploadPolicyService.class
 edu/ruc/platform/party/service/PartyFlowConfigApplicationService.class
 edu/ruc/platform/honor/repository/HonorRecipientRepository.class
 edu/ruc/platform/auth/service/MockStudentDataScopeService.class
+edu/ruc/platform/admin/controller/AdminWorkflowInstanceController.class
 edu/ruc/platform/academic/domain/AcademicTranscript.class
 edu/ruc/platform/platform/service/MockExcelImportExportService$1.class
 edu/ruc/platform/platform/domain/PlatformSystemSetting.class
@@ -301,11 +309,13 @@ edu/ruc/platform/auth/service/TokenBlocklistRepositoryService.class
 edu/ruc/platform/worklog/service/StudentWorkLogApplicationService.class
 edu/ruc/platform/student/controller/StudentGrowthController.class
 edu/ruc/platform/notice/controller/NoticeController.class
+edu/ruc/platform/admin/controller/AdminApprovalController$AssignApprovalTaskRequest.class
 edu/ruc/platform/honor/dto/HonorRecipientMemberResponse.class
 edu/ruc/platform/certificate/domain/LatestWorkflowTaskAction.class
 edu/ruc/platform/honor/dto/HonorRecipientAttachmentStudentResponse.class
 edu/ruc/platform/platform/domain/PlatformFileUploadRecord.class
 edu/ruc/platform/student/dto/StudentGrowthSuggestionsResponse.class
+edu/ruc/platform/admin/dto/RoleUpsertRequest.class
 edu/ruc/platform/party/domain/LatestPartyFlowNode.class
 edu/ruc/platform/admin/dto/AdminKnowledgeUpsertRequest.class
 edu/ruc/platform/certificate/dto/CertificateTemplateResponse.class
@@ -349,6 +359,7 @@ edu/ruc/platform/notice/domain/LatestNoticeTagDict.class
 edu/ruc/platform/student/repository/StudentVolunteerServiceRecordRepository.class
 edu/ruc/platform/party/service/KingbasePartyProgressService.class
 edu/ruc/platform/student/service/KingbaseStudentProfileService.class
+edu/ruc/platform/admin/controller/AdminPartyReminderController.class
 edu/ruc/platform/auth/dto/LogoutResponse.class
 edu/ruc/platform/worklog/dto/StudentWorkLogResponse.class
 edu/ruc/platform/student/service/StudentSelfService.class
@@ -406,8 +417,10 @@ edu/ruc/platform/platform/dto/PlatformNotificationSendRequest.class
 edu/ruc/platform/admin/controller/AdminImportTaskController.class
 edu/ruc/platform/party/domain/PartyActionLog.class
 edu/ruc/platform/platform/service/PlatformService$1.class
+edu/ruc/platform/admin/dto/TermCourseUpsertRequest.class
 edu/ruc/platform/academic/repository/AcademicWarningRecordRepository.class
 edu/ruc/platform/platform/support/StudentUiMetaRegistry.class
+edu/ruc/platform/admin/dto/TermCourseResponse.class
 edu/ruc/platform/auth/controller/AuthController.class
 edu/ruc/platform/honor/dto/HonorRecipientUpsertRequest.class
 edu/ruc/platform/admin/dto/AdminOperationLogFilterRequest.class
@@ -422,6 +435,7 @@ edu/ruc/platform/honor/controller/StudentHonorController.class
 edu/ruc/platform/academic/repository/AcademicTranscriptItemRepository.class
 edu/ruc/platform/academic/domain/AcademicProgram.class
 edu/ruc/platform/student/repository/StudentProfileRepository.class
+edu/ruc/platform/admin/controller/AdminKnowledgeController$AdminKnowledgeDetailResponse.class
 edu/ruc/platform/auth/domain/LatestUserAuth.class
 edu/ruc/platform/platform/dto/PlatformImportTaskReceiptResponse.class
 edu/ruc/platform/platform/dto/PlatformStudentQueryResponse.class
@@ -441,6 +455,7 @@ edu/ruc/platform/admin/dto/AdminKnowledgeStatsResponse.class
 edu/ruc/platform/student/service/StudentSelfSnapshot.class
 edu/ruc/platform/academic/domain/AcademicTranscriptItem.class
 edu/ruc/platform/student/domain/StudentStatusHistory.class
+edu/ruc/platform/admin/controller/AdminTermCourseController.class
 edu/ruc/platform/auth/repository/UserAccountRepository.class
 edu/ruc/platform/auth/service/JwtTokenService.class
 edu/ruc/platform/worklog/domain/StudentWorkLog.class
@@ -452,6 +467,7 @@ edu/ruc/platform/certificate/service/MockCertificateTemplateService.class
 edu/ruc/platform/party/service/PartyFlowApplicationService.class
 edu/ruc/platform/party/controller/PartyQuizController.class
 edu/ruc/platform/student/dto/StudentGrowthSuggestionItemResponse.class
+edu/ruc/platform/admin/dto/CourseResponse.class
 edu/ruc/platform/platform/service/DefaultPlatformNotificationSendRecordService.class
 edu/ruc/platform/platform/support/StudentActionPathRegistry.class
 edu/ruc/platform/admin/domain/KnowledgeAttachment.class
@@ -500,6 +516,7 @@ edu/ruc/platform/platform/dto/PlatformStudentDetailResponse.class
 edu/ruc/platform/student/dto/StudentPortraitUpsertRequest.class
 edu/ruc/platform/admin/controller/AdminQaTicketController.class
 edu/ruc/platform/admin/service/MockAdminService$PersistedState.class
+edu/ruc/platform/admin/controller/AdminPartyReminderController$UpdatePartyReminderRequest.class
 edu/ruc/platform/platform/controller/PlatformController.class
 edu/ruc/platform/worklog/dto/WorklogGradeStatsResponse.class
 edu/ruc/platform/knowledge/repository/KnowledgeQaTicketRepository.class
@@ -547,3 +564,4 @@ edu/ruc/platform/notice/service/NoticeService.class
 edu/ruc/platform/knowledge/controller/TemplateDownloadController$TemplatePayload.class
 edu/ruc/platform/config/OpenApiConfig.class
 edu/ruc/platform/platform/service/PlatformService.class
+edu/ruc/platform/admin/dto/RoleResponse.class

@@ -36,6 +36,9 @@ public class AdminApprovalController {
     private final CertificateApplicationService certificateService;
     private final CurrentUserService currentUserService;
 
+    record AssignApprovalTaskRequest(Long targetUserId, String targetName) {
+    }
+
     @GetMapping
     public ApiResponse<List<ApprovalTaskResponse>> list() {
         currentUserService.requireAnyRole(RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR, RoleType.CLASS_ADVISOR);
@@ -79,6 +82,19 @@ public class AdminApprovalController {
                                                     @Valid @RequestBody ApprovalActionRequest request) {
         currentUserService.requireAnyRole(RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR);
         return ApiResponse.success("审批已处理", certificateService.handleApproval(requestId, request));
+    }
+
+    @PostMapping("/{requestId}/assign")
+    public ApiResponse<ApprovalTaskResponse> assign(@Positive(message = "申请ID必须大于 0") @PathVariable Long requestId,
+                                                    @RequestBody AssignApprovalTaskRequest request) {
+        currentUserService.requireAnyRole(RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR, RoleType.CLASS_ADVISOR);
+        if (!(certificateService instanceof MockCertificateService mock)) {
+            throw new BusinessException("转派接口未接入");
+        }
+        if (request == null || request.targetUserId() == null) {
+            throw new BusinessException("请选择目标老师");
+        }
+        return ApiResponse.success("已转派审批任务", mock.assignApprovalTask(requestId, request.targetUserId(), request.targetName()));
     }
 
     @PostMapping("/seed")
