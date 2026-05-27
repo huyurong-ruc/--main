@@ -33,10 +33,10 @@ public class LatestAuditImportJob extends BaseEntity {
     @Column
     private Integer failedRows;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String errorMessage;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String resultJson;
 
     @Column

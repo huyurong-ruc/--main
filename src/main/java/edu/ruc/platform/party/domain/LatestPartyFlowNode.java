@@ -33,7 +33,7 @@ public class LatestPartyFlowNode {
     @Column(nullable = false, length = 128)
     private String nodeName;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String description;
 
     @Column

@@ -30,7 +30,7 @@ public class LatestAcademicCourseRecommendation {
     @Column(nullable = false)
     private Long courseId;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String recommendationReason;
 
     @Column(nullable = false)

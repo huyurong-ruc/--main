@@ -21,7 +21,7 @@ public class LatestNoticeDelivery extends BaseEntity {
     @Column(nullable = false, length = 32)
     private String channel;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String targetRuleJson;
 
     @Column(nullable = false, length = 32)
@@ -36,6 +36,6 @@ public class LatestNoticeDelivery extends BaseEntity {
     @Column
     private Long createdBy;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String extJson;
 }

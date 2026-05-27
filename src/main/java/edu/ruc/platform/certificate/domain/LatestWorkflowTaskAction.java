@@ -31,7 +31,7 @@ public class LatestWorkflowTaskAction {
     @Column(nullable = false, length = 32)
     private String action;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String actionComment;
 
     @Column(nullable = false)
