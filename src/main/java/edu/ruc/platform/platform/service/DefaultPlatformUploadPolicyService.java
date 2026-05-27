@@ -28,7 +28,7 @@ public class DefaultPlatformUploadPolicyService implements PlatformUploadPolicyS
     public DefaultPlatformUploadPolicyService(
             PlatformSystemSettingRepository platformSystemSettingRepository,
             @Value("${platform.upload.max-file-size-bytes:20971520}") long maxFileSizeBytes,
-            @Value("${platform.upload.allowed-content-types:application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel}") String allowedContentTypes,
+            @Value("${platform.upload.allowed-content-types:application/pdf,image/png,image/jpeg,image/jpg,image/pjpeg,image/gif,image/webp,image/bmp,image/heic,image/heif,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel}") String allowedContentTypes,
             @Value("${platform.upload.allow-empty-content-type:false}") boolean allowEmptyContentType) {
         this.platformSystemSettingRepository = platformSystemSettingRepository;
         this.defaultMaxFileSizeBytes = maxFileSizeBytes;

@@ -23,6 +23,9 @@ public class KnowledgeDocument extends BaseEntity {
     @Column(length = 500)
     private String tags;
 
+    @Column(length = 500)
+    private String summary;
+
     @Lob
     @Column(nullable = false)
     private String content;

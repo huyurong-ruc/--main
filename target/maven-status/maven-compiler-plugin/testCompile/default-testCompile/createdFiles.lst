@@ -1,7 +1,7 @@
 edu/ruc/platform/AuthIntegrationTest.class
 edu/ruc/platform/StudentAdminIntegrationTest.class
-edu/ruc/platform/knowledge/service/KnowledgeServiceUnitTest.class
 edu/ruc/platform/PartyAcademicIntegrationTest.class
+edu/ruc/platform/knowledge/service/KnowledgeServiceUnitTest.class
 edu/ruc/platform/AdminCapabilityIntegrationTest.class
 edu/ruc/platform/BusinessFlowIntegrationTest.class
 edu/ruc/platform/DevProfileContextIntegrationTest.class

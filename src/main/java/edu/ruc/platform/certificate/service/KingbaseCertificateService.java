@@ -588,8 +588,8 @@ public class KingbaseCertificateService implements CertificateApplicationService
     }
 
     private void validateCertificateType(String certificateType) {
-        if (!List.of("在读证明", "党员身份证明", "困难认定证明").contains(normalizeCertificateType(certificateType))) {
-            throw new BusinessException("证明类型仅支持 在读证明、党员身份证明、困难认定证明");
+        if (!List.of("在读证明", "党员身份证明", "困难认定证明", "成绩单", "实习证明").contains(normalizeCertificateType(certificateType))) {
+            throw new BusinessException("证明类型仅支持 在读证明、党员身份证明、困难认定证明、成绩单、实习证明");
         }
     }
 

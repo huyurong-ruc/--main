@@ -18,6 +18,8 @@ import edu.ruc.platform.admin.dto.AdvisorScopeBindingResponse;
 import edu.ruc.platform.admin.dto.AdvisorScopeBindingUpsertRequest;
 import edu.ruc.platform.admin.dto.AdvisorScopeStatsResponse;
 import edu.ruc.platform.admin.dto.AdvisorScopeAdvisorStatsResponse;
+import edu.ruc.platform.admin.dto.CourseResponse;
+import edu.ruc.platform.admin.dto.CourseUpsertRequest;
 import edu.ruc.platform.admin.dto.DataImportErrorFilterRequest;
 import edu.ruc.platform.admin.dto.DataImportErrorItemCreateRequest;
 import edu.ruc.platform.admin.dto.DataImportErrorItemResponse;
@@ -30,8 +32,16 @@ import edu.ruc.platform.admin.dto.KnowledgeAttachmentResponse;
 import edu.ruc.platform.admin.dto.KnowledgeCategoryStatsResponse;
 import edu.ruc.platform.admin.dto.AdminOperationLogModuleStatsResponse;
 import edu.ruc.platform.admin.dto.AdminOperationLogRoleStatsResponse;
+import edu.ruc.platform.admin.dto.PartyReminderTaskFilterRequest;
+import edu.ruc.platform.admin.dto.PartyReminderTaskResponse;
+import edu.ruc.platform.admin.dto.RoleResponse;
+import edu.ruc.platform.admin.dto.RoleUpsertRequest;
+import edu.ruc.platform.admin.dto.TermCourseResponse;
+import edu.ruc.platform.admin.dto.TermCourseUpsertRequest;
 import edu.ruc.platform.admin.dto.WorkflowDefinitionResponse;
 import edu.ruc.platform.admin.dto.WorkflowDefinitionUpsertRequest;
+import edu.ruc.platform.admin.dto.WorkflowInstanceFilterRequest;
+import edu.ruc.platform.admin.dto.WorkflowInstanceResponse;
 import edu.ruc.platform.admin.dto.WorkflowNodeResponse;
 import edu.ruc.platform.admin.dto.WorkflowNodeUpsertRequest;
 import edu.ruc.platform.auth.dto.AuthenticatedUser;
@@ -86,6 +96,8 @@ public class MockAdminService implements AdminApplicationService {
     private final List<KnowledgeAttachmentResponse> knowledgeAttachments = new ArrayList<>(List.of(
             new KnowledgeAttachmentResponse(51L, 101L, "party-process.pdf", "application/pdf", 1024L, "/uploads/knowledge/101/party-process.pdf", "胡浩老师", LocalDateTime.of(2026, 3, 22, 11, 0))
     ));
+    private final Map<Long, String> knowledgeContents = new HashMap<>();
+    private final Map<Long, String> knowledgeSummaries = new HashMap<>();
     private final List<DataImportErrorItemResponse> importErrors = new ArrayList<>(List.of(
             new DataImportErrorItemResponse(81L, 2L, 7, "title", "标题为空", null, LocalDateTime.of(2026, 3, 23, 9, 5)),
             new DataImportErrorItemResponse(82L, 2L, 12, "officialUrl", "URL 格式不合法", "htp://bad-url", LocalDateTime.of(2026, 3, 23, 9, 6))
@@ -104,6 +116,8 @@ public class MockAdminService implements AdminApplicationService {
         public List<TargetedNoticeResponse> notices;
         public List<AdminKnowledgeItemResponse> knowledgeItems;
         public List<KnowledgeAttachmentResponse> knowledgeAttachments;
+        public Map<Long, String> knowledgeContents;
+        public Map<Long, String> knowledgeSummaries;
     }
 
     private static boolean isTestRuntime() {
@@ -158,6 +172,14 @@ public class MockAdminService implements AdminApplicationService {
                 knowledgeAttachments.clear();
                 knowledgeAttachments.addAll(state.knowledgeAttachments);
             }
+            if (state.knowledgeContents != null) {
+                knowledgeContents.clear();
+                knowledgeContents.putAll(state.knowledgeContents);
+            }
+            if (state.knowledgeSummaries != null) {
+                knowledgeSummaries.clear();
+                knowledgeSummaries.putAll(state.knowledgeSummaries);
+            }
             long maxNoticeId = notices.stream().mapToLong(TargetedNoticeResponse::id).max().orElse(10L);
             long maxKnowledgeId = knowledgeItems.stream().mapToLong(AdminKnowledgeItemResponse::id).max().orElse(200L);
             long maxAttachmentId = knowledgeAttachments.stream().mapToLong(KnowledgeAttachmentResponse::id).max().orElse(50L);
@@ -178,9 +200,40 @@ public class MockAdminService implements AdminApplicationService {
             state.notices = List.copyOf(notices);
             state.knowledgeItems = List.copyOf(knowledgeItems);
             state.knowledgeAttachments = List.copyOf(knowledgeAttachments);
+            state.knowledgeContents = Map.copyOf(knowledgeContents);
+            state.knowledgeSummaries = Map.copyOf(knowledgeSummaries);
             stateMapper.writeValue(persistedStatePath.toFile(), state);
         } catch (Exception ignored) {
         }
+    }
+
+    public String getKnowledgeContent(Long id) {
+        ensureStateLoaded();
+        initializeKnowledgeItems();
+        return knowledgeContents.get(id);
+    }
+
+    public String getKnowledgeSummary(Long id) {
+        ensureStateLoaded();
+        initializeKnowledgeItems();
+        String summary = QueryFilterSupport.trimToNull(knowledgeSummaries.get(id));
+        if (summary != null) {
+            return summary;
+        }
+        String content = QueryFilterSupport.trimToNull(knowledgeContents.get(id));
+        return content == null ? null : buildSummary(content);
+    }
+
+    private String buildSummary(String content) {
+        String normalized = QueryFilterSupport.trimToNull(content);
+        if (normalized == null) {
+            return null;
+        }
+        String oneLine = normalized.replace("\r", "\n").replace("\n", " ").replaceAll("\\s+", " ").trim();
+        if (oneLine.length() <= 80) {
+            return oneLine;
+        }
+        return oneLine.substring(0, 80);
     }
 
     @Override
@@ -412,6 +465,9 @@ public class MockAdminService implements AdminApplicationService {
                 now
         );
         knowledgeItems.add(0, response);
+        knowledgeContents.put(response.id(), request.content());
+        String summary = QueryFilterSupport.trimToNull(request.summary());
+        knowledgeSummaries.put(response.id(), summary == null ? buildSummary(request.content()) : summary.trim());
         writeOperationLog("KNOWLEDGE", "CREATE", response.title(), "SUCCESS", response.sourceFileName());
         persistState();
         return response;
@@ -443,6 +499,9 @@ public class MockAdminService implements AdminApplicationService {
                         now
                 );
                 knowledgeItems.set(i, updated);
+                knowledgeContents.put(id, request.content());
+                String summary = QueryFilterSupport.trimToNull(request.summary());
+                knowledgeSummaries.put(id, summary == null ? buildSummary(request.content()) : summary.trim());
                 writeOperationLog("KNOWLEDGE", "UPDATE", updated.title(), "SUCCESS", updated.sourceFileName());
                 persistState();
                 return updated;
@@ -461,6 +520,8 @@ public class MockAdminService implements AdminApplicationService {
         }
         knowledgeItems.removeIf(item -> item.id().equals(id));
         knowledgeAttachments.removeIf(item -> item.knowledgeId().equals(id));
+        knowledgeContents.remove(id);
+        knowledgeSummaries.remove(id);
         writeOperationLog("KNOWLEDGE", "DELETE", "knowledge#" + id, "SUCCESS", null);
         persistState();
     }
@@ -1155,15 +1216,35 @@ public class MockAdminService implements AdminApplicationService {
             return;
         }
         workflowDefinitions.addAll(List.of(
-                new WorkflowDefinitionResponse(1L, "AFFAIR_READ_CERT", "在读证明申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2023, 9, 1, 0, 0)),
-                new WorkflowDefinitionResponse(2L, "AFFAIR_LEAVE", "请假申请审批流", "AFFAIR", "请假管理", 3, true, LocalDateTime.of(2023, 9, 1, 0, 0)),
-                new WorkflowDefinitionResponse(3L, "AFFAIR_SCHOLARSHIP", "奖学金评审流程", "AFFAIR", "奖学金管理", 3, true, LocalDateTime.of(2023, 10, 15, 0, 0))
+                new WorkflowDefinitionResponse(1L, "AFFAIR_READ_CERT", "在读证明申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(2L, "AFFAIR_LEAVE", "请假申请审批流", "AFFAIR", "请假管理", 3, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(3L, "AFFAIR_SCHOLARSHIP", "奖学金评审流程", "AFFAIR", "奖学金管理", 3, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(4L, "AFFAIR_PARTY_IDENTITY_CERT", "党员身份证明申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(5L, "AFFAIR_DIFFICULTY_CERT", "困难认定证明申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(6L, "AFFAIR_TRANSCRIPT_CERT", "成绩单申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2026, 3, 1, 0, 0)),
+                new WorkflowDefinitionResponse(7L, "AFFAIR_INTERNSHIP_CERT", "实习证明申请流", "CERTIFICATE", "证明申请", 4, true, LocalDateTime.of(2026, 3, 1, 0, 0))
         ));
         workflowNodes.addAll(List.of(
                 new WorkflowNodeResponse(11L, 1L, 1, "提交申请", "学生", 0, false),
                 new WorkflowNodeResponse(12L, 1L, 2, "辅导员审批", "辅导员", 24, true),
                 new WorkflowNodeResponse(13L, 1L, 3, "教务处审批", "教务处管理员", 48, true),
-                new WorkflowNodeResponse(14L, 1L, 4, "完成", "系统", 0, false)
+                new WorkflowNodeResponse(14L, 1L, 4, "完成", "系统", 0, false),
+                new WorkflowNodeResponse(41L, 4L, 1, "提交申请", "学生", 0, false),
+                new WorkflowNodeResponse(42L, 4L, 2, "辅导员审批", "辅导员", 24, true),
+                new WorkflowNodeResponse(43L, 4L, 3, "学院党务终审", "学院管理员", 48, true),
+                new WorkflowNodeResponse(44L, 4L, 4, "完成", "系统", 0, false),
+                new WorkflowNodeResponse(51L, 5L, 1, "提交申请", "学生", 0, false),
+                new WorkflowNodeResponse(52L, 5L, 2, "辅导员审批", "辅导员", 24, true),
+                new WorkflowNodeResponse(53L, 5L, 3, "资助中心复核", "学院管理员", 48, true),
+                new WorkflowNodeResponse(54L, 5L, 4, "完成", "系统", 0, false),
+                new WorkflowNodeResponse(61L, 6L, 1, "提交申请", "学生", 0, false),
+                new WorkflowNodeResponse(62L, 6L, 2, "辅导员审批", "辅导员", 24, true),
+                new WorkflowNodeResponse(63L, 6L, 3, "教务处审批", "教务处管理员", 48, true),
+                new WorkflowNodeResponse(64L, 6L, 4, "完成", "系统", 0, false),
+                new WorkflowNodeResponse(71L, 7L, 1, "提交申请", "学生", 0, false),
+                new WorkflowNodeResponse(72L, 7L, 2, "辅导员审批", "辅导员", 24, true),
+                new WorkflowNodeResponse(73L, 7L, 3, "实践教学审核", "学院管理员", 48, true),
+                new WorkflowNodeResponse(74L, 7L, 4, "完成", "系统", 0, false)
         ));
         refreshWorkflowNodeCounts();
         workflowDefIdGenerator.set(100);
@@ -1229,6 +1310,10 @@ public class MockAdminService implements AdminApplicationService {
                         LocalDateTime.of(2026, 3, 20, 9, 0)
                 ))
                 .toList());
+        mockDataStore.knowledgeDocuments().forEach(item -> {
+            knowledgeContents.putIfAbsent(item.id(), item.answer());
+            knowledgeSummaries.putIfAbsent(item.id(), buildSummary(item.answer()));
+        });
         knowledgeItems.add(0, new AdminKnowledgeItemResponse(
                 299L,
                 "辅导员内部口径说明",
@@ -1243,6 +1328,8 @@ public class MockAdminService implements AdminApplicationService {
                 LocalDateTime.of(2026, 3, 18, 10, 0),
                 LocalDateTime.of(2026, 3, 18, 10, 0)
         ));
+        knowledgeContents.putIfAbsent(299L, "仅内部可见：用于演示 mock 数据。");
+        knowledgeSummaries.putIfAbsent(299L, buildSummary(knowledgeContents.get(299L)));
         persistState();
     }
 
@@ -1560,5 +1647,738 @@ public class MockAdminService implements AdminApplicationService {
 
     private String buildAdvisorScopeTarget(AdvisorScopeBindingResponse response) {
         return response.advisorUsername() + "/" + response.grade() + "/" + response.className() + "/student#" + response.studentId();
+    }
+
+    private final AtomicLong roleIdGenerator = new AtomicLong(100);
+    private final AtomicLong workflowInstanceIdGenerator = new AtomicLong(100);
+    private final AtomicLong courseIdGenerator = new AtomicLong(100);
+    private final AtomicLong termCourseIdGenerator = new AtomicLong(100);
+    private final AtomicLong partyReminderIdGenerator = new AtomicLong(100);
+    private final List<RoleResponse> roles = new ArrayList<>();
+    private final List<WorkflowInstanceResponse> workflowInstances = new ArrayList<>();
+    private final List<CourseResponse> courses = new ArrayList<>();
+    private final List<TermCourseResponse> termCourses = new ArrayList<>();
+    private final List<PartyReminderTaskResponse> partyReminderTasks = new ArrayList<>();
+
+    @Override
+    public List<RoleResponse> listRoles() {
+        initializeRoles();
+        return List.copyOf(roles);
+    }
+
+    @Override
+    public RoleResponse getRole(Long id) {
+        initializeRoles();
+        return roles.stream()
+                .filter(item -> item.id().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("角色不存在: " + id));
+    }
+
+    @Override
+    public RoleResponse createRole(RoleUpsertRequest request) {
+        initializeRoles();
+        boolean exists = roles.stream().anyMatch(item -> item.roleCode().equals(request.roleCode()));
+        if (exists) {
+            throw new BusinessException("角色编码已存在: " + request.roleCode());
+        }
+        RoleResponse response = new RoleResponse(
+                roleIdGenerator.incrementAndGet(),
+                request.roleCode(),
+                request.roleName(),
+                request.permissions(),
+                Boolean.TRUE.equals(request.isActive()),
+                0,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+        roles.add(0, response);
+        writeOperationLog("ROLE", "CREATE", response.roleCode(), "SUCCESS", response.roleName());
+        return response;
+    }
+
+    @Override
+    public RoleResponse updateRole(Long id, RoleUpsertRequest request) {
+        initializeRoles();
+        for (int i = 0; i < roles.size(); i++) {
+            RoleResponse item = roles.get(i);
+            if (item.id().equals(id)) {
+                RoleResponse updated = new RoleResponse(
+                        id,
+                        request.roleCode(),
+                        request.roleName(),
+                        request.permissions(),
+                        Boolean.TRUE.equals(request.isActive()),
+                        item.userCount(),
+                        item.createdAt(),
+                        LocalDateTime.now()
+                );
+                roles.set(i, updated);
+                writeOperationLog("ROLE", "UPDATE", updated.roleCode(), "SUCCESS", updated.roleName());
+                return updated;
+            }
+        }
+        throw new BusinessException("角色不存在: " + id);
+    }
+
+    @Override
+    public RoleResponse copyRole(Long id) {
+        initializeRoles();
+        RoleResponse src = roles.stream()
+                .filter(item -> item.id().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("角色不存在: " + id));
+        RoleResponse response = new RoleResponse(
+                roleIdGenerator.incrementAndGet(),
+                src.roleCode() + "_COPY",
+                src.roleName() + "（复制）",
+                src.permissions(),
+                src.isActive(),
+                0,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+        roles.add(0, response);
+        writeOperationLog("ROLE", "COPY", response.roleCode(), "SUCCESS", response.roleName());
+        return response;
+    }
+
+    @Override
+    public RoleResponse toggleRole(Long id) {
+        initializeRoles();
+        for (int i = 0; i < roles.size(); i++) {
+            RoleResponse item = roles.get(i);
+            if (item.id().equals(id)) {
+                RoleResponse updated = new RoleResponse(
+                        id,
+                        item.roleCode(),
+                        item.roleName(),
+                        item.permissions(),
+                        !item.isActive(),
+                        item.userCount(),
+                        item.createdAt(),
+                        LocalDateTime.now()
+                );
+                roles.set(i, updated);
+                writeOperationLog("ROLE", updated.isActive() ? "ENABLE" : "DISABLE", updated.roleCode(), "SUCCESS", null);
+                return updated;
+            }
+        }
+        throw new BusinessException("角色不存在: " + id);
+    }
+
+    @Override
+    public void deleteRole(Long id) {
+        initializeRoles();
+        boolean removed = roles.removeIf(item -> item.id().equals(id));
+        if (!removed) {
+            throw new BusinessException("角色不存在: " + id);
+        }
+        writeOperationLog("ROLE", "DELETE", "role#" + id, "SUCCESS", null);
+    }
+
+    private void initializeRoles() {
+        if (!roles.isEmpty()) {
+            return;
+        }
+        roles.addAll(List.of(
+                new RoleResponse(1L, "SUPER_ADMIN", "超级管理员", "全部权限", true, 1, LocalDateTime.of(2024, 1, 1, 0, 0), LocalDateTime.of(2024, 1, 1, 0, 0)),
+                new RoleResponse(2L, "COLLEGE_ADMIN", "学院管理员", "学生管理,通知管理,知识库,审批管理,数据导入", true, 2, LocalDateTime.of(2024, 1, 1, 0, 0), LocalDateTime.of(2024, 1, 1, 0, 0)),
+                new RoleResponse(3L, "COUNSELOR", "辅导员", "学生管理(本年级),工作记录,审批(本年级)", true, 5, LocalDateTime.of(2024, 1, 1, 0, 0), LocalDateTime.of(2024, 1, 1, 0, 0)),
+                new RoleResponse(4L, "CLASS_ADVISOR", "班主任", "学生管理(本班),工作记录,审批(本班)", true, 10, LocalDateTime.of(2024, 1, 1, 0, 0), LocalDateTime.of(2024, 1, 1, 0, 0)),
+                new RoleResponse(5L, "LEAGUE_SECRETARY", "团支书", "知识库(只读),通知查看", true, 3, LocalDateTime.of(2024, 1, 1, 0, 0), LocalDateTime.of(2024, 1, 1, 0, 0))
+        ));
+    }
+
+    @Override
+    public List<WorkflowInstanceResponse> listWorkflowInstances(WorkflowInstanceFilterRequest request) {
+        initializeWorkflowInstances();
+        return filterWorkflowInstances(request);
+    }
+
+    @Override
+    public PageResponse<WorkflowInstanceResponse> pageWorkflowInstances(WorkflowInstanceFilterRequest request, int page, int size) {
+        List<WorkflowInstanceResponse> filtered = filterWorkflowInstances(request);
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = Math.max(size, 1);
+        int fromIndex = Math.min(normalizedPage * normalizedSize, filtered.size());
+        int toIndex = Math.min(fromIndex + normalizedSize, filtered.size());
+        int totalPages = (int) Math.ceil(filtered.size() / (double) normalizedSize);
+        return new PageResponse<>(filtered.subList(fromIndex, toIndex), filtered.size(), totalPages, normalizedPage, normalizedSize);
+    }
+
+    @Override
+    public WorkflowInstanceResponse getWorkflowInstance(Long id) {
+        initializeWorkflowInstances();
+        return workflowInstances.stream()
+                .filter(item -> item.id().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("流程实例不存在: " + id));
+    }
+
+    @Override
+    public WorkflowInstanceResponse cancelWorkflowInstance(Long id) {
+        initializeWorkflowInstances();
+        for (int i = 0; i < workflowInstances.size(); i++) {
+            WorkflowInstanceResponse item = workflowInstances.get(i);
+            if (item.id().equals(id)) {
+                if (!"running".equals(item.status())) {
+                    throw new BusinessException("只有运行中的流程实例才能取消");
+                }
+                WorkflowInstanceResponse updated = new WorkflowInstanceResponse(
+                        item.id(),
+                        item.wfCode(),
+                        item.wfName(),
+                        item.businessType(),
+                        item.businessTable(),
+                        item.businessId(),
+                        "canceled",
+                        item.startedBy(),
+                        item.startedByName(),
+                        item.startedAt(),
+                        LocalDateTime.now(),
+                        item.createdAt()
+                );
+                workflowInstances.set(i, updated);
+                writeOperationLog("WORKFLOW_INSTANCE", "CANCEL", "instance#" + id, "SUCCESS", null);
+                return updated;
+            }
+        }
+        throw new BusinessException("流程实例不存在: " + id);
+    }
+
+    public synchronized WorkflowInstanceResponse upsertCertificateWorkflowInstance(Long requestId,
+                                                                                  String certificateType,
+                                                                                  Long studentUserId,
+                                                                                  String studentName,
+                                                                                  String approvalStatus,
+                                                                                  LocalDateTime submittedAt) {
+        initializeWorkflowConfigs();
+        initializeWorkflowInstances();
+        if (requestId == null || requestId <= 0) {
+            throw new BusinessException("业务ID无效");
+        }
+        String status = QueryFilterSupport.normalizeUpper(approvalStatus);
+        String instanceStatus;
+        LocalDateTime endedAt = null;
+        if ("APPROVED".equals(status)) {
+            instanceStatus = "approved";
+            endedAt = LocalDateTime.now();
+        } else if ("REJECTED".equals(status)) {
+            instanceStatus = "rejected";
+            endedAt = LocalDateTime.now();
+        } else if ("WITHDRAWN".equals(status)) {
+            instanceStatus = "canceled";
+            endedAt = LocalDateTime.now();
+        } else {
+            instanceStatus = "running";
+        }
+
+        WorkflowDefinitionResponse def = resolveCertificateWorkflowDefinition(certificateType);
+        String wfCode = def == null ? "AFFAIR_CERT_GENERIC" : def.wfCode();
+        String wfName = def == null ? ((certificateType == null || certificateType.isBlank()) ? "证明申请流程" : (certificateType.trim() + "申请流")) : def.wfName();
+
+        for (int i = 0; i < workflowInstances.size(); i++) {
+            WorkflowInstanceResponse item = workflowInstances.get(i);
+            if (item != null
+                    && "CERTIFICATE".equalsIgnoreCase(item.businessType())
+                    && item.businessId() != null
+                    && item.businessId().equals(requestId)) {
+                WorkflowInstanceResponse updated = new WorkflowInstanceResponse(
+                        item.id(),
+                        wfCode,
+                        wfName,
+                        "CERTIFICATE",
+                        item.businessTable(),
+                        item.businessId(),
+                        instanceStatus,
+                        studentUserId == null ? item.startedBy() : studentUserId,
+                        (studentName == null || studentName.isBlank()) ? item.startedByName() : studentName,
+                        submittedAt == null ? item.startedAt() : submittedAt,
+                        endedAt,
+                        item.createdAt()
+                );
+                workflowInstances.set(i, updated);
+                return updated;
+            }
+        }
+
+        long nextId = workflowInstances.stream()
+                .filter(x -> x != null && x.id() != null)
+                .mapToLong(WorkflowInstanceResponse::id)
+                .max()
+                .orElse(0L) + 1L;
+        LocalDateTime now = LocalDateTime.now();
+        WorkflowInstanceResponse created = new WorkflowInstanceResponse(
+                nextId,
+                wfCode,
+                wfName,
+                "CERTIFICATE",
+                "certificate_request",
+                requestId,
+                instanceStatus,
+                studentUserId,
+                studentName,
+                submittedAt == null ? now : submittedAt,
+                endedAt,
+                now
+        );
+        workflowInstances.add(0, created);
+        return created;
+    }
+
+    private WorkflowDefinitionResponse resolveCertificateWorkflowDefinition(String certificateType) {
+        String t = QueryFilterSupport.trimToNull(certificateType);
+        if (t == null) {
+            return null;
+        }
+        return workflowDefinitions.stream()
+                .filter(def -> def != null && "CERTIFICATE".equalsIgnoreCase(def.wfType()))
+                .filter(def -> QueryFilterSupport.containsIgnoreCase(def.wfName(), t)
+                        || QueryFilterSupport.containsIgnoreCase(def.wfCode(), t))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void initializeWorkflowInstances() {
+        if (!workflowInstances.isEmpty()) {
+            return;
+        }
+        workflowInstances.addAll(List.of(
+                new WorkflowInstanceResponse(1L, "AFFAIR_READ_CERT", "在读证明申请流", "CERTIFICATE", "affair_request", 1001L, "running", 10001L, "张三", LocalDateTime.of(2026, 3, 20, 10, 30), null, LocalDateTime.of(2026, 3, 20, 10, 30)),
+                new WorkflowInstanceResponse(2L, "AFFAIR_PARTY_IDENTITY_CERT", "党员身份证明申请流", "CERTIFICATE", "affair_request", 1002L, "running", 10002L, "李四", LocalDateTime.of(2026, 3, 19, 15, 0), null, LocalDateTime.of(2026, 3, 19, 15, 0)),
+                new WorkflowInstanceResponse(3L, "AFFAIR_SCHOLARSHIP", "奖学金评审流程", "AFFAIR", "affair_request", 2001L, "rejected", 10003L, "王五", LocalDateTime.of(2026, 3, 18, 9, 0), LocalDateTime.of(2026, 3, 19, 16, 0), LocalDateTime.of(2026, 3, 18, 9, 0))
+        ));
+    }
+
+    private List<WorkflowInstanceResponse> filterWorkflowInstances(WorkflowInstanceFilterRequest request) {
+        String normalizedStatus = QueryFilterSupport.trimToNull(request.status());
+        String normalizedBusinessType = QueryFilterSupport.trimToNull(request.businessType());
+        String normalizedStartedByKeyword = QueryFilterSupport.trimToNull(request.startedByKeyword());
+        return workflowInstances.stream()
+                .filter(item -> normalizedStatus == null || normalizedStatus.equals(item.status()))
+                .filter(item -> normalizedBusinessType == null || normalizedBusinessType.equals(item.businessType()))
+                .filter(item -> normalizedStartedByKeyword == null || QueryFilterSupport.containsIgnoreCase(item.startedByName(), normalizedStartedByKeyword))
+                .toList();
+    }
+
+    @Override
+    public List<CourseResponse> listCourses(String keyword, String courseType) {
+        initializeCourses();
+        return filterCourses(keyword, courseType);
+    }
+
+    @Override
+    public PageResponse<CourseResponse> pageCourses(String keyword, String courseType, int page, int size) {
+        List<CourseResponse> filtered = filterCourses(keyword, courseType);
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = Math.max(size, 1);
+        int fromIndex = Math.min(normalizedPage * normalizedSize, filtered.size());
+        int toIndex = Math.min(fromIndex + normalizedSize, filtered.size());
+        int totalPages = (int) Math.ceil(filtered.size() / (double) normalizedSize);
+        return new PageResponse<>(filtered.subList(fromIndex, toIndex), filtered.size(), totalPages, normalizedPage, normalizedSize);
+    }
+
+    @Override
+    public CourseResponse getCourse(Long id) {
+        initializeCourses();
+        return courses.stream()
+                .filter(item -> item.id().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("课程不存在: " + id));
+    }
+
+    @Override
+    public CourseResponse createCourse(CourseUpsertRequest request) {
+        initializeCourses();
+        boolean exists = courses.stream().anyMatch(item -> item.courseCode().equals(request.courseCode()));
+        if (exists) {
+            throw new BusinessException("课程编码已存在: " + request.courseCode());
+        }
+        CourseResponse response = new CourseResponse(
+                courseIdGenerator.incrementAndGet(),
+                request.courseCode(),
+                request.courseName(),
+                request.credits(),
+                request.courseType() == null ? "unknown" : request.courseType(),
+                0,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+        courses.add(0, response);
+        writeOperationLog("COURSE", "CREATE", response.courseCode(), "SUCCESS", response.courseName());
+        return response;
+    }
+
+    @Override
+    public CourseResponse updateCourse(Long id, CourseUpsertRequest request) {
+        initializeCourses();
+        for (int i = 0; i < courses.size(); i++) {
+            CourseResponse item = courses.get(i);
+            if (item.id().equals(id)) {
+                CourseResponse updated = new CourseResponse(
+                        id,
+                        request.courseCode(),
+                        request.courseName(),
+                        request.credits(),
+                        request.courseType() == null ? "unknown" : request.courseType(),
+                        item.referenceCount(),
+                        item.createdAt(),
+                        LocalDateTime.now()
+                );
+                courses.set(i, updated);
+                writeOperationLog("COURSE", "UPDATE", updated.courseCode(), "SUCCESS", updated.courseName());
+                return updated;
+            }
+        }
+        throw new BusinessException("课程不存在: " + id);
+    }
+
+    @Override
+    public void deleteCourse(Long id) {
+        initializeCourses();
+        boolean removed = courses.removeIf(item -> item.id().equals(id));
+        if (!removed) {
+            throw new BusinessException("课程不存在: " + id);
+        }
+        writeOperationLog("COURSE", "DELETE", "course#" + id, "SUCCESS", null);
+    }
+
+    private void initializeCourses() {
+        if (!courses.isEmpty()) {
+            return;
+        }
+        courses.addAll(List.of(
+                new CourseResponse(1L, "CS101", "计算机导论", 3.0, "required", 5, LocalDateTime.of(2024, 1, 1, 0, 0), LocalDateTime.of(2024, 1, 1, 0, 0)),
+                new CourseResponse(2L, "CS201", "数据结构", 4.0, "required", 8, LocalDateTime.of(2024, 1, 1, 0, 0), LocalDateTime.of(2024, 1, 1, 0, 0)),
+                new CourseResponse(3L, "CS301", "操作系统", 4.0, "required", 6, LocalDateTime.of(2024, 1, 1, 0, 0), LocalDateTime.of(2024, 1, 1, 0, 0)),
+                new CourseResponse(4L, "GE101", "大学英语", 2.0, "general", 15, LocalDateTime.of(2024, 1, 1, 0, 0), LocalDateTime.of(2024, 1, 1, 0, 0)),
+                new CourseResponse(5L, "GE102", "体育", 1.0, "general", 20, LocalDateTime.of(2024, 1, 1, 0, 0), LocalDateTime.of(2024, 1, 1, 0, 0))
+        ));
+    }
+
+    private List<CourseResponse> filterCourses(String keyword, String courseType) {
+        String normalizedKeyword = QueryFilterSupport.trimToNull(keyword);
+        String normalizedCourseType = QueryFilterSupport.trimToNull(courseType);
+        return courses.stream()
+                .filter(item -> normalizedKeyword == null
+                        || QueryFilterSupport.containsIgnoreCase(item.courseCode(), normalizedKeyword)
+                        || QueryFilterSupport.containsIgnoreCase(item.courseName(), normalizedKeyword))
+                .filter(item -> normalizedCourseType == null || normalizedCourseType.equals(item.courseType()))
+                .toList();
+    }
+
+    @Override
+    public List<TermCourseResponse> listTermCourses(String termCode, String keyword) {
+        initializeTermCourses();
+        return filterTermCourses(termCode, keyword);
+    }
+
+    @Override
+    public PageResponse<TermCourseResponse> pageTermCourses(String termCode, String keyword, int page, int size) {
+        List<TermCourseResponse> filtered = filterTermCourses(termCode, keyword);
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = Math.max(size, 1);
+        int fromIndex = Math.min(normalizedPage * normalizedSize, filtered.size());
+        int toIndex = Math.min(fromIndex + normalizedSize, filtered.size());
+        int totalPages = (int) Math.ceil(filtered.size() / (double) normalizedSize);
+        return new PageResponse<>(filtered.subList(fromIndex, toIndex), filtered.size(), totalPages, normalizedPage, normalizedSize);
+    }
+
+    @Override
+    public TermCourseResponse getTermCourse(Long id) {
+        initializeTermCourses();
+        return termCourses.stream()
+                .filter(item -> item.id().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("开课不存在: " + id));
+    }
+
+    @Override
+    public TermCourseResponse createTermCourse(TermCourseUpsertRequest request) {
+        initializeTermCourses();
+        boolean exists = termCourses.stream().anyMatch(item -> item.teachingClassCode().equals(request.teachingClassCode()));
+        if (exists) {
+            throw new BusinessException("教学班编码已存在: " + request.teachingClassCode());
+        }
+        TermCourseResponse response = new TermCourseResponse(
+                termCourseIdGenerator.incrementAndGet(),
+                request.termCode(),
+                resolveTermName(request.termCode()),
+                request.courseCode(),
+                resolveCourseName(request.courseCode()),
+                request.teachingClassCode(),
+                request.teacherName(),
+                request.courseLocation(),
+                request.credits(),
+                request.totalHours(),
+                0,
+                request.capacity(),
+                "正常",
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+        termCourses.add(0, response);
+        writeOperationLog("TERM_COURSE", "CREATE", response.teachingClassCode(), "SUCCESS", response.courseName());
+        return response;
+    }
+
+    @Override
+    public TermCourseResponse updateTermCourse(Long id, TermCourseUpsertRequest request) {
+        initializeTermCourses();
+        for (int i = 0; i < termCourses.size(); i++) {
+            TermCourseResponse item = termCourses.get(i);
+            if (item.id().equals(id)) {
+                TermCourseResponse updated = new TermCourseResponse(
+                        id,
+                        request.termCode(),
+                        resolveTermName(request.termCode()),
+                        request.courseCode(),
+                        resolveCourseName(request.courseCode()),
+                        request.teachingClassCode(),
+                        request.teacherName(),
+                        request.courseLocation(),
+                        request.credits(),
+                        request.totalHours(),
+                        item.selectedCount(),
+                        request.capacity(),
+                        item.status(),
+                        item.createdAt(),
+                        LocalDateTime.now()
+                );
+                termCourses.set(i, updated);
+                writeOperationLog("TERM_COURSE", "UPDATE", updated.teachingClassCode(), "SUCCESS", updated.courseName());
+                return updated;
+            }
+        }
+        throw new BusinessException("开课不存在: " + id);
+    }
+
+    @Override
+    public void deleteTermCourse(Long id) {
+        initializeTermCourses();
+        boolean removed = termCourses.removeIf(item -> item.id().equals(id));
+        if (!removed) {
+            throw new BusinessException("开课不存在: " + id);
+        }
+        writeOperationLog("TERM_COURSE", "DELETE", "term-course#" + id, "SUCCESS", null);
+    }
+
+    private void initializeTermCourses() {
+        if (!termCourses.isEmpty()) {
+            return;
+        }
+        termCourses.addAll(List.of(
+                new TermCourseResponse(1L, "2024-2025-1", "2024-2025学年第一学期", "CS101", "计算机导论", "CS101-01", "张老师", "教学楼A101", 3.0, 48.0, 45, 50, "正常", LocalDateTime.of(2024, 9, 1, 0, 0), LocalDateTime.of(2024, 9, 1, 0, 0)),
+                new TermCourseResponse(2L, "2024-2025-1", "2024-2025学年第一学期", "CS201", "数据结构", "CS201-01", "李老师", "教学楼B201", 4.0, 64.0, 50, 50, "已满", LocalDateTime.of(2024, 9, 1, 0, 0), LocalDateTime.of(2024, 9, 1, 0, 0)),
+                new TermCourseResponse(3L, "2024-2025-1", "2024-2025学年第一学期", "GE101", "大学英语", "GE101-01", "王老师", "教学楼C301", 2.0, 32.0, 48, 50, "正常", LocalDateTime.of(2024, 9, 1, 0, 0), LocalDateTime.of(2024, 9, 1, 0, 0))
+        ));
+    }
+
+    private List<TermCourseResponse> filterTermCourses(String termCode, String keyword) {
+        String normalizedTermCode = QueryFilterSupport.trimToNull(termCode);
+        String normalizedKeyword = QueryFilterSupport.trimToNull(keyword);
+        return termCourses.stream()
+                .filter(item -> normalizedTermCode == null || normalizedTermCode.equals(item.termCode()))
+                .filter(item -> normalizedKeyword == null
+                        || QueryFilterSupport.containsIgnoreCase(item.courseCode(), normalizedKeyword)
+                        || QueryFilterSupport.containsIgnoreCase(item.courseName(), normalizedKeyword)
+                        || QueryFilterSupport.containsIgnoreCase(item.teachingClassCode(), normalizedKeyword)
+                        || QueryFilterSupport.containsIgnoreCase(item.teacherName(), normalizedKeyword))
+                .toList();
+    }
+
+    private String resolveTermName(String termCode) {
+        if (termCode == null) {
+            return "";
+        }
+        return switch (termCode) {
+            case "2024-2025-1" -> "2024-2025学年第一学期";
+            case "2024-2025-2" -> "2024-2025学年第二学期";
+            case "2023-2024-1" -> "2023-2024学年第一学期";
+            case "2023-2024-2" -> "2023-2024学年第二学期";
+            default -> termCode;
+        };
+    }
+
+    private String resolveCourseName(String courseCode) {
+        if (courseCode == null) {
+            return "";
+        }
+        return courses.stream()
+                .filter(item -> item.courseCode().equals(courseCode))
+                .map(CourseResponse::courseName)
+                .findFirst()
+                .orElse(courseCode);
+    }
+
+    @Override
+    public List<PartyReminderTaskResponse> listPartyReminderTasks(PartyReminderTaskFilterRequest request) {
+        initializePartyReminderTasks();
+        return filterPartyReminderTasks(request);
+    }
+
+    @Override
+    public PageResponse<PartyReminderTaskResponse> pagePartyReminderTasks(PartyReminderTaskFilterRequest request, int page, int size) {
+        List<PartyReminderTaskResponse> filtered = filterPartyReminderTasks(request);
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = Math.max(size, 1);
+        int fromIndex = Math.min(normalizedPage * normalizedSize, filtered.size());
+        int toIndex = Math.min(fromIndex + normalizedSize, filtered.size());
+        int totalPages = (int) Math.ceil(filtered.size() / (double) normalizedSize);
+        return new PageResponse<>(filtered.subList(fromIndex, toIndex), filtered.size(), totalPages, normalizedPage, normalizedSize);
+    }
+
+    @Override
+    public PartyReminderTaskResponse sendPartyReminder(Long id) {
+        initializePartyReminderTasks();
+        for (int i = 0; i < partyReminderTasks.size(); i++) {
+            PartyReminderTaskResponse item = partyReminderTasks.get(i);
+            if (item.id().equals(id)) {
+                if (!"pending".equals(item.status())) {
+                    throw new BusinessException("只有待发送的提醒任务才能发送");
+                }
+                PartyReminderTaskResponse updated = new PartyReminderTaskResponse(
+                        item.id(),
+                        item.progressId(),
+                        item.nodeId(),
+                        item.nodeName(),
+                        item.studentUserId(),
+                        item.studentName(),
+                        item.studentNo(),
+                        item.dueAt(),
+                        item.channel(),
+                        "sent",
+                        LocalDateTime.now(),
+                        null,
+                        item.createdAt()
+                );
+                partyReminderTasks.set(i, updated);
+                writeOperationLog("PARTY_REMINDER", "SEND", "reminder#" + id, "SUCCESS", null);
+                return updated;
+            }
+        }
+        throw new BusinessException("提醒任务不存在: " + id);
+    }
+
+    @Override
+    public PartyReminderTaskResponse resendPartyReminder(Long id) {
+        initializePartyReminderTasks();
+        for (int i = 0; i < partyReminderTasks.size(); i++) {
+            PartyReminderTaskResponse item = partyReminderTasks.get(i);
+            if (item.id().equals(id)) {
+                if (!"failed".equals(item.status())) {
+                    throw new BusinessException("只有发送失败的提醒任务才能重新发送");
+                }
+                PartyReminderTaskResponse updated = new PartyReminderTaskResponse(
+                        item.id(),
+                        item.progressId(),
+                        item.nodeId(),
+                        item.nodeName(),
+                        item.studentUserId(),
+                        item.studentName(),
+                        item.studentNo(),
+                        item.dueAt(),
+                        item.channel(),
+                        "sent",
+                        LocalDateTime.now(),
+                        null,
+                        item.createdAt()
+                );
+                partyReminderTasks.set(i, updated);
+                writeOperationLog("PARTY_REMINDER", "RESEND", "reminder#" + id, "SUCCESS", null);
+                return updated;
+            }
+        }
+        throw new BusinessException("提醒任务不存在: " + id);
+    }
+
+    @Override
+    public PartyReminderTaskResponse cancelPartyReminder(Long id) {
+        initializePartyReminderTasks();
+        for (int i = 0; i < partyReminderTasks.size(); i++) {
+            PartyReminderTaskResponse item = partyReminderTasks.get(i);
+            if (item.id().equals(id)) {
+                if (!"pending".equals(item.status())) {
+                    throw new BusinessException("只有待发送的提醒任务才能取消");
+                }
+                PartyReminderTaskResponse updated = new PartyReminderTaskResponse(
+                        item.id(),
+                        item.progressId(),
+                        item.nodeId(),
+                        item.nodeName(),
+                        item.studentUserId(),
+                        item.studentName(),
+                        item.studentNo(),
+                        item.dueAt(),
+                        item.channel(),
+                        "canceled",
+                        null,
+                        null,
+                        item.createdAt()
+                );
+                partyReminderTasks.set(i, updated);
+                writeOperationLog("PARTY_REMINDER", "CANCEL", "reminder#" + id, "SUCCESS", null);
+                return updated;
+            }
+        }
+        throw new BusinessException("提醒任务不存在: " + id);
+    }
+
+    public PartyReminderTaskResponse updatePartyReminderDueAt(Long id, LocalDateTime dueAt) {
+        initializePartyReminderTasks();
+        if (dueAt == null) {
+            throw new BusinessException("请提供计划时间");
+        }
+        for (int i = 0; i < partyReminderTasks.size(); i++) {
+            PartyReminderTaskResponse item = partyReminderTasks.get(i);
+            if (item.id().equals(id)) {
+                PartyReminderTaskResponse updated = new PartyReminderTaskResponse(
+                        item.id(),
+                        item.progressId(),
+                        item.nodeId(),
+                        item.nodeName(),
+                        item.studentUserId(),
+                        item.studentName(),
+                        item.studentNo(),
+                        dueAt,
+                        item.channel(),
+                        item.status(),
+                        item.sentAt(),
+                        item.errorMessage(),
+                        item.createdAt()
+                );
+                partyReminderTasks.set(i, updated);
+                writeOperationLog("PARTY_REMINDER", "UPDATE_DUE_AT", "reminder#" + id, "SUCCESS", null);
+                return updated;
+            }
+        }
+        throw new BusinessException("提醒任务不存在: " + id);
+    }
+
+    private void initializePartyReminderTasks() {
+        if (!partyReminderTasks.isEmpty()) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        partyReminderTasks.addAll(List.of(
+                new PartyReminderTaskResponse(1L, 101L, 11L, "提交入党申请书", 20001L, "张三", "2026010001", now.plusDays(7).withHour(9).withMinute(0).withSecond(0).withNano(0), "miniprogram", "pending", null, null, now),
+                new PartyReminderTaskResponse(2L, 102L, 12L, "党课学习", 20002L, "李四", "2026010002", now.plusDays(10).withHour(9).withMinute(0).withSecond(0).withNano(0), "miniprogram", "sent", now.minusDays(2), null, now.minusDays(2)),
+                new PartyReminderTaskResponse(3L, 103L, 13L, "思想汇报", 20003L, "王五", "2026010003", now.plusDays(3).withHour(9).withMinute(0).withSecond(0).withNano(0), "sms", "failed", now.minusDays(1), "用户未绑定手机号", now.minusDays(1)),
+                new PartyReminderTaskResponse(4L, 104L, 14L, "预备党员转正", 20004L, "赵六", "2026010004", now.plusDays(21).withHour(9).withMinute(0).withSecond(0).withNano(0), "email", "pending", null, null, now.minusDays(3))
+        ));
+    }
+
+    private List<PartyReminderTaskResponse> filterPartyReminderTasks(PartyReminderTaskFilterRequest request) {
+        String normalizedStatus = QueryFilterSupport.trimToNull(request.status());
+        String normalizedChannel = QueryFilterSupport.trimToNull(request.channel());
+        String normalizedStudentKeyword = QueryFilterSupport.trimToNull(request.studentKeyword());
+        return partyReminderTasks.stream()
+                .filter(item -> normalizedStatus == null || normalizedStatus.equals(item.status()))
+                .filter(item -> normalizedChannel == null || normalizedChannel.equals(item.channel()))
+                .filter(item -> normalizedStudentKeyword == null
+                        || QueryFilterSupport.containsIgnoreCase(item.studentName(), normalizedStudentKeyword)
+                        || QueryFilterSupport.containsIgnoreCase(item.studentNo(), normalizedStudentKeyword))
+                .toList();
     }
 }

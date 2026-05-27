@@ -9,7 +9,7 @@ public record QaTicketDetailResponse(
         String createdAt,
         String status,
         String questionText,
+        Long matchedFaqId,
         List<QaTicketMessageResponse> messages
 ) {
 }
-

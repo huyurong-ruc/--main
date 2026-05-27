@@ -1,5 +1,6 @@
 package edu.ruc.platform.knowledge.service;
 
+import edu.ruc.platform.admin.dto.AdminKnowledgeItemResponse;
 import edu.ruc.platform.admin.dto.KnowledgeAttachmentResponse;
 import edu.ruc.platform.certificate.dto.CertificateRequestResponse;
 import edu.ruc.platform.certificate.service.CertificateApplicationService;
@@ -23,9 +24,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 @Service
 @Profile("mock")
@@ -39,6 +43,7 @@ public class MockKnowledgeService implements KnowledgeApplicationService {
     private final PartyProgressApplicationService partyProgressService;
     private final ObjectMapper stateMapper = new ObjectMapper().findAndRegisterModules();
     private final Path searchLogPath = Paths.get(System.getProperty("user.home"), ".ssp", "mock", "search-query-log.jsonl");
+    private final Path adminStatePath = Paths.get(System.getProperty("user.home"), ".ssp", "mock", "admin-state.json");
     private final boolean persistEnabled = !isTestRuntime();
 
     private static boolean isTestRuntime() {
@@ -50,6 +55,46 @@ public class MockKnowledgeService implements KnowledgeApplicationService {
         public String keyword;
         public int resultCount;
         public LocalDateTime createdAt;
+    }
+
+    private static class AdminStateSnapshot {
+        public List<AdminKnowledgeItemResponse> knowledgeItems;
+        public List<KnowledgeAttachmentResponse> knowledgeAttachments;
+        public Map<Long, String> knowledgeContents;
+    }
+
+    private AdminStateSnapshot loadAdminSnapshot() {
+        if (!persistEnabled) {
+            return null;
+        }
+        try {
+            if (!Files.exists(adminStatePath)) {
+                return null;
+            }
+            return stateMapper.readValue(adminStatePath.toFile(), AdminStateSnapshot.class);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private List<KnowledgeSearchResponse> listDynamicPublishedDocuments() {
+        AdminStateSnapshot s = loadAdminSnapshot();
+        if (s == null || s.knowledgeItems == null || s.knowledgeItems.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, String> contentMap = s.knowledgeContents == null ? Map.of() : s.knowledgeContents;
+        return s.knowledgeItems.stream()
+                .filter(item -> item != null && Boolean.TRUE.equals(item.published()))
+                .map(item -> new KnowledgeSearchResponse(
+                        item.id(),
+                        item.title(),
+                        item.category(),
+                        item.officialUrl(),
+                        contentMap.getOrDefault(item.id(), ""),
+                        "STANDARD_ANSWER",
+                        false
+                ))
+                .toList();
     }
 
     private void recordSearch(String keyword, int resultCount) {
@@ -78,12 +123,30 @@ public class MockKnowledgeService implements KnowledgeApplicationService {
         if (normalizedKeyword == null) {
             return List.of();
         }
-        List<KnowledgeSearchResponse> result = mockDataStore.knowledgeDocuments()
-                .stream()
-                .filter(item -> QueryFilterSupport.containsIgnoreCase(item.title(), normalizedKeyword)
-                        || QueryFilterSupport.containsIgnoreCase(item.category(), normalizedKeyword)
-                        || QueryFilterSupport.containsIgnoreCase(item.answer(), normalizedKeyword))
-                .map(this::toSafeSearchResponse)
+        List<KnowledgeSearchResponse> merged = new ArrayList<>();
+        Map<Long, KnowledgeSearchResponse> seen = new HashMap<>();
+        mockDataStore.knowledgeDocuments().forEach(item -> {
+            if (item == null || item.id() == null) return;
+            seen.put(item.id(), item);
+        });
+        listDynamicPublishedDocuments().forEach(item -> {
+            if (item == null || item.id() == null) return;
+            KnowledgeSearchResponse existing = seen.get(item.id());
+            boolean existingHasAnswer = existing != null && QueryFilterSupport.trimToNull(existing.answer()) != null;
+            boolean dynamicHasAnswer = QueryFilterSupport.trimToNull(item.answer()) != null;
+            if (!existingHasAnswer || dynamicHasAnswer) {
+                seen.put(item.id(), item);
+            }
+        });
+        seen.values().forEach(item -> {
+            if (QueryFilterSupport.containsIgnoreCase(item.title(), normalizedKeyword)
+                    || QueryFilterSupport.containsIgnoreCase(item.category(), normalizedKeyword)
+                    || QueryFilterSupport.containsIgnoreCase(item.answer(), normalizedKeyword)) {
+                merged.add(toSafeSearchResponse(item));
+            }
+        });
+        List<KnowledgeSearchResponse> result = merged.stream()
+                .sorted(Comparator.comparing(KnowledgeSearchResponse::id))
                 .toList();
         recordSearch(normalizedKeyword, result.size());
         return result;
@@ -102,25 +165,70 @@ public class MockKnowledgeService implements KnowledgeApplicationService {
 
     @Override
     public KnowledgeDetailResponse getDetail(Long id) {
-        KnowledgeSearchResponse item = mockDataStore.knowledgeDocuments().stream()
-                .filter(doc -> doc.id().equals(id))
+        KnowledgeSearchResponse item = null;
+        AdminStateSnapshot snap = loadAdminSnapshot();
+        if (snap != null && snap.knowledgeItems != null) {
+            AdminKnowledgeItemResponse found = snap.knowledgeItems.stream()
+                    .filter(x -> x != null && x.id() != null && x.id().equals(id))
+                    .findFirst()
+                    .orElse(null);
+            if (found != null && Boolean.TRUE.equals(found.published())) {
+                Map<Long, String> contentMap = snap.knowledgeContents == null ? Map.of() : snap.knowledgeContents;
+                String answer = contentMap.getOrDefault(found.id(), "");
+                item = new KnowledgeSearchResponse(
+                        found.id(),
+                        found.title(),
+                        found.category(),
+                        found.officialUrl(),
+                        answer,
+                        "STANDARD_ANSWER",
+                        false
+                );
+            }
+        }
+        KnowledgeSearchResponse base = mockDataStore.knowledgeDocuments().stream()
+                .filter(doc -> doc != null && doc.id() != null && doc.id().equals(id))
                 .findFirst()
-                .orElseThrow(() -> new BusinessException("知识条目不存在"));
-        List<KnowledgeAttachmentResponse> attachments = item.id().equals(2L)
-                ? List.of(new KnowledgeAttachmentResponse(
-                51L,
-                2L,
-                "party-process.pdf",
-                "application/pdf",
-                1024L,
-                "/uploads/knowledge/2/party-process.pdf",
-                "胡浩老师",
-                LocalDateTime.of(2026, 3, 22, 11, 0)
-        ))
-                : List.of();
-        List<KnowledgeSearchResponse> relatedItems = mockDataStore.knowledgeDocuments().stream()
-                .filter(doc -> !doc.id().equals(id))
-                .filter(doc -> doc.category().equals(item.category()))
+                .orElse(null);
+        if (item == null) {
+            if (base == null) {
+                throw new BusinessException("知识条目不存在");
+            }
+            item = base;
+        } else {
+            boolean dynamicHasAnswer = QueryFilterSupport.trimToNull(item.answer()) != null;
+            boolean baseHasAnswer = base != null && QueryFilterSupport.trimToNull(base.answer()) != null;
+            if (!dynamicHasAnswer && baseHasAnswer) {
+                item = base;
+            }
+        }
+
+        List<KnowledgeAttachmentResponse> attachments = List.of();
+        if (snap != null && snap.knowledgeAttachments != null) {
+            attachments = snap.knowledgeAttachments.stream()
+                    .filter(a -> a != null && a.knowledgeId() != null && a.knowledgeId().equals(id))
+                    .toList();
+        }
+        if (attachments.isEmpty() && item.id().equals(2L)) {
+            attachments = List.of(new KnowledgeAttachmentResponse(
+                    51L,
+                    2L,
+                    "party-process.pdf",
+                    "application/pdf",
+                    1024L,
+                    "/uploads/knowledge/2/party-process.pdf",
+                    "胡浩老师",
+                    LocalDateTime.of(2026, 3, 22, 11, 0)
+            ));
+        }
+
+        List<KnowledgeSearchResponse> relatedPool = new ArrayList<>();
+        relatedPool.addAll(mockDataStore.knowledgeDocuments());
+        relatedPool.addAll(listDynamicPublishedDocuments());
+        String currentCategory = item.category();
+        List<KnowledgeSearchResponse> relatedItems = relatedPool.stream()
+                .filter(doc -> doc != null && doc.id() != null && !doc.id().equals(id))
+                .filter(doc -> doc.category() != null && doc.category().equals(currentCategory))
                 .limit(3)
                 .map(this::toSafeSearchResponse)
                 .toList();

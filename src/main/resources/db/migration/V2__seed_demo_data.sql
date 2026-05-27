@@ -4,9 +4,9 @@ VALUES
     ('2023100001', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'STUDENT', TRUE, 'mock-open-id-10001')
 ON CONFLICT (username) DO NOTHING;
 
-INSERT INTO student_profile (id, student_no, name, college_name, major, grade, class_name, degree_level, encrypted_id_card_no, encrypted_phone, email, graduated)
+INSERT INTO student_profile (id, student_no, name, major, grade, class_name, degree_level, encrypted_id_card_no, encrypted_phone, email, graduated)
 VALUES
-    (10001, '2023100001', '张三', '信息学院', '计算机类', '2023级', '计科一班', '本科', NULL, NULL, 'zhangsan@example.edu', FALSE)
+    (10001, '2023100001', '张三', '计算机类', '2023级', '计科一班', '本科', NULL, NULL, 'zhangsan@example.edu', FALSE)
 ON CONFLICT (student_no) DO NOTHING;
 
 INSERT INTO knowledge_document (title, category, content, official_url, published)
@@ -32,11 +32,6 @@ INSERT INTO academic_warning_record (student_id, module_name, required_credits, 
 VALUES
     (10001, '专业核心课', 18, 12, '数据结构、操作系统'),
     (10001, '通识选修', 8, 4, '艺术鉴赏、社会研究方法')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO student_status_history (student_id, from_status, to_status, changed_to_major, reason, changed_by, changed_by_role)
-VALUES
-    (10001, NULL, 'ACTIVE', NULL, '初始建档', '系统管理员', 'SUPER_ADMIN')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO party_progress_record (student_id, current_stage, stage_start_date, completed_actions, next_action)
