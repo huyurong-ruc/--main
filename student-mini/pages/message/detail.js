@@ -25,13 +25,29 @@ Page({
     this.setData({ loading: true, detail: null })
     
     try {
-      // 使用后端 /student/notices/{id} 接口
-      const res = await get(`/student/notices/${this.data.id}`)
-      const detail = (res && res.data) || null
-      this.setData({ detail })
-      if (detail && detail.title) {
-        wx.setNavigationBarTitle({ title: '通知详情' })
+      const res = await get('/student/notices')
+      const list = Array.isArray(res?.data) ? res.data : []
+      const hit = list.find((item) => String(item.id) === String(this.data.id))
+      if (!hit) {
+        wx.showToast({ title: '未找到该通知', icon: 'none' })
+        return
       }
+
+      const publishTime = hit.publishTime
+        ? String(hit.publishTime).replace('T', ' ').slice(0, 16)
+        : ''
+
+      const detail = {
+        id: hit.id,
+        title: hit.title,
+        content: hit.summary || '',
+        source: '官方',
+        publishTime,
+        tag: Array.isArray(hit.tags) ? hit.tags[0] : ''
+      }
+
+      this.setData({ detail })
+      wx.setNavigationBarTitle({ title: '通知详情' })
     } catch (e) {
       console.error('加载详情失败', e)
     } finally {

@@ -1,46 +1,60 @@
 // pages/message/index.js
+const app = getApp()
+const { get } = require('../../api/request')
+
+function resolveMessageStyle(item = {}) {
+  const tags = Array.isArray(item.tags) ? item.tags : []
+  const joined = tags.join(',')
+  if (joined.includes('就业') || joined.includes('实习')) {
+    return { typeClass: 'personalized', icon: '💬' }
+  }
+  if (joined.includes('党') || joined.includes('团') || joined.includes('流程')) {
+    return { typeClass: 'pending', icon: '📅' }
+  }
+  return { typeClass: 'feedback', icon: '💬' }
+}
+
 Page({
   data: {
-    messages: [
-      {
-        id: '1',
-        title: '待办通知',
-        icon: '📅',
-        typeClass: 'pending',
-        time: '1分钟前',
-        content: '您的申请已通过',
-        actionText: '前往我的证明/申请',
-        actionRoute: '/sub-pages/apply/list',
-        unread: true
-      },
-      {
-        id: '2',
-        title: '反馈通知',
-        icon: '💬',
-        typeClass: 'feedback',
-        time: '1分钟前',
-        content: '您的反馈已得到解答',
-        actionText: '前往反馈记录',
-        actionRoute: '/sub-pages/feedback/history',
-        unread: true
-      },
-      {
-        id: '3',
-        title: '个性化通知',
-        icon: '💬',
-        typeClass: 'personalized',
-        time: '1分钟前',
-        tag: '就业',
-        content: '人大就业：2026春季双选会即将开始！',
-        unread: true
-      }
-    ]
+    messages: []
   },
 
   onShow() {
     const tabBar = this.getTabBar && this.getTabBar()
     if (tabBar && tabBar.setData) {
       tabBar.setData({ selected: 1 })
+    }
+    if (!app.isLoggedIn()) {
+      wx.redirectTo({ url: '/sub-pages/login/index' })
+      return
+    }
+    this.loadMessages()
+  },
+
+  async loadMessages() {
+    try {
+      const res = await get('/student/notices')
+      const list = Array.isArray(res?.data) ? res.data : []
+      const nextList = list.map((item) => {
+        const { typeClass, icon } = resolveMessageStyle(item)
+        const publishTime = item.publishTime
+          ? String(item.publishTime).replace('T', ' ').slice(0, 16)
+          : ''
+        return {
+          id: String(item.id),
+          title: item.title,
+          icon,
+          typeClass,
+          time: publishTime,
+          tag: Array.isArray(item.tags) ? item.tags[0] : '',
+          content: item.summary || '',
+          unread: false,
+          actionRoute: ''
+        }
+      })
+      this.setData({ messages: nextList })
+    } catch (e) {
+      console.error('加载通知失败', e)
     }
   },
   
