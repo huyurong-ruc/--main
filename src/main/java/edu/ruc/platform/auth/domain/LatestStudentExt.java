@@ -7,6 +7,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @Entity
@@ -41,9 +43,9 @@ public class LatestStudentExt {
     private String phoneHash;
 
     @Column
-    private Double gpa;
+    private BigDecimal gpa;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String extJson;
 
     @Column(nullable = false)

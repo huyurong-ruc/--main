@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@Profile("!mock & !kingbase")
+@Profile("!mock")
 @RequiredArgsConstructor
 public class PartyMaterialService implements PartyMaterialApplicationService {
 
