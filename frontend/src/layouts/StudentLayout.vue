@@ -12,9 +12,9 @@
         :collapse="isCollapse"
         :router="true"
         class="sidebar-menu"
-        background-color="#304156"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
+        background-color="#ffffff"
+        text-color="#58677d"
+        active-text-color="#1677ff"
       >
         <el-menu-item index="/student/dashboard">
           <el-icon><HomeFilled /></el-icon>
@@ -199,9 +199,10 @@ onMounted(() => {
 }
 
 .sidebar {
-  background-color: #304156;
+  background-color: #ffffff;
   transition: width 0.3s;
   overflow-x: hidden;
+  border-right: 1px solid #edf1f6;
 }
 
 .logo {
@@ -209,10 +210,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: #1f2d3d;
   font-size: 18px;
   font-weight: bold;
-  background-color: #2b3a4a;
+  background-color: #ffffff;
+  border-bottom: 1px solid #edf1f6;
 }
 
 .logo img {
@@ -226,7 +228,7 @@ onMounted(() => {
 }
 
 .header {
-  background-color: #fff;
+  background-color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -242,11 +244,11 @@ onMounted(() => {
 .collapse-btn {
   font-size: 20px;
   cursor: pointer;
-  color: #606266;
+  color: #58677d;
 }
 
 .collapse-btn:hover {
-  color: #409EFF;
+  color: #1677ff;
 }
 
 .header-right {
@@ -261,7 +263,7 @@ onMounted(() => {
 
 .header-icon {
   font-size: 20px;
-  color: #606266;
+  color: #58677d;
 }
 
 .user-info {
@@ -272,16 +274,31 @@ onMounted(() => {
 }
 
 .user-avatar {
-  background-color: #409EFF;
+  background-color: #1677ff;
 }
 
 .user-name {
-  color: #606266;
+  color: #58677d;
 }
 
 .main-content {
-  background-color: #f0f2f5;
+  background-color: #f4f7fb;
   padding: 16px;
   overflow-y: auto;
+}
+
+@media (max-width: 992px) {
+  .sidebar {
+    display: none;
+  }
+
+  .header {
+    display: none;
+  }
+
+  .main-content {
+    padding: 0;
+    background-color: #f4f7fb;
+  }
 }
 </style>

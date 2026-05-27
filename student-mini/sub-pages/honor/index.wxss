@@ -222,18 +222,10 @@
   padding-top: 120rpx;
 }
 
-.empty-mark {
-  width: 120rpx;
-  height: 120rpx;
+.empty-illustration {
+  width: 240rpx;
+  height: 240rpx;
   margin: 0 auto 24rpx;
-  border-radius: 60rpx;
-  background: #eaf3ff;
-  color: #1677ff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 48rpx;
-  font-weight: 800;
 }
 
 .empty-title,

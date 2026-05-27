@@ -1,0 +1,94 @@
+/* pages/mine/index.wxss */
+.user-header {
+  background: var(--primary-gradient);
+  padding: 60rpx 40rpx 100rpx;
+  color: #ffffff;
+}
+
+.user-main {
+  display: flex;
+  align-items: center;
+  gap: 30rpx;
+  margin-bottom: 40rpx;
+}
+
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  background: #ffffff;
+  border: 4rpx solid rgba(255, 255, 255, 0.3);
+}
+
+.user-name {
+  font-size: 40rpx;
+  font-weight: 700;
+  display: block;
+}
+
+.user-id {
+  font-size: 24rpx;
+  opacity: 0.85;
+  margin-top: 8rpx;
+  display: block;
+}
+
+.info-row {
+  display: flex;
+  gap: 20rpx;
+}
+
+.info-tag {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 12rpx 24rpx;
+  border-radius: 30rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  font-size: 24rpx;
+}
+
+.menu-list {
+  margin-top: -40rpx;
+  padding: 0 32rpx;
+}
+
+.menu-item {
+  background: #ffffff;
+  padding: 36rpx 32rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1rpx solid #edf1f6;
+}
+
+.menu-item:first-child {
+  border-top-left-radius: 20rpx;
+  border-top-right-radius: 20rpx;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+  border-bottom-left-radius: 20rpx;
+  border-bottom-right-radius: 20rpx;
+}
+
+.menu-left {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.menu-icon {
+  font-size: 32rpx;
+}
+
+.menu-text {
+  font-size: 30rpx;
+  color: #1f2d3d;
+}
+
+.arrow {
+  font-size: 36rpx;
+  color: #cbd5e1;
+}

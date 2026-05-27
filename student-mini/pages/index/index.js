@@ -5,123 +5,131 @@ const { get } = require('../../api/request')
 Page({
   data: {
     userInfo: null,
-    banners: [],
-    news: [],
-    announcements: [],
-    date: '',
-    unreadCount: 0
+    banners: [
+      { id: 1, image: '/static/images/banner1.png' }
+    ],
+    navs: [
+      { name: '智能检索', iconText: '🔍', class: 'search', handler: 'goToSearch' },
+      { name: '政策库', iconText: '📋', class: 'policy', handler: 'goToPolicy' },
+      { name: '模板下载', iconText: '📄', class: 'template', handler: 'goToTemplate' },
+      { name: '证明申请', iconText: '📝', class: 'apply', handler: 'goToApply' },
+      { name: '党团流程', iconText: '🎗️', class: 'party', handler: 'goToParty' },
+      { name: '学业分析', iconText: '📊', class: 'academic', handler: 'goToAcademic' },
+      { name: '通知聚合', iconText: '🔔', class: 'notice', handler: 'goToMessage' },
+      { name: '常见问题', iconText: '❓', class: 'faq', handler: 'goToFaq' }
+    ],
+    pendingProgress: [
+      { 
+        id: 1, 
+        title: '盖章申请', 
+        status: '审核中', 
+        statusClass: 'warning', 
+        showRightStatus: true,
+        typeText: '申', 
+        typeClass: 'apply', 
+        desc: '申请时间：2025-03-25',
+        time: ''
+      },
+      { 
+        id: 2, 
+        title: '入党进度 · 积极分子阶段', 
+        status: '距离“思想汇报”截止还有5天', 
+        statusClass: 'primary', 
+        showRightStatus: false,
+        typeText: '办', 
+        typeClass: 'party', 
+        desc: '距离“思想汇报”截止还有5天',
+        time: ''
+      }
+    ],
+    news: [
+      { id: 'jobfair-2026-spring', title: '2026春季双选会即将开始！', source: '人大就业', time: '2026-03-25' },
+      { id: 'innovation-2026', title: '关于组织申报2026年中国人民大学“大学生创新训练计划”创业训练项目的通知', source: '教务处', time: '2026-03-25' }
+    ]
   },
   
   onLoad() {
-    // 检查登录状态，未登录则跳转登录页
     if (!app.isLoggedIn()) {
       wx.navigateTo({ url: '/sub-pages/login/index' })
       return
     }
     this.setData({ userInfo: app.globalData.userInfo })
-    this.initDate()
     this.loadHomeData()
   },
-  
-  // 初始化日期显示
-  initDate() {
-    const now = new Date()
-    const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-    const dateStr = `${now.getMonth() + 1}月${now.getDate()}日 ${weekDays[now.getDay()]}`
-    this.setData({ date: dateStr })
-  },
-  
+
   onShow() {
-    this.setData({ userInfo: app.globalData.userInfo })
+    const tabBar = this.getTabBar && this.getTabBar()
+    if (tabBar && tabBar.setData) {
+      tabBar.setData({ selected: 0 })
+    }
   },
   
   async loadHomeData() {
     try {
-      console.log('开始加载首页数据')
-      // 使用后端真实存在的 /student/dashboard 聚合接口
       const dashboardRes = await get('/student/dashboard')
-      console.log('dashboardRes:', dashboardRes)
-      
       const dashboard = dashboardRes.data || {}
       
-      this.setData({
-        // banners 从 dashboard 的 notices 中构造
-        banners: dashboard.notices ? dashboard.notices.slice(0, 3).map(n => ({
-          id: n.id,
-          image: '/static/images/banner1.png',
-          title: n.title
-        })) : [],
-        // news 从 dashboard.notices 中取
-        news: (dashboard.notices || []).map(n => ({
-          id: n.id,
-          title: n.title,
-          time: n.publishTime || n.time || ''
-        }))
-      })
-      console.log('数据加载完成')
+      if (dashboard.notices) {
+        this.setData({
+          news: dashboard.notices.map(n => ({
+            id: n.id,
+            title: n.title,
+            source: n.source || '官方',
+            time: n.publishTime || n.time || ''
+          }))
+        })
+      }
     } catch (e) {
       console.error('加载首页数据失败', e)
-      wx.showToast({
-        title: '加载失败，请检查网络',
-        icon: 'none'
-      })
     }
   },
   
-  // 跳转消息
-  goToMessage() {
-    wx.switchTab({ url: '/pages/message/index' })
-  },
+  goToSearch() { wx.navigateTo({ url: '/sub-pages/search/index' }) },
+  goToPolicy() { wx.navigateTo({ url: '/sub-pages/policy/list' }) },
+  goToTemplate() { wx.navigateTo({ url: '/sub-pages/policy/list?tab=2' }) },
+  goToApply() { wx.navigateTo({ url: '/sub-pages/apply/list' }) },
+  goToParty() { wx.navigateTo({ url: '/sub-pages/party/index' }) },
+  goToAcademic() { wx.navigateTo({ url: '/sub-pages/academic/index' }) },
+  goToMessage() { wx.switchTab({ url: '/pages/message/index' }) },
+  goToFaq() { wx.navigateTo({ url: '/sub-pages/faq/list' }) },
   
-  // 跳转政策
-  goToPolicy() {
-    wx.navigateTo({ url: '/sub-pages/policy/list' })
-  },
-  
-  // 跳转学业
-  goToAcademic() {
-    wx.navigateTo({ url: '/sub-pages/academic/index' })
-  },
-  
-  // 跳转证明申请
-  goToApply() {
-    wx.navigateTo({ url: '/sub-pages/apply/list' })
-  },
-  
-  // 跳转党团流程
-  goToParty() {
-    wx.navigateTo({ url: '/sub-pages/party/index' })
-  },
-
-  goToHonor() {
-    wx.navigateTo({ url: '/sub-pages/honor/index' })
-  },
-
-  goToArchive() {
-    wx.navigateTo({ url: '/sub-pages/growth/archive' })
-  },
-  
-  // 跳转新闻详情
   goToNewsDetail(e) {
     const { id } = e.currentTarget.dataset
     wx.navigateTo({ url: `/pages/message/detail?id=${id}` })
   },
-  
-  // 分享给好友
-  onShareAppMessage(res) {
-    return {
-      title: '学院服务平台',
-      desc: '一站式学生服务小程序',
-      path: '/pages/index/index'
-    }
+
+  goToProgressDetail(e) {
+    const { item } = e.currentTarget.dataset
+    if (item.typeClass === 'apply') this.goToApply()
+    else if (item.typeClass === 'party') this.goToParty()
   },
-  
-  // 分享到朋友圈
-  onShareTimeline() {
-    return {
-      title: '学院服务平台',
-      query: '',
-      imageUrl: '/static/images/banner1.png'
+
+  goToProgressMore() {
+    const list = this.data.pendingProgress || []
+    const hasApply = list.some((item) => item.typeClass === 'apply')
+    const hasParty = list.some((item) => item.typeClass === 'party')
+
+    if (hasApply && !hasParty) {
+      this.goToApply()
+      return
     }
+
+    if (!hasApply && hasParty) {
+      this.goToParty()
+      return
+    }
+
+    if (hasApply && hasParty) {
+      wx.showActionSheet({
+        itemList: ['我的证明/申请', '入党流程'],
+        success: (res) => {
+          if (res.tapIndex === 0) this.goToApply()
+          if (res.tapIndex === 1) this.goToParty()
+        }
+      })
+      return
+    }
+
+    wx.showToast({ title: '暂无待办事项', icon: 'none' })
   }
 })

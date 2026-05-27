@@ -1,0 +1,7 @@
+{
+  "name": "apiProxy",
+  "version": "1.0.0",
+  "description": "代理转发请求到原有后端API",
+  "main": "index.js",
+  "dependencies": {}
+}
