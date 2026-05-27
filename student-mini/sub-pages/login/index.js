@@ -2,11 +2,36 @@
 const app = getApp()
 const api = require('../../api/auth')
 
+function validatePassword(value = '') {
+  const password = String(value)
+  if (!password) {
+    return { valid: false, message: '请输入密码' }
+  }
+  if (/\s/.test(password)) {
+    return { valid: false, message: '密码不能包含空格' }
+  }
+  if (password.length < 8 || password.length > 20) {
+    return { valid: false, message: '密码需为8-20位字符' }
+  }
+  const hasLower = /[a-z]/.test(password)
+  const hasUpper = /[A-Z]/.test(password)
+  const hasDigit = /\d/.test(password)
+  const hasSymbol = /[^A-Za-z0-9]/.test(password)
+  const typeCount = [hasLower, hasUpper, hasDigit, hasSymbol].filter(Boolean).length
+  if (!hasDigit || typeCount < 2 || (!hasLower && !hasUpper)) {
+    return { valid: false, message: '需包含字母与数字，可包含符号增强安全性' }
+  }
+  return { valid: true, message: '' }
+}
+
 Page({
   data: {
     name: '',
     studentNo: '',
     password: '',
+    passwordTouched: false,
+    passwordError: '',
+    canSubmit: false,
     loading: false,
     errorCount: 0,
     locked: false,
@@ -25,14 +50,41 @@ Page({
   // 输入处理
   onNameInput(e) {
     this.setData({ name: e.detail.value })
+    this.updateCanSubmit()
   },
   
   onStudentNoInput(e) {
     this.setData({ studentNo: e.detail.value })
+    this.updateCanSubmit()
   },
   
   onPasswordInput(e) {
-    this.setData({ password: e.detail.value })
+    const password = e.detail.value
+    const result = validatePassword(password)
+    this.setData({
+      password,
+      passwordTouched: true,
+      passwordError: result.valid ? '' : result.message
+    })
+    this.updateCanSubmit()
+  },
+
+  onPasswordBlur() {
+    const result = validatePassword(this.data.password)
+    this.setData({
+      passwordTouched: true,
+      passwordError: result.valid ? '' : result.message
+    })
+    this.updateCanSubmit()
+  },
+
+  updateCanSubmit() {
+    const { name, studentNo, password } = this.data
+    const passwordResult = validatePassword(password)
+    const canSubmit = Boolean(name.trim()) && Boolean(studentNo.trim()) && passwordResult.valid
+    if (canSubmit !== this.data.canSubmit) {
+      this.setData({ canSubmit })
+    }
   },
   
   // 登录提交
@@ -56,6 +108,16 @@ Page({
       wx.showToast({ title: '请输入学号', icon: 'none' })
       return
     }
+
+    const passwordResult = validatePassword(password)
+    if (!passwordResult.valid) {
+      this.setData({
+        passwordTouched: true,
+        passwordError: passwordResult.message
+      })
+      this.updateCanSubmit()
+      return
+    }
     
     this.setData({ loading: true })
     
@@ -63,16 +125,24 @@ Page({
       // 使用后端 /auth/login 接口
       const res = await api.login({
         username: studentNo.trim(),
-        password: password || '123456' // 默认密码 123456
+        password
       })
+
+      if (!res || res.success === false) {
+        throw new Error(res?.message || '登录失败，请检查账号密码')
+      }
+
+      const payload = res.data || {}
+      const userId = payload.userId || (payload.userInfo && payload.userInfo.id) || ''
+      const role = payload.role || (payload.userInfo && payload.userInfo.role) || 'STUDENT'
       
       // 保存登录数据
-      app.setLoginData(res.data.token, {
-        id: res.data.userId,
-        studentId: res.data.userId,
+      app.setLoginData(payload.token, {
+        id: userId || studentNo.trim(),
+        studentId: userId || studentNo.trim(),
         name: name.trim(),
         studentNo: studentNo.trim(),
-        role: res.data.role
+        role
       })
       
       wx.showToast({ title: '登录成功', icon: 'success' })

@@ -11,6 +11,7 @@ function normalizeFaq(item = {}) {
 
 Page({
   data: {
+    keyword: '',
     faqList: [],
     loading: false,
     page: 0,
@@ -32,6 +33,19 @@ Page({
     }
   },
 
+  onSearchInput(e) {
+    this.setData({ keyword: e.detail.value })
+  },
+
+  onSearchConfirm() {
+    this.loadList(true)
+  },
+
+  clearSearch() {
+    this.setData({ keyword: '' })
+    this.loadList(true)
+  },
+
   async loadList(reset = false) {
     if (this.data.loading) return
     if (!reset && !this.data.hasMore) return
@@ -42,7 +56,8 @@ Page({
     try {
       const res = await getFaqs({
         page: nextPage,
-        pageSize: this.data.pageSize
+        pageSize: this.data.pageSize,
+        keyword: this.data.keyword || undefined
       })
 
       const pageData = res.data || {}

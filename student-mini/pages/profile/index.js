@@ -16,6 +16,10 @@ Page({
   
   onShow() {
     this.setData({ userInfo: app.globalData.userInfo })
+    const tabBar = this.getTabBar && this.getTabBar()
+    if (tabBar && tabBar.setData) {
+      tabBar.setData({ selected: 2 })
+    }
   },
   
   // 跳转我的申请

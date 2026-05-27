@@ -22,7 +22,7 @@
   </view>
   
   <view wx:if="{{empty && !loading}}" class="empty-state">
-    <text class="empty-icon">🔍</text>
+    <image src="/static/illustrations/faq.svg" class="empty-illustration" mode="aspectFit" />
     <text class="empty-text">未找到相关结果</text>
     <text class="empty-hint">换个关键词试试</text>
   </view>

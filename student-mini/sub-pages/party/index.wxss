@@ -1,145 +1,186 @@
-/* sub-pages/party/index.wxss */
-.container {
+.page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: #f4f7fb;
+  padding: 24rpx;
+  box-sizing: border-box;
 }
 
-/* Tab */
+.hero {
+  min-height: 220rpx;
+  border-radius: 16rpx;
+  padding: 34rpx;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #d32f2f 0%, #f44336 58%, #ff5252 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+  box-shadow: 0 18rpx 42rpx rgba(244, 67, 54, 0.24);
+}
+
+.hero-kicker {
+  display: block;
+  font-size: 22rpx;
+  opacity: 0.78;
+  letter-spacing: 0;
+}
+
+.hero-title {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 48rpx;
+  font-weight: 800;
+}
+
+.hero-subtitle {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 25rpx;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.hero-medal {
+  width: 116rpx;
+  height: 116rpx;
+  border-radius: 58rpx;
+  background: rgba(255, 255, 255, 0.18);
+  border: 2rpx solid rgba(255, 255, 255, 0.34);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48rpx;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.search-card {
+  margin-top: 24rpx;
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 0 22rpx;
+  box-shadow: 0 10rpx 30rpx rgba(24, 52, 92, 0.06);
+}
+
 .tabs {
   display: flex;
-  background: #ffffff;
-  padding: 0 32rpx;
+  height: 88rpx;
+  align-items: center;
 }
 
 .tab-item {
   flex: 1;
-  text-align: center;
-  padding: 28rpx 0;
-  font-size: 30rpx;
-  color: #666;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: #58677d;
   position: relative;
+  height: 100%;
 }
 
 .tab-item.active {
-  color: #1677ff;
+  color: #f44336;
   font-weight: 600;
 }
 
-.tab-item.active::after {
-  content: '';
+.tab-line {
   position: absolute;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 64rpx;
+  width: 40rpx;
   height: 6rpx;
-  background: #1677ff;
+  background: #f44336;
   border-radius: 3rpx;
 }
 
-/* 进度卡片 */
-.progress-card,
-.flow-card {
+.card {
+  margin-top: 24rpx;
   background: #ffffff;
-  margin: 24rpx;
   border-radius: 16rpx;
   padding: 32rpx;
+  box-shadow: 0 10rpx 30rpx rgba(24, 52, 92, 0.06);
 }
 
-.progress-header {
+.section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 32rpx;
 }
 
-.progress-title,
-.flow-title {
+.section-title {
   font-size: 32rpx;
   font-weight: 600;
-  color: #333;
+  color: #1f2d3d;
 }
 
-.progress-arrow {
-  font-size: 36rpx;
-  color: #ccc;
+.detail-link {
+  font-size: 24rpx;
+  color: #f44336;
 }
 
-/* 时间轴 */
+/* Timeline */
 .timeline {
-  display: flex;
-  flex-direction: column;
+  padding: 10rpx 20rpx;
 }
 
 .timeline-item {
-  display: flex;
-  align-items: flex-start;
-  padding-bottom: 32rpx;
   position: relative;
-}
-
-.timeline-item:not(:last-child)::before {
-  content: '';
-  position: absolute;
-  left: 12rpx;
-  top: 32rpx;
-  bottom: 0;
-  width: 2rpx;
-  background: #e0e0e0;
+  padding-bottom: 40rpx;
+  display: flex;
+  gap: 30rpx;
 }
 
 .timeline-dot {
-  width: 24rpx;
-  height: 24rpx;
-  border-radius: 12rpx;
-  background: #ccc;
-  margin-right: 24rpx;
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 50%;
+  background: #cbd5e1;
+  z-index: 2;
+  margin-top: 10rpx;
   flex-shrink: 0;
-  margin-top: 4rpx;
 }
 
-.timeline-dot.completed {
-  background: #52c41a;
-}
+.timeline-dot.completed { background: #52c41a; box-shadow: 0 0 0 6rpx rgba(82, 196, 26, 0.2); }
+.timeline-dot.in_progress { background: #faad14; box-shadow: 0 0 0 6rpx rgba(250, 173, 20, 0.2); }
 
-.timeline-dot.processing {
-  background: #1677ff;
+.timeline-line {
+  position: absolute;
+  left: 9rpx;
+  top: 30rpx;
+  bottom: -10rpx;
+  width: 2rpx;
+  background: #e2e8f0;
+  z-index: 1;
 }
 
 .timeline-content {
+  flex: 1;
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
 .node-name {
   font-size: 28rpx;
-  color: #333;
+  color: #1f2d3d;
   font-weight: 500;
 }
 
 .node-status {
-  font-size: 24rpx;
-  color: #999;
-  margin-top: 4rpx;
+  font-size: 22rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  background: #f1f5f9;
+  color: #64748b;
 }
 
-.node-status.completed {
-  color: #52c41a;
-}
+.node-status.completed { background: #f6ffed; color: #52c41a; }
+.node-status.in_progress { background: #fff7e6; color: #faad14; }
 
-.node-status.processing {
-  color: #1677ff;
-}
-
-/* 无进度 */
-.no-progress {
-  text-align: center;
-  padding: 48rpx 0;
-  color: #999;
-  font-size: 28rpx;
-}
-
-/* 流程节点 */
+/* Flow Nodes */
 .flow-nodes {
   display: flex;
   flex-direction: column;
@@ -148,49 +189,72 @@
 
 .flow-node {
   display: flex;
-  align-items: flex-start;
+  gap: 24rpx;
 }
 
 .node-index {
-  width: 48rpx;
-  height: 48rpx;
-  background: #1677ff;
-  color: #ffffff;
-  border-radius: 24rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #ef4444;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26rpx;
-  font-weight: 600;
-  margin-right: 24rpx;
+  font-size: 24rpx;
+  font-weight: 700;
   flex-shrink: 0;
 }
 
 .node-info {
   flex: 1;
-  display: flex;
-  flex-direction: column;
 }
 
 .node-title {
+  display: block;
   font-size: 28rpx;
-  color: #333;
-  font-weight: 500;
+  font-weight: 600;
+  color: #1f2d3d;
+  margin-bottom: 8rpx;
 }
 
 .node-desc {
+  display: block;
   font-size: 24rpx;
-  color: #666;
-  margin-top: 8rpx;
+  color: #64748b;
   line-height: 1.6;
 }
 
-/* 加载状态 */
-.loading-state {
+/* Empty Block */
+.empty-block {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 200rpx 0;
-  color: #999;
+  padding: 60rpx 0;
+}
+
+.empty-illustration {
+  width: 200rpx;
+  height: 200rpx;
+  margin-bottom: 24rpx;
+}
+
+.empty-title {
   font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2d3d;
+  margin-bottom: 8rpx;
+}
+
+.empty-desc {
+  font-size: 24rpx;
+  color: #94a3b8;
+}
+
+.loading-state {
+  padding: 40rpx;
+  text-align: center;
+  color: #7b8ba5;
+  font-size: 26rpx;
 }

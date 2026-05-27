@@ -1,187 +1,100 @@
 <template>
-  <div class="student-dashboard">
-    <!-- 欢迎信息 -->
-    <div class="welcome-section">
-      <div class="welcome-content">
-        <h1>你好，{{ studentStore.fullName || userInfo.fullName }}</h1>
-        <p>欢迎使用学院学生综合服务平台</p>
-      </div>
-      <div class="student-info">
-        <el-tag>{{ studentStore.studentNo || userInfo.studentNo }}</el-tag>
-        <el-tag type="info">{{ studentStore.userInfo?.major || userInfo.major }}</el-tag>
+  <div class="home">
+    <div class="hero">
+      <div class="hero-title">综合管理平台</div>
+      <div class="search" @click="router.push('/student/qa/search')">
+        <div class="search-icon">
+          <el-icon><Search /></el-icon>
+        </div>
+        <div class="search-text">搜索政策/通知/模板</div>
       </div>
     </div>
-    
-    <!-- 快捷入口 -->
-    <el-row :gutter="16" class="quick-actions">
-      <el-col :span="6" v-for="item in quickActions" :key="item.path">
-        <div class="action-card" @click="router.push(item.path)">
-          <el-icon :size="32" :color="item.color">
-            <component :is="item.icon" />
-          </el-icon>
-          <span>{{ item.label }}</span>
+
+    <div class="content">
+      <div class="banner" @click="router.push('/student/dashboard')">
+        <div class="banner-text">
+          <div class="banner-line">一键触达</div>
+          <div class="banner-line">轻松办理</div>
+          <div class="banner-sub">一站式办理</div>
         </div>
-      </el-col>
-    </el-row>
-    
-    <!-- 主要内容 -->
-    <el-row :gutter="16">
-      <!-- 待办事项 -->
-      <el-col :span="12">
-        <el-card class="dashboard-card">
-          <template #header>
-            <div class="card-header">
-              <span>待办事项</span>
-              <el-badge :value="todos.length" type="primary" />
+        <div class="banner-illu" aria-hidden="true">
+          <svg viewBox="0 0 360 220" width="180" height="110" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#e6f7ff" />
+                <stop offset="1" stop-color="#ffffff" />
+              </linearGradient>
+            </defs>
+            <rect x="16" y="36" width="220" height="144" rx="18" fill="url(#g1)" opacity="0.9"/>
+            <rect x="34" y="52" width="120" height="16" rx="8" fill="#1677ff" opacity="0.35"/>
+            <rect x="34" y="76" width="168" height="12" rx="6" fill="#1677ff" opacity="0.18"/>
+            <rect x="34" y="96" width="150" height="12" rx="6" fill="#1677ff" opacity="0.18"/>
+            <circle cx="270" cy="128" r="64" fill="#ffffff" opacity="0.85"/>
+            <rect x="232" y="84" width="92" height="18" rx="9" fill="#1677ff" opacity="0.18"/>
+            <rect x="232" y="110" width="76" height="12" rx="6" fill="#1677ff" opacity="0.14"/>
+            <rect x="232" y="130" width="62" height="12" rx="6" fill="#1677ff" opacity="0.14"/>
+            <rect x="60" y="150" width="96" height="12" rx="6" fill="#1677ff" opacity="0.2"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-grid">
+          <div v-for="item in quickActions" :key="item.label" class="feature-item" @click="router.push(item.path)">
+            <div class="feature-icon">
+              <el-icon><component :is="item.icon" /></el-icon>
             </div>
-          </template>
-          
-          <div v-if="todos.length" class="todo-list">
-            <div 
-              v-for="todo in todos" 
-              :key="todo.id" 
-              class="todo-item"
-              @click="handleTodoClick(todo)"
-            >
-              <div class="todo-icon">
-                <el-icon><Clock /></el-icon>
-              </div>
-              <div class="todo-content">
-                <div class="todo-title">{{ todo.title }}</div>
-                <div class="todo-deadline">截止：{{ todo.deadline }}</div>
-              </div>
-              <el-tag :type="getStatusType(todo.status)" size="small">
-                {{ getStatusText(todo.status) }}
-              </el-tag>
+            <div class="feature-name">{{ item.label }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">待办进度</div>
+          <div class="section-more" @click="router.push('/student/affairs')">更多 ›</div>
+        </div>
+        <div class="list">
+          <div v-for="todo in todos.slice(0, 3)" :key="todo.id" class="list-item" @click="handleTodoClick(todo)">
+            <div class="list-icon">{{ (todo.title || '').slice(0, 1) }}</div>
+            <div class="list-main">
+              <div class="list-title">{{ todo.title }}</div>
+              <div class="list-sub">{{ todo.deadline ? `截止：${todo.deadline}` : '请尽快处理' }}</div>
+            </div>
+            <div class="list-side">
+              <div class="status" :class="`status-${todo.status}`">{{ getStatusText(todo.status) }}</div>
             </div>
           </div>
-          
-          <el-empty v-else description="暂无待办事项" />
-        </el-card>
-      </el-col>
-      
-      <!-- 最新通知 -->
-      <el-col :span="12">
-        <el-card class="dashboard-card">
-          <template #header>
-            <div class="card-header">
-              <span>最新通知</span>
-              <el-button type="primary" link @click="router.push('/student/notices')">
-                查看全部
-              </el-button>
-            </div>
-          </template>
-          
-          <div v-if="notices.length" class="notice-list">
-            <div 
-              v-for="notice in notices" 
-              :key="notice.id" 
-              class="notice-item"
-              @click="router.push(`/student/notices/${notice.id}`)"
-            >
-              <div class="notice-title">
-                <el-tag v-if="notice.important" type="danger" size="small">重要</el-tag>
-                {{ notice.title }}
-              </div>
-              <div class="notice-meta">
-                <span class="notice-time">{{ formatTime(notice.publishTime) }}</span>
-                <el-tag v-if="!notice.read" type="warning" size="small">未读</el-tag>
-              </div>
+          <div v-if="todos.length === 0" class="empty">暂无待办</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">精选通知</div>
+          <div class="section-more" @click="router.push('/student/notices')">更多 ›</div>
+        </div>
+        <div class="notice-list">
+          <div
+            v-for="notice in notices.slice(0, 3)"
+            :key="notice.id"
+            class="notice-item"
+            @click="router.push(`/student/notices/${notice.id}`)"
+          >
+            <div class="notice-title">{{ notice.title }}</div>
+            <div class="notice-meta">
+              <div class="notice-source">来源：{{ notice.department || '系统通知' }}</div>
+              <div class="notice-time">发布时间：{{ notice.publishTime }}</div>
             </div>
           </div>
-          
-          <el-empty v-else description="暂无通知" />
-        </el-card>
-      </el-col>
-    </el-row>
-    
-    <!-- 底部信息 -->
-    <el-row :gutter="16" class="bottom-section">
-      <!-- 党团进度 -->
-      <el-col :span="8">
-        <el-card class="dashboard-card">
-          <template #header>
-            <div class="card-header">
-              <span>党团流程进度</span>
-            </div>
-          </template>
-          
-          <div v-if="partyProgress" class="progress-section">
-            <div class="progress-title">{{ partyProgress.flowName }}</div>
-            <el-progress 
-              :percentage="partyProgress.progress || 0" 
-              :color="partyProgress.progress === 100 ? '#67C23A' : '#409EFF'"
-            />
-            <div class="progress-node">
-              当前节点：{{ partyProgress.currentNode }}
-            </div>
-            <el-button type="primary" link @click="router.push('/student/party')">
-              查看详情
-            </el-button>
-          </div>
-          
-          <el-empty v-else description="暂无进行中的流程" />
-        </el-card>
-      </el-col>
-      
-      <!-- 学业概览 -->
-      <el-col :span="8">
-        <el-card class="dashboard-card">
-          <template #header>
-            <div class="card-header">
-              <span>学业概览</span>
-            </div>
-          </template>
-          
-          <div class="academic-summary">
-            <div class="stat-item">
-              <div class="stat-value">{{ academicStats.gpa }}</div>
-              <div class="stat-label">当前GPA</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">{{ academicStats.credits }}</div>
-              <div class="stat-label">已获学分</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">{{ academicStats.rank }}</div>
-              <div class="stat-label">专业排名</div>
-            </div>
-          </div>
-          <el-button type="primary" link @click="router.push('/student/academic')">
-            查看详情
-          </el-button>
-        </el-card>
-      </el-col>
-      
-      <!-- 申请记录 -->
-      <el-col :span="8">
-        <el-card class="dashboard-card">
-          <template #header>
-            <div class="card-header">
-              <span>办事申请</span>
-              <el-button type="primary" link @click="router.push('/student/affairs')">
-                查看全部
-              </el-button>
-            </div>
-          </template>
-          
-          <div v-if="affairs.length" class="affairs-list">
-            <div v-for="affair in affairs" :key="affair.id" class="affair-item">
-              <div class="affair-title">{{ affair.title }}</div>
-              <el-tag :type="getAffairStatusType(affair.status)" size="small">
-                {{ affair.statusText }}
-              </el-tag>
-            </div>
-          </div>
-          
-          <el-empty v-else description="暂无申请记录" />
-          
-          <el-button type="primary" class="apply-btn" @click="router.push('/student/affairs/apply')">
-            新建申请
-          </el-button>
-        </el-card>
-      </el-col>
-    </el-row>
+          <div v-if="notices.length === 0" class="empty">暂无通知</div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div class="footer-text">学院学生综合服务平台</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -197,7 +110,7 @@ import {
   Tickets,
   Medal,
   TrendCharts,
-  Clock
+  ChatDotRound
 } from '@element-plus/icons-vue'
 import { useStudentStore } from '@/stores/student'
 import { getStudentDashboard } from '@/api/student'
@@ -214,12 +127,14 @@ const userInfo = reactive({
 
 // 快捷入口
 const quickActions = [
-  { path: '/student/qa/search', label: '智能问答', icon: Search, color: '#409EFF' },
-  { path: '/student/policies', label: '政策知识库', icon: Document, color: '#67C23A' },
-  { path: '/student/party', label: '党团流程', icon: Flag, color: '#E6A23C' },
-  { path: '/student/notices', label: '通知公告', icon: Bell, color: '#F56C6C' },
-  { path: '/student/affairs/apply', label: '办事申请', icon: Tickets, color: '#909399' },
-  { path: '/student/academic', label: '学业分析', icon: TrendCharts, color: '#9C27B0' }
+  { path: '/student/qa/search', label: '智能检索', icon: Search },
+  { path: '/student/policies', label: '政策库', icon: Document },
+  { path: '/student/policies', label: '模板下载', icon: Document },
+  { path: '/student/certificates/apply', label: '证明申请', icon: Medal },
+  { path: '/student/party', label: '党团流程', icon: Flag },
+  { path: '/student/academic', label: '学业分析', icon: TrendCharts },
+  { path: '/student/notices', label: '通知聚合', icon: Bell },
+  { path: '/student/qa/tickets', label: '常见问题', icon: ChatDotRound }
 ]
 
 // 待办事项
@@ -307,8 +222,8 @@ async function loadDashboardData() {
     ]
     
     notices.value = [
-      { id: 1, title: '关于2026年五一劳动节放假安排的通知', publishTime: '2026-04-13 07:00:00', important: true, read: false },
-      { id: 2, title: '关于开展2026年春季学期学业预警的通知', publishTime: '2026-04-12 10:00:00', important: false, read: true }
+      { id: 1, title: '2026春季双选会即将开始！', publishTime: '2026-03-25', department: '人大就业', important: true, read: false },
+      { id: 2, title: '关于组织申报2026年中国人民大学“大学生创业训练计划”创业训练项目的通知', publishTime: '2026-03-25', department: '教务处', important: false, read: true }
     ]
     
     partyProgress.value = {
@@ -339,218 +254,345 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.student-dashboard {
-  padding: 16px;
+.home {
+  min-height: 100vh;
+  background: #f4f7fb;
 }
 
-.welcome-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.hero {
+  background: linear-gradient(180deg, #1677ff 0%, #4096ff 100%);
+  padding: 18px 16px 56px;
+}
+
+.hero-title {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 800;
+  color: rgba(31, 45, 61, 0.92);
+  letter-spacing: 0.2px;
+}
+
+.search {
+  margin-top: 14px;
+  height: 44px;
   border-radius: 12px;
-  color: #fff;
-  margin-bottom: 20px;
-}
-
-.welcome-content h1 {
-  font-size: 24px;
-  margin-bottom: 8px;
-}
-
-.welcome-content p {
-  opacity: 0.9;
-}
-
-.student-info {
+  background: rgba(255, 255, 255, 0.92);
   display: flex;
-  gap: 8px;
-}
-
-.student-info .el-tag {
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: #fff;
-}
-
-.quick-actions {
-  margin-bottom: 20px;
-}
-
-.action-card {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
-  background: #fff;
-  border-radius: 12px;
+  gap: 10px;
+  padding: 0 14px;
+  box-shadow: 0 12px 32px rgba(21, 42, 72, 0.1);
   cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-.action-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+.search-icon {
+  color: #cbd5e1;
+  font-size: 18px;
 }
 
-.action-card span {
-  margin-top: 12px;
-  color: #606266;
+.search-text {
   font-size: 14px;
-}
-
-.dashboard-card {
-  height: 100%;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.todo-list, .notice-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.todo-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: #f5f7fa;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.todo-item:hover {
-  background: #ecf5ff;
-}
-
-.todo-icon {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #fff;
-  border-radius: 50%;
-  color: #409EFF;
-}
-
-.todo-content {
+  color: #cbd5e1;
   flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.todo-title {
+.content {
+  max-width: 1200px;
+  margin: -36px auto 0;
+  padding: 0 16px 28px;
+}
+
+.banner {
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1677ff 0%, #4096ff 100%);
+  padding: 18px 18px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  box-shadow: 0 12px 32px rgba(21, 42, 72, 0.1);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.banner-text {
+  color: #ffffff;
+}
+
+.banner-line {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.banner-sub {
+  margin-top: 10px;
   font-size: 14px;
-  color: #303133;
-  margin-bottom: 4px;
+  opacity: 0.92;
 }
 
-.todo-deadline {
-  font-size: 12px;
-  color: #909399;
+.banner-illu {
+  flex-shrink: 0;
+  opacity: 0.95;
+}
+
+.feature-card {
+  margin-top: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 16px;
+  padding: 16px 12px;
+  box-shadow: 0 12px 32px rgba(21, 42, 72, 0.07);
+  backdrop-filter: blur(6px);
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px 10px;
+}
+
+.feature-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.feature-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #e6f7ff;
+  border: 1px solid #edf1f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1677ff;
+  box-shadow: 0 12px 32px rgba(22, 119, 255, 0.12);
+  font-size: 22px;
+}
+
+.feature-name {
+  font-size: 14px;
+  color: #1f2d3d;
+  font-weight: 600;
+}
+
+.section {
+  margin-top: 14px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(21, 42, 72, 0.07);
+  overflow: hidden;
+}
+
+.section-head {
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #edf1f6;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1f2d3d;
+}
+
+.section-more {
+  font-size: 14px;
+  color: #8a98aa;
+  cursor: pointer;
+  user-select: none;
+}
+
+.list {
+  padding: 8px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 12px;
+  border-radius: 14px;
+  background: #f8f9fb;
+  border: 1px solid #edf1f6;
+  cursor: pointer;
+}
+
+.list-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #e6f7ff;
+  color: #1677ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.list-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2d3d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list-sub {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #8a98aa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list-side {
+  flex-shrink: 0;
+}
+
+.status {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+
+.status-pending {
+  color: #faad14;
+  background: #fff7e6;
+}
+
+.status-reviewing {
+  color: #1677ff;
+  background: #e6f7ff;
+}
+
+.status-completed {
+  color: #52c41a;
+  background: #f6ffed;
+}
+
+.notice-list {
+  padding: 6px 16px 14px;
+  display: flex;
+  flex-direction: column;
 }
 
 .notice-item {
-  padding: 12px;
-  background: #f5f7fa;
-  border-radius: 8px;
+  padding: 14px 0;
+  border-bottom: 1px solid #edf1f6;
   cursor: pointer;
-  transition: background 0.3s;
 }
 
-.notice-item:hover {
-  background: #ecf5ff;
+.notice-item:last-child {
+  border-bottom: none;
 }
 
 .notice-title {
-  font-size: 14px;
-  color: #303133;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2d3d;
+  line-height: 1.4;
 }
 
 .notice-meta {
+  margin-top: 10px;
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
-  color: #909399;
+  gap: 12px;
+  font-size: 13px;
+  color: #8a98aa;
 }
 
-.bottom-section {
-  margin-top: 20px;
+.notice-source,
+.notice-time {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.progress-section {
+.empty {
+  padding: 18px 0 6px;
   text-align: center;
-}
-
-.progress-title {
-  font-size: 16px;
-  color: #303133;
-  margin-bottom: 16px;
-}
-
-.progress-node {
-  margin-top: 12px;
+  color: #8a98aa;
   font-size: 14px;
-  color: #606266;
 }
 
-.academic-summary {
-  display: flex;
-  justify-content: space-around;
-  margin-bottom: 16px;
-}
-
-.stat-item {
+.footer {
+  margin-top: 14px;
+  padding: 16px 0 10px;
   text-align: center;
-}
-
-.stat-value {
-  font-size: 24px;
-  color: #409EFF;
-  font-weight: bold;
-}
-
-.stat-label {
+  color: #8a98aa;
   font-size: 12px;
-  color: #909399;
-  margin-top: 4px;
 }
 
-.affairs-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
+@media (max-width: 520px) {
+  .feature-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px 6px;
+  }
+
+  .feature-name {
+    font-size: 13px;
+  }
+
+  .banner-line {
+    font-size: 20px;
+  }
 }
 
-.affair-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: #f5f7fa;
-  border-radius: 6px;
-}
+@media (min-width: 900px) {
+  .hero {
+    padding: 24px 20px 72px;
+  }
 
-.affair-title {
-  font-size: 14px;
-  color: #606266;
-}
+  .hero-title {
+    font-size: 22px;
+  }
 
-.apply-btn {
-  width: 100%;
+  .content {
+    margin-top: -44px;
+    padding: 0 20px 32px;
+  }
+
+  .banner {
+    padding: 22px 22px 18px;
+  }
+
+  .banner-line {
+    font-size: 26px;
+  }
+
+  .feature-card {
+    padding: 18px 14px;
+  }
+
+  .feature-icon {
+    width: 58px;
+    height: 58px;
+  }
 }
 </style>

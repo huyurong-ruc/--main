@@ -1,118 +1,44 @@
 /* sub-pages/search/index.wxss */
 .container {
+  background: #ffffff;
   min-height: 100vh;
-  background: #f5f5f5;
 }
 
-/* 搜索框 */
-.search-bar {
+.search-header {
   display: flex;
   align-items: center;
-  background: #ffffff;
-  padding: 24rpx 32rpx;
+  padding: 20rpx 32rpx;
+  gap: 24rpx;
+}
+
+.search-input-box {
+  flex: 1;
+  background: #f4f7fb;
+  height: 72rpx;
+  border-radius: 36rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 24rpx;
+  gap: 12rpx;
 }
 
 .search-input {
   flex: 1;
-  height: 72rpx;
-  background: #f5f5f5;
-  border-radius: 36rpx;
-  padding: 0 32rpx;
-  font-size: 28rpx;
-}
-
-.search-btn {
-  margin-left: 24rpx;
-  background: #1677ff;
-  color: #ffffff;
-  font-size: 28rpx;
-  padding: 0 32rpx;
-  height: 72rpx;
-  line-height: 72rpx;
-  border-radius: 36rpx;
-  border: none;
-}
-
-/* 结果Tab */
-.result-tabs {
-  display: flex;
-  background: #ffffff;
-  padding: 0 32rpx;
-  border-bottom: 1rpx solid #f0f0f0;
-}
-
-.tab-item {
-  flex: 1;
-  text-align: center;
-  padding: 24rpx 0;
-  font-size: 28rpx;
-  color: #666;
-}
-
-.tab-item.active {
-  color: #1677ff;
-  font-weight: 600;
-  border-bottom: 4rpx solid #1677ff;
-}
-
-/* 结果列表 */
-.result-list {
-  padding: 24rpx;
-}
-
-.result-item {
-  background: #ffffff;
-  padding: 32rpx;
-  border-radius: 16rpx;
-  margin-bottom: 24rpx;
-}
-
-.result-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.result-title {
-  font-size: 30rpx;
-  color: #333;
-  font-weight: 500;
-  display: block;
-}
-
-.result-desc {
   font-size: 26rpx;
-  color: #666;
-  margin-top: 12rpx;
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: #1f2d3d;
 }
 
-.result-meta {
-  display: flex;
-  align-items: center;
-  margin-top: 16rpx;
-}
-
-.result-type {
-  font-size: 22rpx;
+.cancel-btn {
+  font-size: 28rpx;
   color: #1677ff;
-  background: #e6f0ff;
-  padding: 4rpx 16rpx;
-  border-radius: 4rpx;
 }
 
-.result-time {
-  font-size: 24rpx;
-  color: #999;
-  margin-left: 24rpx;
+.search-entry {
+  padding: 40rpx 32rpx;
 }
 
-/* 历史/热门区域 */
-.history-section,
-.hot-section {
-  padding: 32rpx;
+.section {
+  margin-bottom: 60rpx;
 }
 
 .section-header {
@@ -124,41 +50,116 @@
 
 .section-title {
   font-size: 28rpx;
-  font-weight: 600;
-  color: #333;
-}
-
-.clear-btn {
-  font-size: 26rpx;
-  color: #999;
+  font-weight: 700;
+  color: #1f2d3d;
 }
 
 .tag-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 24rpx;
+  gap: 20rpx;
 }
 
-.tag-item {
-  background: #ffffff;
-  padding: 16rpx 32rpx;
-  border-radius: 8rpx;
-  font-size: 26rpx;
-  color: #666;
+.tag {
+  background: #f4f7fb;
+  padding: 12rpx 28rpx;
+  border-radius: 32rpx;
+  font-size: 24rpx;
+  color: #58677d;
 }
 
-.tag-item.hot {
-  background: #fff5f5;
-  color: #ff6b6b;
+.result-tabs {
+  display: flex;
+  border-bottom: 1rpx solid #edf1f6;
+  height: 88rpx;
+  align-items: center;
 }
 
-/* 空状态 */
-.empty-result,
-.loading-state {
+.tab-item {
+  flex: 1;
+  text-align: center;
+  font-size: 28rpx;
+  color: #58677d;
+  position: relative;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 200rpx 0;
-  color: #999;
+}
+
+.tab-item.active {
+  color: #1677ff;
+  font-weight: 700;
+}
+
+.tab-line {
+  position: absolute;
+  bottom: 0;
+  width: 40rpx;
+  height: 6rpx;
+  background: #1677ff;
+  border-radius: 3rpx;
+}
+
+.result-list {
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.result-card {
+  display: flex;
+  gap: 24rpx;
+  padding: 30rpx;
+  background: #ffffff;
+  border-bottom: 1rpx solid #edf1f6;
+}
+
+.card-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.card-icon.faq { background: #1677ff; }
+.card-icon.policy { background: #1890ff; }
+.card-icon.notice { background: #2f54eb; }
+.card-icon.template { background: #13c2c2; }
+
+.card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.card-title {
   font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2d3d;
+  line-height: 1.4;
+}
+
+.card-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 22rpx;
+  color: #8a98aa;
+}
+
+.meta-source,
+.meta-time {
+  min-width: 0;
+  max-width: 300rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

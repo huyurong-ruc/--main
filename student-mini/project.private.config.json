@@ -19,5 +19,8 @@
     "ignoreDevUnusedFiles": true,
     "bigPackageSizeSupport": false,
     "useIsolateContext": true
-  }
+  },
+  "cloudfunctionRoot": "cloudfunctions/",
+  "cloudfunctionTemplateRoot": "cloudfunctionTemplate/",
+  "env": "cloud1-d4gd8z2wa70a64845"
 }

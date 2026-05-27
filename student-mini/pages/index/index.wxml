@@ -1,63 +1,81 @@
 <!-- pages/index/index.wxml -->
 <view class="container">
-  <view class="welcome-bar">
-    <view class="welcome-info">
-      <text class="welcome-text">您好，{{userInfo.name || '同学'}}</text>
-      <text class="welcome-date">{{date}}</text>
-    </view>
-    <view class="message-btn" bindtap="goToMessage">
-      <text class="message-icon">🔔</text>
-      <text class="message-badge" wx:if="{{unreadCount > 0}}">{{unreadCount}}</text>
+  <!-- 顶部背景与搜索 -->
+  <view class="header-section">
+    <view class="page-title">综合管理平台</view>
+    <view class="search-bar" bindtap="goToSearch">
+      <icon type="search" size="16" color="#cbd5e1" />
+      <text class="search-placeholder">搜索政策/通知/模板</text>
     </view>
   </view>
 
-  <swiper class="banner" indicator-dots autoplay circular>
-    <swiper-item wx:for="{{banners}}" wx:key="id">
-      <image src="{{item.image}}" mode="aspectFill" />
-    </swiper-item>
-  </swiper>
+  <!-- Banner -->
+  <view class="banner-box">
+    <swiper class="banner" indicator-dots autoplay circular indicator-active-color="#ffffff">
+      <swiper-item wx:for="{{banners}}" wx:key="id">
+        <view class="banner-item">
+          <image src="{{item.image}}" mode="aspectFill" class="banner-image" />
+          <view class="banner-content">
+            <text class="banner-title">一键触达 轻松办理</text>
+            <text class="banner-subtitle">一站式办理</text>
+          </view>
+        </view>
+      </swiper-item>
+    </swiper>
+  </view>
 
-  <!-- 功能入口 -->
-  <view class="entry-grid">
-    <view class="entry-item" bindtap="goToPolicy">
-      <text class="entry-icon">📋</text>
-      <text class="entry-name">政策文件</text>
-    </view>
-    <view class="entry-item" bindtap="goToAcademic">
-      <text class="entry-icon">📊</text>
-      <text class="entry-name">学业分析</text>
-    </view>
-    <view class="entry-item" bindtap="goToApply">
-      <text class="entry-icon">📝</text>
-      <text class="entry-name">证明申请</text>
-    </view>
-    <view class="entry-item" bindtap="goToParty">
-      <text class="entry-icon">🎗️</text>
-      <text class="entry-name">党团流程</text>
-    </view>
-    <view class="entry-item" bindtap="goToHonor">
-      <view class="entry-icon-badge">奖</view>
-      <view class="entry-text">
-        <text class="entry-name">奖助信息</text>
+  <!-- 功能网格 -->
+  <view class="grid-section">
+    <view class="grid-item" wx:for="{{navs}}" wx:key="name" bindtap="{{item.handler}}">
+      <view class="icon-box {{item.class}}">
+        <image
+          wx:if="{{item.class === 'faq'}}"
+          src="/static/images/icon-faq-question.svg"
+          class="icon-image"
+          mode="aspectFit"
+        />
+        <text wx:else class="icon-text">{{item.iconText}}</text>
       </view>
-    </view>
-    <view class="entry-item" bindtap="goToArchive">
-      <view class="entry-icon-badge">案</view>
-      <view class="entry-text">
-        <text class="entry-name">个人档案</text>
-      </view>
+      <text class="grid-name">{{item.name}}</text>
     </view>
   </view>
 
-  <view class="news-section">
+  <!-- 待办进度 -->
+  <view class="section">
     <view class="section-header">
-      <text class="section-title">最新动态</text>
+      <text class="section-title">待办进度</text>
+      <text class="section-more" bindtap="goToProgressMore">更多 ›</text>
+    </view>
+    <view class="progress-list">
+      <view class="progress-card" wx:for="{{pendingProgress}}" wx:key="id" bindtap="goToProgressDetail" data-item="{{item}}">
+        <view class="progress-icon {{item.typeClass}}">{{item.typeText}}</view>
+        <view class="progress-info">
+          <view class="progress-top">
+            <text class="progress-name">{{item.title}}</text>
+            <text wx:if="{{item.showRightStatus && item.status}}" class="progress-status {{item.statusClass}}">{{item.status}}</text>
+          </view>
+          <view class="progress-bottom">
+            <text class="progress-desc">{{item.desc}}</text>
+            <text class="progress-time">{{item.time}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 精选通知 -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">精选通知</text>
       <text class="section-more" bindtap="goToMessage">更多 ›</text>
     </view>
-    <view class="news-list">
-      <view wx:for="{{news}}" wx:key="id" class="news-item" bindtap="goToNewsDetail" data-id="{{item.id}}">
-        <text class="news-title">{{item.title}}</text>
-        <text class="news-time">{{item.time}}</text>
+    <view class="notice-list">
+      <view class="notice-item" wx:for="{{news}}" wx:key="id" bindtap="goToNewsDetail" data-id="{{item.id}}">
+        <text class="notice-title">{{item.title}}</text>
+        <view class="notice-meta">
+          <text class="notice-source">来源：{{item.source}}</text>
+          <text class="notice-time">发布时间：{{item.time}}</text>
+        </view>
       </view>
     </view>
   </view>

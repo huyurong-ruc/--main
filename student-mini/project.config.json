@@ -45,9 +45,11 @@
     "swc": false,
     "disableSWC": true
   },
+  "cloudfunctionRoot": "cloudfunctions/",
+  "cloudfunctionTemplateRoot": "cloudfunctionTemplate/",
   "compileType": "miniprogram",
   "libVersion": "3.15.2",
-  "appid": "wxef99bb4c2506a84c",
+  "appid": "wxbd7e4fd2fd066ef6",
   "projectname": "student-mini",
   "condition": {},
   "editorSetting": {

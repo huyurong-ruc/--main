@@ -75,6 +75,80 @@ const mockData = {
       ]
     }
   },
+
+  // 通知详情（消息页详情页使用）
+  '/student/notices/1': {
+    data: {
+      id: '1',
+      title: '待办通知',
+      badgeText: '待',
+      publishTime: '1分钟前',
+      publisher: '系统',
+      content: '您的申请已通过。\n\n请前往“证明申请”查看最新状态与下载入口。',
+      actionText: '前往我的证明/申请',
+      actionRoute: '/sub-pages/apply/list',
+      attachments: [
+        { id: 'a1', name: '申请回执.pdf', url: 'https://mp.weixin.qq.com/' }
+      ]
+    }
+  },
+  '/student/notices/2': {
+    data: {
+      id: '2',
+      title: '反馈通知',
+      badgeText: '反',
+      publishTime: '1分钟前',
+      publisher: '反馈中心',
+      content: '您的反馈已得到解答。\n\n点击查看详情可查看回复内容与处理结果。',
+      actionText: '前往反馈记录',
+      actionRoute: '/sub-pages/feedback/history',
+      attachments: []
+    }
+  },
+  '/student/notices/3': {
+    data: {
+      id: '3',
+      title: '个性化通知',
+      badgeText: '个',
+      publishTime: '1分钟前',
+      publisher: '人大就业',
+      tag: '就业',
+      content: '2026春季双选会即将开始！请关注报名时间与参会安排。',
+      originalUrl: 'https://mp.weixin.qq.com/s/XTi5Xu0SA36x1g3F6zF1Bg',
+      attachments: []
+    }
+  },
+
+  '/student/notices/jobfair-2026-spring': {
+    data: {
+      id: 'jobfair-2026-spring',
+      badgeText: '知',
+      title: '2026春季双选会即将开始！',
+      publishTime: '2026-03-25',
+      publisher: '人大就业',
+      content: '为做好2026届毕业生就业服务工作，现启动2026春季双选会相关安排。\n\n一、时间地点\n1. 时间：2026-04-12（周日）09:00-16:00\n2. 地点：世纪馆一层展厅\n\n二、参会方式\n请关注“人大就业”通知，按要求完成报名与材料提交。\n\n三、注意事项\n请携带学生证，提前15分钟入场，遵守现场秩序。',
+      originalUrl: 'https://mp.weixin.qq.com/s/XTi5Xu0SA36x1g3F6zF1Bg',
+      attachments: [
+        { id: 'a1', name: '参会须知.pdf', url: 'https://mp.weixin.qq.com/s/XTi5Xu0SA36x1g3F6zF1Bg' },
+        { id: 'a2', name: '企业名单.xlsx', url: 'https://mp.weixin.qq.com/s/XTi5Xu0SA36x1g3F6zF1Bg' }
+      ]
+    }
+  },
+
+  '/student/notices/innovation-2026': {
+    data: {
+      id: 'innovation-2026',
+      badgeText: '知',
+      title: '关于组织申报2026年中国人民大学“大学生创新训练计划”创业训练项目的通知',
+      publishTime: '2026-03-25',
+      publisher: '教务处',
+      content: '为进一步提升学生创新创业能力，现组织开展2026年“大学生创新训练计划”创业训练项目申报工作。\n\n一、申报对象\n在校本科生均可申报，鼓励跨学科团队。\n\n二、材料要求\n1. 项目申报书\n2. 团队成员信息表\n3. 指导教师意见\n\n三、时间节点\n1. 申报截止：2026-04-05 18:00\n2. 评审公示：2026-04-15\n\n请各单位按要求组织申报并按时提交材料。',
+      originalUrl: 'https://mp.weixin.qq.com/',
+      attachments: [
+        { id: 'a1', name: '项目申报书模板.docx', url: 'https://mp.weixin.qq.com/' }
+      ]
+    }
+  },
   
   // FAQ列表
   '/kb/faqs': {
@@ -101,6 +175,7 @@ const mockData = {
   '/affairs': {
     data: {
       list: [
+        { id: '3', typeName: '教师资格证申请', status: 'submitted', statusText: '审核中', createTime: '2026-03-25' },
         { id: '1', typeName: '在读证明', status: 'approved', statusText: '已通过', createTime: '2026-04-01' },
         { id: '2', typeName: '成绩单', status: 'submitted', statusText: '审核中', createTime: '2026-04-08' }
       ]
@@ -123,6 +198,23 @@ const mockData = {
         { id: '2', approverName: '教务处 李老师', status: 'completed', resultText: '通过', time: '2026-04-02 09:00', comment: '已盖章' }
       ],
       generatedFile: { name: '在读证明.pdf', url: '/files/proof.pdf' }
+    }
+  },
+
+  '/affairs/3': {
+    data: {
+      id: '3',
+      typeName: '教师资格证申请',
+      status: 'submitted',
+      statusText: '审核中',
+      purpose: '用于教师资格证认定材料',
+      remark: '',
+      createTime: '2026-03-25 09:20',
+      canCancel: true,
+      approvals: [
+        { id: '1', approverName: '学院教务老师', status: 'processing', resultText: '审核中', time: '2026-03-25 10:00', comment: '' }
+      ],
+      generatedFile: null
     }
   },
   
@@ -720,6 +812,39 @@ const getHonorMockData = (url, params = {}) => {
 }
 
 exports.getMockData = (url, params = {}, method = 'GET') => {
+  const testAccount = {
+    username: '2021001234',
+    password: 'Test1234',
+    role: 'STUDENT'
+  }
+
+  const plainPath = (url || '').split('?')[0]
+  if (plainPath === '/auth/login' && String(method).toUpperCase() === 'POST') {
+    const username = String((params || {}).username || '').trim()
+    const password = String((params || {}).password || '')
+    if (username === testAccount.username && password === testAccount.password) {
+      return {
+        success: true,
+        data: {
+          token: 'mock_token_12345',
+          userId: testAccount.username,
+          role: testAccount.role,
+          userInfo: {
+            id: testAccount.username,
+            name: '测试用户',
+            studentId: testAccount.username,
+            studentNo: testAccount.username,
+            role: testAccount.role,
+            avatar: '',
+            major: '计算机科学与技术',
+            grade: '2021级'
+          }
+        }
+      }
+    }
+    return { success: false, message: '账号或密码错误', data: null }
+  }
+
   const growthMock = getGrowthMockData(url, params, method)
   if (growthMock) {
     return growthMock
@@ -737,7 +862,7 @@ exports.getMockData = (url, params = {}, method = 'GET') => {
   }
   
   // 处理带参数的路径
-  const mockKey = url.split('?')[0]
+  const mockKey = plainPath
   if (mockData[mockKey]) {
     console.log('[Mock] 匹配到基础路径:', mockKey)
     return { data: mockData[mockKey].data, success: true }
