@@ -27,7 +27,7 @@ public class LatestNoticeDeliveryTarget extends BaseEntity {
     @Column
     private LocalDateTime sentAt;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String errorMessage;
 
     @Column(nullable = false)

@@ -33,7 +33,7 @@ public class LatestSysOperationLog {
     @Column(nullable = false, length = 64)
     private String operationType;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String operationDesc;
 
     @Column
@@ -60,10 +60,10 @@ public class LatestSysOperationLog {
     @Column(nullable = false, length = 16)
     private String resultStatus;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String errorMessage;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String extJson;
 
     @Column(nullable = false)

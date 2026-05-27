@@ -18,7 +18,7 @@ public class LatestNoticeItem extends BaseEntity {
     @Column(nullable = false, length = 256)
     private String title;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String content;
 
     @Column(length = 128)
@@ -36,7 +36,7 @@ public class LatestNoticeItem extends BaseEntity {
     @Column
     private Long createdBy;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String extJson;
 
     @Column(nullable = false)

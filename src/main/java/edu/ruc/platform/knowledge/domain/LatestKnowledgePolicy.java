@@ -18,10 +18,10 @@ public class LatestKnowledgePolicy extends BaseEntity {
     @Column(nullable = false, length = 256)
     private String title;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String summary;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String content;
 
     @Column(length = 32)
@@ -42,7 +42,7 @@ public class LatestKnowledgePolicy extends BaseEntity {
     @Column
     private Long createdBy;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String extJson;
 
     @Column(nullable = false)

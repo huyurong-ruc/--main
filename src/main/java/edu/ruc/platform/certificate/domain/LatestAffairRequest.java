@@ -27,10 +27,10 @@ public class LatestAffairRequest extends BaseEntity {
     @Column(nullable = false, length = 256)
     private String purpose;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String remark;
 
-    @Column
+    @Column(columnDefinition = "text")
     private String payloadJson;
 
     @Column(nullable = false, length = 32)

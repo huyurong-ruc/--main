@@ -30,7 +30,7 @@ public class KnowledgeQaTicket {
     @Column(length = 64)
     private String askName;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     private String questionText;
 
     @Column(nullable = false, length = 32)
@@ -51,4 +51,3 @@ public class KnowledgeQaTicket {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 }
-

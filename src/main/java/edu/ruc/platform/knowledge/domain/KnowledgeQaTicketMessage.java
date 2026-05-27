@@ -30,10 +30,9 @@ public class KnowledgeQaTicketMessage {
     @Column(length = 32)
     private String actorRole;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     private String messageText;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
 }
-
