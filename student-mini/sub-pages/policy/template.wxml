@@ -8,27 +8,46 @@
     <view class="hero-medal">模</view>
   </view>
 
-  <view wx:if="{{selectedTemplate}}" class="detail-card">
-    <view class="detail-head">
-      <view>
-        <text class="detail-title">{{selectedTemplate.title}}</text>
-        <text class="detail-desc">{{selectedTemplate.description}}</text>
+  <swiper
+    wx:if="{{templates.length > 0}}"
+    class="detail-swiper"
+    current="{{selectedIndex}}"
+    indicator-dots
+    circular
+    previous-margin="0rpx"
+    next-margin="0rpx"
+    bindchange="onTemplateSwiperChange"
+  >
+    <swiper-item wx:for="{{templates}}" wx:key="id" class="detail-swiper-item">
+      <view class="detail-card">
+        <view class="detail-content">
+          <view class="detail-head">
+            <view class="detail-head-main">
+              <text class="detail-title">{{item.title}}</text>
+              <text class="detail-desc">{{item.description}}</text>
+            </view>
+            <text class="detail-tag">{{item.fileType}}</text>
+          </view>
+          <view class="detail-meta">
+            <text class="detail-meta-item">来源：{{item.department}}</text>
+            <text class="detail-meta-item">大小：{{item.fileSize}}</text>
+            <text class="detail-meta-item">更新：{{item.updatedAt || '-'}}</text>
+            <text wx:if="{{item.templateCode}}" class="detail-meta-item">编码：{{item.templateCode}}</text>
+          </view>
+          <text class="swipe-tip">左右滑动可切换模板，点击下方按钮即可下载当前模板</text>
+        </view>
+        <view class="detail-actions">
+          <button
+            class="download-btn"
+            bindtap="handleDownload"
+            data-id="{{item.id}}"
+            loading="{{downloading && selectedTemplate && selectedTemplate.id === item.id}}"
+            disabled="{{downloading}}"
+          >下载当前模板</button>
+        </view>
       </view>
-      <text class="detail-tag">{{selectedTemplate.fileType}}</text>
-    </view>
-    <view class="detail-meta">
-      <text class="detail-meta-item">来源：{{selectedTemplate.department}}</text>
-      <text class="detail-meta-item">大小：{{selectedTemplate.fileSize}}</text>
-      <text class="detail-meta-item">更新：{{selectedTemplate.updatedAt || '-'}}</text>
-    </view>
-    <button
-      class="download-btn"
-      bindtap="handleDownload"
-      data-id="{{selectedTemplate.id}}"
-      loading="{{downloading}}"
-      disabled="{{downloading}}"
-    >下载当前模板</button>
-  </view>
+    </swiper-item>
+  </swiper>
 
   <view class="section-title">模板列表</view>
 

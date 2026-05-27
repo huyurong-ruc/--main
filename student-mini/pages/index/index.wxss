@@ -1,4 +1,11 @@
 /* pages/index/index.wxss */
+.container {
+  min-height: 100vh;
+  background: var(--bg-color);
+  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
 .header-section {
   background: var(--primary-gradient);
   padding: 32rpx 32rpx 120rpx;
@@ -45,33 +52,60 @@
   width: 100%;
   height: 100%;
   position: relative;
+  background: #1f6fd6;
 }
 
 .banner-image {
   width: 100%;
   height: 100%;
   background: #1677ff;
+  transform: scale(1.12);
+  transform-origin: center center;
 }
 
 .banner-content {
   position: absolute;
-  left: 40rpx;
-  top: 50%;
-  transform: translateY(-50%);
+  left: 36rpx;
+  top: 32rpx;
+  bottom: 32rpx;
+  width: 240rpx;
   color: #ffffff;
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 12rpx;
+  z-index: 2;
 }
 
 .banner-title {
-  font-size: 36rpx;
+  font-size: 32rpx;
   font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 1rpx;
 }
 
 .banner-subtitle {
-  font-size: 24rpx;
-  opacity: 0.9;
+  font-size: 22rpx;
+  opacity: 0.92;
+  line-height: 1.6;
+  letter-spacing: 0.5rpx;
+}
+
+.banner-action {
+  margin-top: 8rpx;
+  min-width: 128rpx;
+  height: 48rpx;
+  padding: 0 20rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2rpx solid rgba(255, 255, 255, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  font-weight: 600;
+  letter-spacing: 0.5rpx;
 }
 
 .grid-section {
@@ -124,6 +158,11 @@
   margin-top: 24rpx;
   background: #ffffff;
   padding: 32rpx;
+  box-sizing: border-box;
+}
+
+.section:last-child {
+  margin-bottom: 0;
 }
 
 .section-header {
@@ -239,4 +278,10 @@
   justify-content: space-between;
   font-size: 22rpx;
   color: #8a98aa;
+}
+
+@supports (padding-bottom: constant(safe-area-inset-bottom)) {
+  .container {
+    padding-bottom: calc(160rpx + constant(safe-area-inset-bottom));
+  }
 }

@@ -15,6 +15,10 @@ const {
   getApplyPendingSummary,
   buildWorkflowNodes
 } = require('./apply-business')
+const {
+  getTemplateCenterItems,
+  findTemplateCenterItemById
+} = require('./template-center')
 
 // 统一使用 CommonJS 语法，避免 ES6/CommonJS 混用导致问题
 const mockData = {
@@ -560,6 +564,7 @@ const honorRecipients = [
 ]
 
 const applyTemplates = getApplyTypeOptions()
+const templateCenterItems = getTemplateCenterItems()
 
 let applyRequestSeed = 3
 let applyRequests = [
@@ -1069,6 +1074,10 @@ exports.getMockData = (url, params = {}, method = 'GET') => {
     return { success: true, data: applyTemplates }
   }
 
+  if (plainPath === '/certificate-templates/active' && String(method).toUpperCase() === 'GET') {
+    return { success: true, data: templateCenterItems }
+  }
+
   if (plainPath === '/student/party-progress' && String(method).toUpperCase() === 'GET') {
     const studentId = String((params || {}).studentId || '2023100001')
     const flowState = getPartyFlowState(studentId)
@@ -1098,6 +1107,15 @@ exports.getMockData = (url, params = {}, method = 'GET') => {
   const templateDetailMatch = plainPath.match(/^\/knowledge\/templates\/([^/]+)$/)
   if (templateDetailMatch && String(method).toUpperCase() === 'GET') {
     const target = applyTemplates.find((item) => item.id === templateDetailMatch[1])
+    if (!target) {
+      return { success: false, message: '模板不存在', data: null }
+    }
+    return { success: true, data: target }
+  }
+
+  const certificateTemplateDetailMatch = plainPath.match(/^\/certificate-templates\/([^/]+)$/)
+  if (certificateTemplateDetailMatch && String(method).toUpperCase() === 'GET') {
+    const target = findTemplateCenterItemById(certificateTemplateDetailMatch[1])
     if (!target) {
       return { success: false, message: '模板不存在', data: null }
     }

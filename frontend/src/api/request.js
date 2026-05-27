@@ -4,7 +4,7 @@
  */
 
 import axios from 'axios'
-import { ElMessage, ElNotification } from 'element-plus'
+import { ElMessage } from 'element-plus'
 
 // 创建 axios 实例
 const service = axios.create({
@@ -48,6 +48,11 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   response => {
+    const responseType = response.config?.responseType
+    if (responseType === 'blob' || responseType === 'arraybuffer') {
+      return response
+    }
+
     const res = response.data
     
     // 根据业务状态码判断

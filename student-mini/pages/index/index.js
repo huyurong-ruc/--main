@@ -24,7 +24,14 @@ Page({
   data: {
     userInfo: null,
     banners: [
-      { id: 1, image: '/static/images/banner2.png' }
+      {
+        id: 1,
+        image: '/static/images/home-banner-final.png',
+        showOverlay: false,
+        title: '一键触达 轻松办理',
+        subtitle: '一站式办理',
+        actionText: '立即进入'
+      }
     ],
     navs: [
       { name: '政策库', iconText: '📋', class: 'policy', handler: 'goToPolicy' },

@@ -5,6 +5,44 @@
 
 import request from './request'
 
+function extractFileNameFromDisposition(disposition = '') {
+  if (!disposition) return ''
+
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1])
+    } catch (error) {
+      console.warn('解析下载文件名失败:', error)
+    }
+  }
+
+  const asciiMatch = disposition.match(/filename="?([^"]+)"?/i)
+  return asciiMatch?.[1] || ''
+}
+
+export function triggerBrowserDownload(response, fallbackFileName = 'download') {
+  const blob = response?.data instanceof Blob
+    ? response.data
+    : new Blob([response?.data])
+  const disposition = response?.headers?.['content-disposition'] || ''
+  const contentType = response?.headers?.['content-type'] || blob.type || 'application/octet-stream'
+  const fileName = extractFileNameFromDisposition(disposition) || fallbackFileName
+  const downloadBlob = blob.type === contentType ? blob : new Blob([blob], { type: contentType })
+  const objectUrl = window.URL.createObjectURL(downloadBlob)
+  const link = document.createElement('a')
+
+  link.href = objectUrl
+  link.download = fileName
+  link.style.display = 'none'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(objectUrl)
+
+  return fileName
+}
+
 // ============ 认证模块 ============
 
 /**
@@ -235,8 +273,19 @@ export function cancelRequest(id) {
  */
 export function getCertTemplates() {
   return request({
-    url: '/cert/templates',
+    url: '/certificate-templates/active',
     method: 'get'
+  })
+}
+
+/**
+ * 下载模板文件
+ */
+export function downloadCertificateTemplate(id) {
+  return request({
+    url: `/certificate-templates/${id}/download`,
+    method: 'get',
+    responseType: 'blob'
   })
 }
 

@@ -2,6 +2,16 @@
 const app = getApp()
 const { get } = require('../../api/request')
 
+function normalizeTemplateItem(item = {}) {
+  return {
+    id: String(item.id || ''),
+    title: item.title || item.templateName || '未命名模板',
+    description: item.description || `用于${item.certificateType || '证明'}模板下载`,
+    fileSize: item.fileSize || item.outputFormat || '-',
+    department: item.department || '学院服务平台'
+  }
+}
+
 Page({
   data: {
     activeTab: 0,
@@ -64,7 +74,7 @@ Page({
       url = '/student/notices'
     } else {
       // 模板下载 - 知识模板
-      url = '/knowledge/templates'
+      url = '/certificate-templates/active'
     }
     
     try {
@@ -89,7 +99,9 @@ Page({
         })
       } else {
         this.setData({
-          templateList: page === 1 ? list : [...this.data.templateList, ...list]
+          templateList: page === 1
+            ? list.map(normalizeTemplateItem)
+            : [...this.data.templateList, ...list.map(normalizeTemplateItem)]
         })
       }
       

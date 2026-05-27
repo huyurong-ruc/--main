@@ -28,10 +28,10 @@ exports.getNoticeDetail = (id) => get(`/student/notices/${id}`)
 /**
  * 获取模板列表
  */
-exports.getTemplates = (params) => get('/knowledge/templates', params)
+exports.getTemplates = (params) => get('/certificate-templates/active', params)
 
 /**
  * 获取模板详情/下载
  * @param {string} id - 模板ID
  */
-exports.getTemplateDetail = (id) => get(`/knowledge/templates/${id}`)
+exports.getTemplateDetail = (id) => get(`/certificate-templates/${id}`)

@@ -15,9 +15,10 @@
       <swiper-item wx:for="{{banners}}" wx:key="id">
         <view class="banner-item">
           <image src="{{item.image}}" mode="aspectFill" class="banner-image" />
-          <view class="banner-content">
-            <text class="banner-title">一键触达 轻松办理</text>
-            <text class="banner-subtitle">一站式办理</text>
+          <view wx:if="{{item.showOverlay}}" class="banner-content">
+            <text class="banner-title">{{item.title}}</text>
+            <text class="banner-subtitle">{{item.subtitle}}</text>
+            <view wx:if="{{item.actionText}}" class="banner-action">{{item.actionText}}</view>
           </view>
         </view>
       </swiper-item>
