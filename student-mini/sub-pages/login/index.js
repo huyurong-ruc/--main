@@ -10,16 +10,8 @@ function validatePassword(value = '') {
   if (/\s/.test(password)) {
     return { valid: false, message: '密码不能包含空格' }
   }
-  if (password.length < 8 || password.length > 20) {
-    return { valid: false, message: '密码需为8-20位字符' }
-  }
-  const hasLower = /[a-z]/.test(password)
-  const hasUpper = /[A-Z]/.test(password)
-  const hasDigit = /\d/.test(password)
-  const hasSymbol = /[^A-Za-z0-9]/.test(password)
-  const typeCount = [hasLower, hasUpper, hasDigit, hasSymbol].filter(Boolean).length
-  if (!hasDigit || typeCount < 2 || (!hasLower && !hasUpper)) {
-    return { valid: false, message: '需包含字母与数字，可包含符号增强安全性' }
+  if (password.length < 6 || password.length > 20) {
+    return { valid: false, message: '密码需为6-20位字符' }
   }
   return { valid: true, message: '' }
 }

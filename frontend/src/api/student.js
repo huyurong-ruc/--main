@@ -25,7 +25,7 @@ export function studentLogin(username, password) {
  */
 export function getCurrentStudent() {
   return request({
-    url: '/auth/current',
+    url: '/student/me',
     method: 'get'
   })
 }

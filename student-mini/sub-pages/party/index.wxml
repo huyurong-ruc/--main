@@ -24,11 +24,31 @@
     </view>
   </view>
 
+  <view wx:if="{{!canShowParty && hasAnyFlow}}" class="gate-card">
+    <text class="gate-title">{{partyGateState.title}}</text>
+    <text class="gate-desc">{{partyGateState.description}}</text>
+  </view>
+
   <view wx:if="{{loading}}" class="loading-state">
     <text>加载中...</text>
   </view>
 
   <block wx:else>
+    <view wx:if="{{!hasAnyFlow}}" class="card empty-block">
+      <image src="/static/illustrations/party.svg" class="empty-illustration" mode="aspectFit" />
+      <text class="empty-title">{{emptyState.title}}</text>
+      <text class="empty-desc">{{emptyState.description}}</text>
+    </view>
+
+    <block wx:elif="{{activeTab === 0 && !canShowParty}}">
+      <view class="card empty-block">
+        <image src="/static/illustrations/party.svg" class="empty-illustration" mode="aspectFit" />
+        <text class="empty-title">{{partyGateState.title}}</text>
+        <text class="empty-desc">{{partyGateState.description}}</text>
+      </view>
+    </block>
+
+    <block wx:else>
     <!-- 进度卡片 -->
     <view class="card progress-section" bindtap="goToProgress" data-type="{{activeTab === 0 ? 'party' : 'league'}}">
       <view class="section-header">
@@ -38,10 +58,13 @@
 
       <view class="timeline" wx:if="{{activeTab === 0 ? (partyProgress && partyProgress.stages.length > 0) : (leagueProgress && leagueProgress.stages.length > 0)}}">
         <view wx:for="{{activeTab === 0 ? partyProgress.stages : leagueProgress.stages}}" wx:key="id" class="timeline-item">
-          <view class="timeline-dot {{item.status}}"></view>
+          <view class="timeline-dot {{item.statusVariant}}"></view>
           <view class="timeline-content">
-            <text class="node-name">{{item.name}}</text>
-            <text class="node-status {{item.status}}">{{item.statusText}}</text>
+            <view class="node-main">
+              <text class="node-name">{{item.name}}</text>
+              <text class="node-time">预计完成：{{item.expectedTime || '-'}}</text>
+            </view>
+            <text class="node-status {{item.statusVariant}}">{{item.statusText}}</text>
           </view>
           <view class="timeline-line" wx:if="{{activeTab === 0 ? index < partyProgress.stages.length - 1 : index < leagueProgress.stages.length - 1}}"></view>
         </view>
@@ -52,6 +75,11 @@
         <text class="empty-title">暂无进度数据</text>
         <text class="empty-desc">尚未开启{{activeTab === 0 ? '入党' : '入团'}}流程</text>
       </view>
+    </view>
+
+    <view class="card readonly-card">
+      <text class="readonly-title">状态更新说明</text>
+      <text class="readonly-desc">{{teacherAuditTip}}</text>
     </view>
 
     <!-- 流程说明 -->
@@ -69,5 +97,6 @@
         </view>
       </view>
     </view>
+    </block>
   </block>
 </view>

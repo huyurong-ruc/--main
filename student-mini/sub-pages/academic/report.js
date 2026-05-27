@@ -1,11 +1,16 @@
 // sub-pages/academic/report.js
 const app = getApp()
-const { get } = require('../../api/request')
+const { getAcademicReport, getAcademicTranscriptStatus } = require('../../api/academic')
 
 Page({
   data: {
     report: null,
-    loading: true
+    loading: true,
+    transcriptStatus: {
+      hasCurrentTranscript: false,
+      hasHistoryTranscript: false,
+      canLoadReport: false
+    }
   },
   
   onLoad() {
@@ -13,22 +18,39 @@ Page({
       wx.redirectTo({ url: '/sub-pages/login/index' })
       return
     }
-    this.loadReport()
+    this.loadPageData()
   },
   
-  async loadReport() {
+  onShow() {
+    if (app.isLoggedIn()) {
+      this.loadPageData()
+    }
+  },
+
+  async loadPageData() {
     this.setData({ loading: true })
     
     try {
-      // 获取学生ID，使用后端 /academic/analysis/{studentId} 接口
       const studentId = app.globalData.userInfo?.studentId || app.globalData.userInfo?.id || 1
-      const res = await get(`/academic/analysis/${studentId}`)
-      this.setData({ report: res.data })
+      const statusRes = await getAcademicTranscriptStatus(studentId)
+      const transcriptStatus = statusRes.data || {}
+
+      if (!transcriptStatus.canLoadReport) {
+        this.setData({ transcriptStatus, report: null })
+        return
+      }
+
+      const res = await getAcademicReport(studentId)
+      this.setData({ report: res.data, transcriptStatus })
     } catch (e) {
       console.error('加载报告失败', e)
     } finally {
       this.setData({ loading: false })
     }
+  },
+
+  goToUpload() {
+    wx.navigateTo({ url: '/sub-pages/academic/upload' })
   },
   
   // 分享

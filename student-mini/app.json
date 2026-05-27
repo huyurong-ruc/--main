@@ -23,7 +23,8 @@
       "root": "sub-pages/policy",
       "pages": [
         "list",
-        "detail"
+        "detail",
+        "template"
       ]
     },
     {

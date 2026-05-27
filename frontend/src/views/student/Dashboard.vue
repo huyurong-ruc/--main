@@ -169,6 +169,26 @@ function getStatusText(status) {
   return map[status] || status
 }
 
+function mapPriorityToStatus(priority) {
+  const map = {
+    HIGH: 'pending',
+    MEDIUM: 'reviewing',
+    LOW: 'completed'
+  }
+  return map[priority] || 'reviewing'
+}
+
+function mapCertificateStatus(status) {
+  const normalized = String(status || '').toUpperCase()
+  const map = {
+    PENDING: 'pending',
+    SUBMITTED: 'pending',
+    IN_REVIEW: 'reviewing',
+    APPROVED: 'completed'
+  }
+  return map[normalized] || 'reviewing'
+}
+
 function getAffairStatusType(status) {
   const map = { 
     draft: 'info', 
@@ -195,6 +215,14 @@ function formatTime(time) {
 }
 
 function handleTodoClick(todo) {
+  if (todo.actionPath) {
+    router.push(todo.actionPath)
+    return
+  }
+  if (todo.type === 'certificate') {
+    router.push('/student/affairs')
+    return
+  }
   console.log('点击待办:', todo)
 }
 
@@ -203,45 +231,78 @@ async function loadDashboardData() {
   loading.value = true
   
   try {
-    // 实际API调用
-    // const res = await getStudentDashboard()
-    // if (res.success) {
-    //   const data = res.data
-    //   todos.value = data.todos || []
-    //   notices.value = data.notices || []
-    //   partyProgress.value = data.partyProgress
-    //   Object.assign(academicStats, data.academicStats)
-    //   affairs.value = data.affairs || []
-    // }
-    
-    // Mock 数据
+    const res = await getStudentDashboard()
+    const data = res?.data || {}
+
+    if (data.profile) {
+      Object.assign(userInfo, {
+        fullName: data.profile.name || studentStore.fullName || userInfo.fullName,
+        studentNo: data.profile.studentNo || studentStore.studentNo || userInfo.studentNo,
+        major: data.profile.major || userInfo.major
+      })
+    }
+
+    todos.value = (data.focusItems || []).map((item, index) => ({
+      id: `${item.type || 'focus'}-${index}`,
+      title: item.title,
+      deadline: '',
+      status: mapPriorityToStatus(item.priority),
+      actionPath: item.actionPath,
+      type: item.type
+    }))
+
+    if (todos.value.length === 0) {
+      todos.value = (data.certificateRequests || []).map((item) => ({
+        id: `certificate-${item.id}`,
+        title: item.certificateType,
+        deadline: '',
+        status: mapCertificateStatus(item.status),
+        actionPath: '/student/affairs',
+        type: 'certificate'
+      }))
+    }
+
+    notices.value = (data.notices || []).map((item) => ({
+      id: item.id,
+      title: item.title,
+      publishTime: item.publishTime,
+      department: Array.isArray(item.tags) && item.tags.length > 0 ? item.tags[0] : item.targetDescription,
+      important: item.priority === 'HIGH',
+      read: false
+    }))
+
+    partyProgress.value = data.partyProgress || null
+
+    affairs.value = (data.certificateRequests || []).map((item) => ({
+      id: item.id,
+      title: item.certificateType,
+      status: String(item.status || '').toLowerCase(),
+      statusText: item.status
+    }))
+  } catch (error) {
     todos.value = [
       { id: 1, title: '团费缴纳', deadline: '2026-05-01', status: 'pending' },
       { id: 2, title: '积极分子培训心得', deadline: '2026-05-15', status: 'pending' },
       { id: 3, title: '在学证明申请', deadline: '-', status: 'reviewing' }
     ]
-    
+
     notices.value = [
       { id: 1, title: '2026春季双选会即将开始！', publishTime: '2026-03-25', department: '人大就业', important: true, read: false },
       { id: 2, title: '关于组织申报2026年中国人民大学“大学生创业训练计划”创业训练项目的通知', publishTime: '2026-03-25', department: '教务处', important: false, read: true }
     ]
-    
+
     partyProgress.value = {
       flowName: '入党积极分子培训班',
       progress: 40,
       currentNode: '理论学习阶段'
     }
-    
-    academicStats.gpa = '3.72'
-    academicStats.credits = '85/160'
-    academicStats.rank = '前15%'
-    
+
     affairs.value = [
       { id: 1, title: '在学证明申请', status: 'approved', statusText: '已通过' },
       { id: 2, title: '缓考申请-线性代数', status: 'in_review', statusText: '审核中' }
     ]
-  } catch (error) {
-    ElMessage.error('加载数据失败')
+
+    ElMessage.error('加载数据失败，已切换为本地演示数据')
     console.error('加载首页数据失败:', error)
   } finally {
     loading.value = false

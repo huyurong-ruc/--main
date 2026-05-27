@@ -5,27 +5,51 @@
       <text class="hero-title">培养方案对比与预览</text>
       <text class="hero-subtitle">上传成绩单 (PDF) 即可获取学业报告，并自动推荐课程</text>
     </view>
-    <view class="hero-actions">
-      <button class="upload-btn">上传成绩单 (PDF)</button>
-      <button class="start-btn">开始上传</button>
+    <view class="hero-actions {{transcriptStatus.canLoadReport ? '' : 'single'}}">
+      <button class="upload-btn" bindtap="goToUpload">
+        上传成绩单
+        <text wx:if="{{!transcriptStatus.canLoadReport}}" class="upload-btn-tip">上传后立即生成分析报告</text>
+      </button>
+      <button class="start-btn" bindtap="goToReport" wx:if="{{transcriptStatus.canLoadReport}}">查看报告</button>
     </view>
   </view>
 
-  <view class="section">
+  <view class="status-card" wx:if="{{transcriptStatus.canLoadReport}}">
+    <view class="status-item" wx:if="{{transcriptStatus.hasCurrentTranscript}}">
+      <text class="status-label success">当前已上传</text>
+      <text class="status-value">{{transcriptStatus.currentTranscript.name}}</text>
+    </view>
+    <view class="status-item" wx:if="{{transcriptStatus.hasHistoryTranscript}}">
+      <text class="status-label history">历史记录</text>
+      <text class="status-value">已检测到过往成绩单，可继续查看已生成报告</text>
+    </view>
+  </view>
+
+  <view class="empty-card" wx:if="{{!loading && !transcriptStatus.canLoadReport}}">
+    <text class="empty-title">暂未检测到可用成绩单</text>
+    <text class="empty-desc">当前没有已上传的有效成绩单，数据库中也未找到过往成绩单记录。请先上传成绩单后再进行培养方案对比分析。</text>
+    <button class="empty-btn" bindtap="goToUpload">去上传成绩单</button>
+  </view>
+
+  <view class="section" wx:if="{{transcriptStatus.canLoadReport && report}}">
     <view class="section-header">
       <text class="section-title">最近报告</text>
     </view>
     <view class="report-list">
-      <view class="report-item" bindtap="goToDetail">
+      <view class="report-item" bindtap="goToReport">
         <view class="report-icon">学</view>
         <view class="report-info">
           <text class="report-name">培养方案对比报告</text>
           <view class="report-meta">
-            <text class="report-status">已得: 56 / 总分: 155</text>
-            <text class="report-time">时间: 2025-03-25</text>
+            <text class="report-status">已获: {{report.currentCredits}} / 总学分: {{report.totalCredits}}</text>
+            <text class="report-time">更新时间: {{report.updateTime}}</text>
           </view>
         </view>
       </view>
     </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-state">
+    <text>加载中...</text>
   </view>
 </view>

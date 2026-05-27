@@ -1,5 +1,5 @@
 const app = getApp()
-const { getAcademicOverview } = require('../../api/academic')
+const { getAcademicOverview, getAcademicTranscriptStatus } = require('../../api/academic')
 
 function normalizeReport(raw = {}) {
   const modules = (raw.modules || []).map((m) => ({
@@ -19,7 +19,12 @@ function normalizeReport(raw = {}) {
 Page({
   data: {
     report: null,
-    loading: false
+    loading: false,
+    transcriptStatus: {
+      hasCurrentTranscript: false,
+      hasHistoryTranscript: false,
+      canLoadReport: false
+    }
   },
 
   onLoad() {
@@ -27,21 +32,35 @@ Page({
       wx.redirectTo({ url: '/sub-pages/login/index' })
       return
     }
-    this.loadReport()
+    this.loadAcademicData()
   },
 
   onShow() {
     if (app.isLoggedIn()) {
-      this.loadReport()
+      this.loadAcademicData()
     }
   },
 
-  async loadReport() {
+  async loadAcademicData() {
     this.setData({ loading: true })
     try {
       const studentId = app.globalData.userInfo?.studentId || app.globalData.userInfo?.id
+      const statusRes = await getAcademicTranscriptStatus(studentId)
+      const transcriptStatus = statusRes.data || {}
+
+      if (!transcriptStatus.canLoadReport) {
+        this.setData({
+          transcriptStatus,
+          report: null
+        })
+        return
+      }
+
       const res = await getAcademicOverview(studentId)
-      this.setData({ report: normalizeReport(res.data) })
+      this.setData({
+        transcriptStatus,
+        report: res.data ? normalizeReport(res.data) : null
+      })
     } catch (e) {
       console.error('加载学业报告失败', e)
       wx.showToast({ title: '加载失败，请重试', icon: 'none' })
@@ -55,6 +74,10 @@ Page({
   },
 
   goToReport() {
+    if (!this.data.transcriptStatus.canLoadReport) {
+      wx.showToast({ title: '请先上传成绩单', icon: 'none' })
+      return
+    }
     wx.navigateTo({ url: '/sub-pages/academic/report' })
   }
 })

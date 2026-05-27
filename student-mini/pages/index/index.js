@@ -1,12 +1,27 @@
 // pages/index/index.js
 const app = getApp()
 const { get } = require('../../api/request')
+const { getPartyFlowState } = require('../../api/party-flow')
+
+const BASE_PENDING_PROGRESS = [
+  {
+    id: 1,
+    title: '盖章申请',
+    status: '审核中',
+    statusClass: 'warning',
+    showRightStatus: true,
+    typeText: '申',
+    typeClass: 'apply',
+    desc: '申请时间：2025-03-25',
+    time: ''
+  }
+]
 
 Page({
   data: {
     userInfo: null,
     banners: [
-      { id: 1, image: '/static/images/banner1.png' }
+      { id: 1, image: '/static/images/banner2.png' }
     ],
     navs: [
       { name: '智能检索', iconText: '🔍', class: 'search', handler: 'goToSearch' },
@@ -18,30 +33,7 @@ Page({
       { name: '通知聚合', iconText: '🔔', class: 'notice', handler: 'goToMessage' },
       { name: '常见问题', iconText: '❓', class: 'faq', handler: 'goToFaq' }
     ],
-    pendingProgress: [
-      { 
-        id: 1, 
-        title: '盖章申请', 
-        status: '审核中', 
-        statusClass: 'warning', 
-        showRightStatus: true,
-        typeText: '申', 
-        typeClass: 'apply', 
-        desc: '申请时间：2025-03-25',
-        time: ''
-      },
-      { 
-        id: 2, 
-        title: '入党进度 · 积极分子阶段', 
-        status: '距离“思想汇报”截止还有5天', 
-        statusClass: 'primary', 
-        showRightStatus: false,
-        typeText: '办', 
-        typeClass: 'party', 
-        desc: '距离“思想汇报”截止还有5天',
-        time: ''
-      }
-    ],
+    pendingProgress: BASE_PENDING_PROGRESS,
     news: [
       { id: 'jobfair-2026-spring', title: '2026春季双选会即将开始！', source: '人大就业', time: '2026-03-25' },
       { id: 'innovation-2026', title: '关于组织申报2026年中国人民大学“大学生创新训练计划”创业训练项目的通知', source: '教务处', time: '2026-03-25' }
@@ -54,6 +46,7 @@ Page({
       return
     }
     this.setData({ userInfo: app.globalData.userInfo })
+    this.syncPendingProgress()
     this.loadHomeData()
   },
 
@@ -62,6 +55,19 @@ Page({
     if (tabBar && tabBar.setData) {
       tabBar.setData({ selected: 0 })
     }
+    this.syncPendingProgress()
+  },
+
+  syncPendingProgress() {
+    const studentId = app.globalData.userInfo?.studentId || app.globalData.userInfo?.id
+    const flowState = getPartyFlowState(studentId)
+    const nextList = [...BASE_PENDING_PROGRESS]
+
+    if (flowState.homePartyCard) {
+      nextList.push(flowState.homePartyCard)
+    }
+
+    this.setData({ pendingProgress: nextList })
   },
   
   async loadHomeData() {
@@ -86,7 +92,7 @@ Page({
   
   goToSearch() { wx.navigateTo({ url: '/sub-pages/search/index' }) },
   goToPolicy() { wx.navigateTo({ url: '/sub-pages/policy/list' }) },
-  goToTemplate() { wx.navigateTo({ url: '/sub-pages/policy/list?tab=2' }) },
+  goToTemplate() { wx.navigateTo({ url: '/sub-pages/policy/template' }) },
   goToApply() { wx.navigateTo({ url: '/sub-pages/apply/list' }) },
   goToParty() { wx.navigateTo({ url: '/sub-pages/party/index' }) },
   goToAcademic() { wx.navigateTo({ url: '/sub-pages/academic/index' }) },

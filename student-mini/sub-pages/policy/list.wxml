@@ -78,6 +78,7 @@
         wx:key="id" 
         class="policy-card" 
         bindtap="downloadTemplate" 
+        data-id="{{item.id}}"
         data-url="{{item.fileUrl}}"
         data-name="{{item.title}}"
       >
@@ -90,7 +91,7 @@
         </view>
         <view class="card-footer">
           <text class="policy-time">文件大小: {{item.fileSize || '-'}}</text>
-          <text class="detail-link">立即下载 ›</text>
+          <text class="detail-link">查看模板 ›</text>
         </view>
       </view>
     </block>

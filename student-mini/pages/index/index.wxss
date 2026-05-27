@@ -111,8 +111,8 @@
 .icon-box.faq { background: #10239e; }
 
 .icon-image {
-  width: 44rpx;
-  height: 44rpx;
+  width: 36rpx;
+  height: 36rpx;
 }
 
 .grid-name {

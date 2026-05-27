@@ -1,6 +1,6 @@
 // sub-pages/academic/upload.js
 const app = getApp()
-const { post } = require('../../api/request')
+const { saveUploadedTranscript } = require('../../api/academic')
 
 Page({
   data: {
@@ -72,8 +72,27 @@ Page({
     }, 200)
     
     try {
+      const studentId = app.globalData.userInfo?.studentId || app.globalData.userInfo?.id
+
+      if (app.globalData.USE_MOCK) {
+        await new Promise((resolve) => setTimeout(resolve, 600))
+        clearInterval(progressTimer)
+        this.setData({ uploadProgress: 100 })
+        await saveUploadedTranscript(studentId, {
+          name: this.data.file.name,
+          size: this.data.file.size,
+          uploadTime: new Date().toISOString().replace('T', ' ').slice(0, 16)
+        })
+
+        wx.showToast({ title: '上传成功，已生成报告', icon: 'success' })
+        setTimeout(() => {
+          wx.navigateBack()
+        }, 1200)
+        return
+      }
+
       // 上传文件
-      const uploadRes = await new Promise((resolve, reject) => {
+      await new Promise((resolve, reject) => {
         wx.uploadFile({
           url: app.globalData.baseUrl + '/academic/upload',
           filePath: this.data.file.path,

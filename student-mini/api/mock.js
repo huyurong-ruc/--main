@@ -3,12 +3,14 @@
  * 将此文件配置到 request.js 中可拦截 API 请求返回模拟数据
  */
 
+const { getPartyFlowState } = require('./party-flow')
+
 // 统一使用 CommonJS 语法，避免 ES6/CommonJS 混用导致问题
 const mockData = {
   // 首页数据
   '/banners': {
     data: [
-      { id: 1, image: '/static/images/banner1.png', title: '欢迎使用学院服务平台' },
+      { id: 1, image: '/static/images/banner2.png', title: '欢迎使用学院服务平台' },
       { id: 2, image: '/static/images/banner2.png', title: '新学期开始了' }
     ]
   },
@@ -367,13 +369,17 @@ const mockData = {
   '/auth/login': {
     data: {
       token: 'mock_token_12345',
+      userId: '2023100001',
+      role: 'STUDENT',
       userInfo: {
-        id: '2021001234',
+        id: '2023100001',
         name: '张三',
-        studentId: '2021001234',
+        studentId: '2023100001',
+        studentNo: '2023100001',
+        role: 'STUDENT',
         avatar: '',
-        major: '计算机科学与技术',
-        grade: '2021级'
+        major: '计算机类',
+        grade: '2023级'
       }
     }
   },
@@ -382,13 +388,17 @@ const mockData = {
   '/auth/bindAccount': {
     data: {
       token: 'mock_token_12345',
+      userId: '2023100001',
+      role: 'STUDENT',
       userInfo: {
-        id: '2021001234',
+        id: '2023100001',
         name: '张三',
-        studentId: '2021001234',
+        studentId: '2023100001',
+        studentNo: '2023100001',
+        role: 'STUDENT',
         avatar: '',
-        major: '计算机科学与技术',
-        grade: '2021级'
+        major: '计算机类',
+        grade: '2023级'
       }
     }
   },
@@ -397,14 +407,44 @@ const mockData = {
   '/auth/bind': {
     data: {
       token: 'mock_token_12345',
+      userId: '2023100001',
+      role: 'STUDENT',
       userInfo: {
-        id: '2021001234',
+        id: '2023100001',
         name: '张三',
-        studentId: '2021001234',
+        studentId: '2023100001',
+        studentNo: '2023100001',
+        role: 'STUDENT',
         avatar: '',
-        major: '计算机科学与技术',
-        grade: '2021级'
+        major: '计算机类',
+        grade: '2023级'
       }
+    }
+  },
+
+  '/auth/me': {
+    data: {
+      userId: '2023100001',
+      studentId: '2023100001',
+      username: '2023100001',
+      role: 'STUDENT',
+      studentNo: '2023100001',
+      name: '张三',
+      major: '计算机类',
+      grade: '2023级'
+    }
+  },
+
+  '/auth/current': {
+    data: {
+      userId: '2023100001',
+      studentId: '2023100001',
+      username: '2023100001',
+      role: 'STUDENT',
+      studentNo: '2023100001',
+      name: '张三',
+      major: '计算机类',
+      grade: '2023级'
     }
   }
 }
@@ -506,6 +546,152 @@ const honorRecipients = [
     attachments: []
   }
 ]
+
+const applyTemplates = [
+  {
+    id: 'tpl-read-cert',
+    title: '在读证明申请模板',
+    description: '适用于奖学金、签证、实习等在读证明申请场景',
+    fileSize: '168 KB',
+    fileType: 'DOCX',
+    updatedAt: '2026-04-12 10:00',
+    department: '学生事务中心',
+    fileUrl: 'https://example.com/templates/read-cert.docx'
+  },
+  {
+    id: 'tpl-transcript',
+    title: '成绩单申请模板',
+    description: '适用于升学、留学和资格审核等成绩单申请场景',
+    fileSize: '224 KB',
+    fileType: 'DOCX',
+    updatedAt: '2026-04-10 09:30',
+    department: '教务处',
+    fileUrl: 'https://example.com/templates/transcript.docx'
+  },
+  {
+    id: 'tpl-teacher-qualification',
+    title: '教师资格证申请模板',
+    description: '适用于教师资格认定材料准备与信息填报',
+    fileSize: '196 KB',
+    fileType: 'DOCX',
+    updatedAt: '2026-04-08 15:20',
+    department: '学院教务办公室',
+    fileUrl: 'https://example.com/templates/teacher-qualification.docx'
+  }
+]
+
+let applyRequestSeed = 3
+let applyRequests = [
+  {
+    id: '3',
+    studentId: 10001,
+    certificateType: '教师资格证申请',
+    status: 'SUBMITTED',
+    createdAt: '2026-03-25 09:20',
+    purpose: '用于教师资格证认定材料',
+    remark: '',
+    generatedPdfPath: null
+  },
+  {
+    id: '2',
+    studentId: 10001,
+    certificateType: '成绩单',
+    status: 'IN_REVIEW',
+    createdAt: '2026-04-08 11:15',
+    purpose: '用于研究生复试材料',
+    remark: '',
+    generatedPdfPath: null
+  },
+  {
+    id: '1',
+    studentId: 10001,
+    certificateType: '在读证明',
+    status: 'APPROVED',
+    createdAt: '2026-04-01 10:30',
+    purpose: '用于申请签证',
+    remark: '',
+    generatedPdfPath: '/files/proof.pdf'
+  }
+]
+
+const APPLY_STATUS_META = {
+  SUBMITTED: { label: '待处理', detailLabel: '审核中', className: 'warning', canCancel: true },
+  IN_REVIEW: { label: '审核中', detailLabel: '审核中', className: 'warning', canCancel: true },
+  APPROVED: { label: '已通过', detailLabel: '已通过', className: 'success', canCancel: false },
+  REJECTED: { label: '已驳回', detailLabel: '已驳回', className: 'danger', canCancel: false },
+  CANCELED: { label: '已撤回', detailLabel: '已撤回', className: 'default', canCancel: false }
+}
+
+const formatMockDateTime = (date = new Date()) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hour = String(date.getHours()).padStart(2, '0')
+  const minute = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hour}:${minute}`
+}
+
+const getApplyStatusMeta = (status) => APPLY_STATUS_META[String(status || '').toUpperCase()] || {
+  label: '处理中',
+  detailLabel: '处理中',
+  className: 'warning',
+  canCancel: true
+}
+
+const buildApplyListRecord = (item) => ({
+  id: item.id,
+  studentId: item.studentId,
+  certificateType: item.certificateType,
+  status: item.status,
+  createdAt: item.createdAt,
+  purpose: item.purpose,
+  remark: item.remark,
+  generatedPdfPath: item.generatedPdfPath
+})
+
+const buildAffairListRecord = (item) => {
+  const statusMeta = getApplyStatusMeta(item.status)
+  return {
+    id: item.id,
+    typeName: item.certificateType,
+    status: String(item.status || '').toLowerCase(),
+    statusText: statusMeta.label,
+    createTime: item.createdAt ? item.createdAt.slice(0, 10) : ''
+  }
+}
+
+const buildAffairDetail = (item) => {
+  const statusMeta = getApplyStatusMeta(item.status)
+  const approvals = []
+
+  if (String(item.status).toUpperCase() === 'APPROVED') {
+    approvals.push(
+      { id: '1', approverName: '辅导员 张老师', status: 'completed', resultText: '通过', time: item.createdAt, comment: '材料齐全' },
+      { id: '2', approverName: '教务处 李老师', status: 'completed', resultText: '通过', time: '2026-04-02 09:00', comment: '已完成盖章' }
+    )
+  } else if (String(item.status).toUpperCase() === 'CANCELED') {
+    approvals.push(
+      { id: '1', approverName: '系统', status: 'completed', resultText: '已撤回', time: formatMockDateTime(), comment: '申请人主动撤回' }
+    )
+  } else {
+    approvals.push(
+      { id: '1', approverName: '学院教务老师', status: 'processing', resultText: '审核中', time: item.createdAt, comment: '' }
+    )
+  }
+
+  return {
+    id: item.id,
+    typeName: item.certificateType,
+    status: String(item.status || '').toLowerCase(),
+    statusText: statusMeta.detailLabel,
+    purpose: item.purpose || '',
+    remark: item.remark || '',
+    createTime: item.createdAt,
+    canCancel: statusMeta.canCancel,
+    approvals,
+    generatedFile: item.generatedPdfPath ? { name: `${item.certificateType}.pdf`, url: item.generatedPdfPath } : null
+  }
+}
 
 const growthModules = [
   { moduleCode: 'award-support', moduleName: '奖助情况', editMode: 'DISABLED', editModeLabel: '禁止修改' },
@@ -812,37 +998,149 @@ const getHonorMockData = (url, params = {}) => {
 }
 
 exports.getMockData = (url, params = {}, method = 'GET') => {
-  const testAccount = {
-    username: '2021001234',
-    password: 'Test1234',
-    role: 'STUDENT'
-  }
+  const testAccounts = [
+    {
+      username: '2023100001',
+      password: '123456',
+      name: '张三',
+      role: 'STUDENT'
+    },
+    {
+      username: '2023100002',
+      password: '123456',
+      name: '李四',
+      role: 'STUDENT'
+    }
+  ]
 
   const plainPath = (url || '').split('?')[0]
   if (plainPath === '/auth/login' && String(method).toUpperCase() === 'POST') {
     const username = String((params || {}).username || '').trim()
     const password = String((params || {}).password || '')
-    if (username === testAccount.username && password === testAccount.password) {
+    const matchedAccount = testAccounts.find((item) => item.username === username && item.password === password)
+    if (matchedAccount) {
       return {
         success: true,
         data: {
           token: 'mock_token_12345',
-          userId: testAccount.username,
-          role: testAccount.role,
+          userId: matchedAccount.username,
+          role: matchedAccount.role,
           userInfo: {
-            id: testAccount.username,
-            name: '测试用户',
-            studentId: testAccount.username,
-            studentNo: testAccount.username,
-            role: testAccount.role,
+            id: matchedAccount.username,
+            name: matchedAccount.name,
+            studentId: matchedAccount.username,
+            studentNo: matchedAccount.username,
+            role: matchedAccount.role,
             avatar: '',
-            major: '计算机科学与技术',
-            grade: '2021级'
+            major: '计算机类',
+            grade: '2023级'
           }
         }
       }
     }
     return { success: false, message: '账号或密码错误', data: null }
+  }
+
+  if (plainPath === '/knowledge/templates' && String(method).toUpperCase() === 'GET') {
+    return { success: true, data: applyTemplates }
+  }
+
+  if (plainPath === '/student/party-progress' && String(method).toUpperCase() === 'GET') {
+    const studentId = String((params || {}).studentId || '2023100001')
+    const flowState = getPartyFlowState(studentId)
+    return {
+      success: true,
+      data: flowState.canShowParty && flowState.party ? flowState.party.summary : (flowState.league ? flowState.league.summary : null)
+    }
+  }
+
+  if (plainPath === '/student/party-progress/reminders' && String(method).toUpperCase() === 'GET') {
+    const studentId = String((params || {}).studentId || '2023100001')
+    const flowState = getPartyFlowState(studentId)
+    return {
+      success: true,
+      data: {
+        flow: flowState.party ? flowState.party.flow : [],
+        leagueFlow: flowState.league ? flowState.league.flow : [],
+        leagueStages: flowState.league ? flowState.league.summary.stages : [],
+        canShowParty: flowState.canShowParty,
+        teacherAuditTip: flowState.teacherAuditTip,
+        emptyState: flowState.emptyState,
+        partyGateState: flowState.partyGateState
+      }
+    }
+  }
+
+  const templateDetailMatch = plainPath.match(/^\/knowledge\/templates\/([^/]+)$/)
+  if (templateDetailMatch && String(method).toUpperCase() === 'GET') {
+    const target = applyTemplates.find((item) => item.id === templateDetailMatch[1])
+    if (!target) {
+      return { success: false, message: '模板不存在', data: null }
+    }
+    return { success: true, data: target }
+  }
+
+  if (plainPath === '/student/certificates/requests' && String(method).toUpperCase() === 'GET') {
+    return {
+      success: true,
+      data: applyRequests.map(buildApplyListRecord)
+    }
+  }
+
+  if (plainPath === '/student/certificates/draft' && String(method).toUpperCase() === 'POST') {
+    return {
+      success: true,
+      data: {
+        id: `draft-${Date.now()}`,
+        ...params,
+        savedAt: formatMockDateTime()
+      }
+    }
+  }
+
+  if (plainPath === '/certificates/requests' && String(method).toUpperCase() === 'POST') {
+    const created = {
+      id: String(++applyRequestSeed),
+      studentId: 10001,
+      certificateType: String((params || {}).certificateType || '未命名申请'),
+      status: 'SUBMITTED',
+      createdAt: formatMockDateTime(),
+      purpose: String((params || {}).purpose || ''),
+      remark: String((params || {}).remark || ''),
+      generatedPdfPath: null
+    }
+    applyRequests = [created, ...applyRequests]
+    return {
+      success: true,
+      data: buildApplyListRecord(created)
+    }
+  }
+
+  if (plainPath === '/affairs' && String(method).toUpperCase() === 'GET') {
+    return {
+      success: true,
+      data: {
+        list: applyRequests.map(buildAffairListRecord)
+      }
+    }
+  }
+
+  const affairDetailMatch = plainPath.match(/^\/affairs\/([^/]+)$/)
+  if (affairDetailMatch && String(method).toUpperCase() === 'GET') {
+    const target = applyRequests.find((item) => item.id === affairDetailMatch[1])
+    if (!target) {
+      return { success: false, message: '申请不存在', data: null }
+    }
+    return { success: true, data: buildAffairDetail(target) }
+  }
+
+  const affairCancelMatch = plainPath.match(/^\/affairs\/([^/]+)\/cancel$/)
+  if (affairCancelMatch && String(method).toUpperCase() === 'PUT') {
+    applyRequests = applyRequests.map((item) => item.id === affairCancelMatch[1]
+      ? { ...item, status: 'CANCELED' }
+      : item)
+    const updated = applyRequests.find((item) => item.id === affairCancelMatch[1])
+    return { success: true, data: updated ? buildAffairDetail(updated) : null }
   }
 
   const growthMock = getGrowthMockData(url, params, method)

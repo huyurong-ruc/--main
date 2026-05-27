@@ -58,6 +58,12 @@
       </view>
     </view>
   </view>
+
+  <view wx:if="{{!loading && !transcriptStatus.canLoadReport}}" class="empty-state">
+    <text class="empty-title">暂无可用成绩单</text>
+    <text class="empty-desc">请先上传当前有效成绩单，或等待历史成绩单同步后，再查看培养方案对比报告。</text>
+    <button class="empty-btn" bindtap="goToUpload">去上传成绩单</button>
+  </view>
   
   <view wx:if="{{loading}}" class="loading-state">
     <text>加载中...</text>

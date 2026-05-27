@@ -63,6 +63,29 @@
   box-shadow: 0 10rpx 30rpx rgba(24, 52, 92, 0.06);
 }
 
+.gate-card {
+  margin-top: 24rpx;
+  background: #fff7e6;
+  border: 2rpx solid #ffd591;
+  border-radius: 16rpx;
+  padding: 24rpx 28rpx;
+}
+
+.gate-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #ad4e00;
+}
+
+.gate-desc {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #ad6800;
+  line-height: 1.6;
+}
+
 .tabs {
   display: flex;
   height: 88rpx;
@@ -137,14 +160,14 @@
   width: 20rpx;
   height: 20rpx;
   border-radius: 50%;
-  background: #cbd5e1;
+  background: #ff4d4f;
   z-index: 2;
   margin-top: 10rpx;
   flex-shrink: 0;
 }
 
 .timeline-dot.completed { background: #52c41a; box-shadow: 0 0 0 6rpx rgba(82, 196, 26, 0.2); }
-.timeline-dot.in_progress { background: #faad14; box-shadow: 0 0 0 6rpx rgba(250, 173, 20, 0.2); }
+.timeline-dot.incomplete { background: #ff4d4f; box-shadow: 0 0 0 6rpx rgba(255, 77, 79, 0.18); }
 
 .timeline-line {
   position: absolute;
@@ -161,24 +184,39 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 20rpx;
+}
+
+.node-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .node-name {
+  display: block;
   font-size: 28rpx;
   color: #1f2d3d;
   font-weight: 500;
 }
 
+.node-time {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #7b8ba5;
+}
+
 .node-status {
+  flex-shrink: 0;
   font-size: 22rpx;
   padding: 4rpx 16rpx;
   border-radius: 20rpx;
-  background: #f1f5f9;
-  color: #64748b;
+  background: #fff1f0;
+  color: #ff4d4f;
 }
 
 .node-status.completed { background: #f6ffed; color: #52c41a; }
-.node-status.in_progress { background: #fff7e6; color: #faad14; }
+.node-status.incomplete { background: #fff1f0; color: #ff4d4f; }
 
 /* Flow Nodes */
 .flow-nodes {
@@ -225,6 +263,26 @@
   line-height: 1.6;
 }
 
+.readonly-card {
+  padding-top: 28rpx;
+  padding-bottom: 28rpx;
+}
+
+.readonly-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2d3d;
+}
+
+.readonly-desc {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #64748b;
+}
+
 /* Empty Block */
 .empty-block {
   display: flex;
@@ -250,6 +308,8 @@
 .empty-desc {
   font-size: 24rpx;
   color: #94a3b8;
+  line-height: 1.7;
+  text-align: center;
 }
 
 .loading-state {

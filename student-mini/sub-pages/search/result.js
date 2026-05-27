@@ -50,6 +50,8 @@ Page({
       wx.navigateTo({ url: `/sub-pages/policy/detail?id=${id}` })
     } else if (type === 'notice') {
       wx.navigateTo({ url: `/pages/message/detail?id=${id}` })
+    } else if (type === 'template') {
+      wx.navigateTo({ url: `/sub-pages/policy/template?id=${id}` })
     } else if (type === 'apply') {
       wx.navigateTo({ url: `/sub-pages/apply/detail?id=${id}` })
     }

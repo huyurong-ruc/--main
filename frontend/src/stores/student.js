@@ -7,6 +7,25 @@ import { ref, computed } from 'vue'
 import { studentLogin, studentLogout, getCurrentStudent } from '@/api/student'
 
 export const useStudentStore = defineStore('student', () => {
+  function normalizeStudentUser(profile = {}, fallback = {}) {
+    return {
+      id: profile.id ?? fallback.id ?? fallback.userId ?? profile.userId ?? null,
+      userId: profile.userId ?? fallback.userId ?? profile.id ?? fallback.id ?? null,
+      studentId: profile.studentId ?? fallback.studentId ?? profile.id ?? fallback.userId ?? null,
+      username: profile.username ?? fallback.username ?? profile.studentNo ?? fallback.studentNo ?? '',
+      fullName: profile.fullName ?? profile.name ?? fallback.fullName ?? fallback.name ?? '',
+      name: profile.name ?? profile.fullName ?? fallback.name ?? fallback.fullName ?? '',
+      studentNo: profile.studentNo ?? fallback.studentNo ?? profile.username ?? fallback.username ?? '',
+      major: profile.major ?? fallback.major ?? '',
+      grade: profile.grade ?? fallback.grade ?? '',
+      className: profile.className ?? fallback.className ?? '',
+      collegeName: profile.collegeName ?? fallback.collegeName ?? '',
+      email: profile.email ?? fallback.email ?? '',
+      role: profile.role ?? fallback.role ?? 'STUDENT',
+      permissions: profile.permissions ?? fallback.permissions ?? ['*']
+    }
+  }
+
   // 状态
   const token = ref(localStorage.getItem('student_token') || '')
   const userInfo = ref(JSON.parse(localStorage.getItem('student_user') || 'null'))
@@ -34,32 +53,39 @@ export const useStudentStore = defineStore('student', () => {
     loading.value = true
     
     try {
-      // 实际API调用
-      // const res = await studentLogin(username, password)
-      // token.value = res.data.token
-      // userInfo.value = res.data.user
-      
-      // Mock 登录成功
-      const mockUser = {
-        userId: 1,
-        username: username,
-        fullName: '张三',
-        studentNo: username,
-        major: '计算机科学与技术',
-        grade: '2023级',
-        className: '计算机2301班',
-        role: 'STUDENT',
-        permissions: ['*']
+      const res = await studentLogin(username, password)
+      const authData = res?.data || {}
+
+      if (!authData.token) {
+        throw new Error(res?.message || '登录失败')
       }
-      
-      token.value = 'mock_token_' + Date.now()
-      userInfo.value = mockUser
+
+      token.value = authData.token
+      localStorage.setItem('student_token', token.value)
+
+      let normalizedUser = normalizeStudentUser(authData.userInfo || {}, {
+        userId: authData.userId,
+        studentId: authData.userId,
+        username,
+        studentNo: username,
+        role: authData.role
+      })
+
+      try {
+        const profileRes = await getCurrentStudent()
+        if (profileRes?.data) {
+          normalizedUser = normalizeStudentUser(profileRes.data, normalizedUser)
+        }
+      } catch (profileError) {
+        console.warn('获取学生资料失败，回退登录返回数据:', profileError)
+      }
+
+      userInfo.value = normalizedUser
       
       // 持久化
-      localStorage.setItem('student_token', token.value)
-      localStorage.setItem('student_user', JSON.stringify(mockUser))
+      localStorage.setItem('student_user', JSON.stringify(normalizedUser))
       
-      return { success: true, data: mockUser }
+      return { success: true, data: normalizedUser }
     } catch (error) {
       return { success: false, message: error.message || '登录失败' }
     } finally {
@@ -90,9 +116,10 @@ export const useStudentStore = defineStore('student', () => {
     try {
       const res = await getCurrentStudent()
       if (res.success && res.data) {
-        userInfo.value = res.data
-        localStorage.setItem('student_user', JSON.stringify(res.data))
-        return res.data
+        const normalizedUser = normalizeStudentUser(res.data, userInfo.value || {})
+        userInfo.value = normalizedUser
+        localStorage.setItem('student_user', JSON.stringify(normalizedUser))
+        return normalizedUser
       }
       return null
     } catch (error) {

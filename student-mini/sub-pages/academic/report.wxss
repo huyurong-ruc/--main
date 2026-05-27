@@ -168,3 +168,37 @@
   color: #999;
   font-size: 28rpx;
 }
+
+.empty-state {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 36rpx 32rpx;
+  margin-top: 24rpx;
+  text-align: center;
+}
+
+.empty-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1f2d3d;
+}
+
+.empty-desc {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: #58677d;
+}
+
+.empty-btn {
+  margin-top: 28rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 40rpx;
+  background: #1677ff;
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 600;
+}

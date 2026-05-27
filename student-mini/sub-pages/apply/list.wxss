@@ -9,6 +9,10 @@
   padding: 24rpx 32rpx 140rpx;
 }
 
+.search-panel {
+  position: relative;
+}
+
 .search-box {
   background: #ffffff;
   height: 80rpx;
@@ -24,6 +28,56 @@
   flex: 1;
   font-size: 26rpx;
   color: #1f2d3d;
+}
+
+.search-clear {
+  font-size: 24rpx;
+  color: #8a98aa;
+  flex-shrink: 0;
+}
+
+.suggestion-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 92rpx;
+  background: #ffffff;
+  border-radius: 18rpx;
+  box-shadow: 0 16rpx 36rpx rgba(21, 42, 72, 0.18);
+  overflow: hidden;
+  z-index: 10;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 24rpx 26rpx;
+  border-bottom: 1rpx solid #edf1f6;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-title {
+  font-size: 26rpx;
+  color: #1f2d3d;
+  font-weight: 600;
+}
+
+.suggestion-status {
+  font-size: 22rpx;
+  color: #8a98aa;
+  flex-shrink: 0;
+}
+
+.suggestion-empty {
+  padding: 28rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #8a98aa;
 }
 
 .content {
@@ -42,8 +96,16 @@
   padding: 28rpx 28rpx 18rpx;
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
+  gap: 20rpx;
   border-bottom: 1rpx solid #edf1f6;
+}
+
+.panel-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  min-width: 0;
 }
 
 .panel-title {
@@ -55,6 +117,16 @@
 .panel-sort {
   font-size: 24rpx;
   color: #8a98aa;
+}
+
+.create-btn {
+  padding: 16rpx 24rpx;
+  border-radius: 999rpx;
+  background: #1677ff;
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .record-list {
@@ -135,9 +207,34 @@
   color: #52c41a;
 }
 
+.status-muted {
+  background: #f2f4f7;
+  color: #8a98aa;
+}
+
 .record-time {
   font-size: 24rpx;
   color: #8a98aa;
   flex-shrink: 0;
   margin-left: 18rpx;
+}
+
+.empty-state {
+  padding: 84rpx 36rpx;
+  text-align: center;
+}
+
+.empty-title {
+  display: block;
+  font-size: 30rpx;
+  color: #1f2d3d;
+  font-weight: 700;
+}
+
+.empty-desc {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  color: #8a98aa;
+  line-height: 1.7;
 }

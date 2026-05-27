@@ -1,5 +1,5 @@
 const app = getApp()
-const { get } = require('../../api/request')
+const { getPartyFlowState } = require('../../api/party-flow')
 
 const TAB_CONFIG = [
   { label: '入党流程', type: 'party' },
@@ -29,6 +29,11 @@ Page({
     partyFlow: [],
     leagueProgress: null,
     leagueFlow: [],
+    hasAnyFlow: false,
+    canShowParty: false,
+    emptyState: { title: '', description: '' },
+    partyGateState: { title: '', description: '' },
+    teacherAuditTip: '',
     loading: false,
     dataLoaded: false
   },
@@ -50,53 +55,43 @@ Page({
   onTabChange(e) {
     const index = parseInt(e.currentTarget.dataset.index, 10)
     if (index === this.data.activeTab) return
+    if (index === 0 && !this.data.canShowParty) {
+      wx.showToast({ title: '请先完成全部入团节点', icon: 'none' })
+      return
+    }
     this.setData({ activeTab: index })
   },
 
-  async loadData() {
+  loadData() {
     this.setData({ loading: true })
+    const studentId = app.globalData.userInfo?.studentId || app.globalData.userInfo?.id
+    const flowState = getPartyFlowState(studentId)
+    const partyStages = normalizeStages(flowState.party?.summary?.stages || [])
+    const leagueStages = normalizeStages(flowState.league?.summary?.stages || [])
+    const activeTab = flowState.canShowParty ? 0 : 1
 
-    try {
-      const [progressRes, remindersRes] = await Promise.all([
-        get('/student/party-progress', {}, { showLoading: false }),
-        get('/student/party-progress/reminders', {}, { showLoading: false })
-      ])
-
-      const progressData = progressRes.data || {}
-      const remindersData = remindersRes.data || {}
-
-      // 入党数据（当前接口返回的是个人入党进度）
-      const partyStages = normalizeStages(progressData.stages || [])
-      const partyFlow = normalizeFlow(remindersData.flow || progressData.stages || [])
-
-      // 入团数据（如果后端暂未提供独立入团接口，复用结构但标注为待接入）
-      const leagueStages = normalizeStages(remindersData.leagueStages || [])
-      const leagueFlow = normalizeFlow(remindersData.leagueFlow || [])
-
-      this.setData({
-        partyProgress: { ...progressData, stages: partyStages },
-        partyFlow,
-        leagueProgress: leagueStages.length ? { stages: leagueStages } : null,
-        leagueFlow,
-        loading: false,
-        dataLoaded: true
-      })
-    } catch (e) {
-      console.error('加载党团数据失败', e)
-      wx.showToast({ title: '加载失败', icon: 'none' })
-      this.setData({
-        partyProgress: null,
-        partyFlow: [],
-        leagueProgress: null,
-        leagueFlow: [],
-        loading: false,
-        dataLoaded: true
-      })
-    }
+    this.setData({
+      activeTab,
+      partyProgress: flowState.party ? { ...flowState.party.summary, stages: partyStages } : null,
+      partyFlow: normalizeFlow(flowState.party?.flow || []),
+      leagueProgress: flowState.league ? { ...flowState.league.summary, stages: leagueStages } : null,
+      leagueFlow: normalizeFlow(flowState.league?.flow || []),
+      hasAnyFlow: flowState.hasAnyFlow,
+      canShowParty: flowState.canShowParty,
+      emptyState: flowState.emptyState,
+      partyGateState: flowState.partyGateState,
+      teacherAuditTip: flowState.teacherAuditTip,
+      loading: false,
+      dataLoaded: true
+    })
   },
 
   goToProgress(e) {
     const { type } = e.currentTarget.dataset
+    if (type === 'party' && !this.data.canShowParty) {
+      wx.showToast({ title: '请先完成全部入团节点', icon: 'none' })
+      return
+    }
     wx.navigateTo({ url: `/sub-pages/party/progress?type=${type}` })
   }
 })

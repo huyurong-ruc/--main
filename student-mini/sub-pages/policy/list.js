@@ -15,11 +15,14 @@ Page({
     hasMore: true
   },
   
-  onLoad() {
+  onLoad(options = {}) {
     if (!app.isLoggedIn()) {
       wx.redirectTo({ url: '/sub-pages/login/index' })
       return
     }
+    const initialTab = Number(options.tab)
+    const activeTab = Number.isInteger(initialTab) && initialTab >= 0 && initialTab <= 2 ? initialTab : 0
+    this.setData({ activeTab })
     this.loadList()
   },
   
@@ -109,6 +112,15 @@ Page({
     } else {
       wx.navigateTo({ url: `/sub-pages/policy/detail?id=${id}` })
     }
+  },
+
+  downloadTemplate(e) {
+    const { id } = e.currentTarget.dataset
+    if (!id) {
+      wx.showToast({ title: '模板信息缺失', icon: 'none' })
+      return
+    }
+    wx.navigateTo({ url: `/sub-pages/policy/template?id=${id}` })
   },
   
   // 下拉刷新
