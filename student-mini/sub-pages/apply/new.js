@@ -2,16 +2,54 @@
 const app = getApp()
 const { post } = require('../../api/request')
 const applyApi = require('../../api/apply')
+const {
+  buildFormDefaults,
+  validateApplyForm,
+  resolveApplyInitialStatus
+} = require('../../api/apply-business')
+const { getApplyStatusMeta } = require('../../api/apply-status')
 
 // 防抖定时器
 let submitTimer = null
+
+function buildRenderedFields(typeConfig = null, formValues = {}) {
+  return (typeConfig?.formFields || []).map((field) => {
+    const value = formValues[field.key] == null ? '' : formValues[field.key]
+    let displayValue = value
+
+    if (field.type === 'selector' && value) {
+      displayValue = value
+    }
+
+    return {
+      ...field,
+      value,
+      displayValue
+    }
+  })
+}
+
+function buildPurposeFromFields(typeConfig = null, formValues = {}) {
+  if (!typeConfig) return ''
+
+  if (typeConfig.key === 'read-cert') {
+    return `${formValues.useScenario || '证明申请'} / ${formValues.recipientOrg || '待填写接收单位'}`
+  }
+
+  if (typeConfig.key === 'transcript') {
+    return `${formValues.useScenario || '成绩单申请'} / ${formValues.termRange || '待填写成绩范围'}`
+  }
+
+  return `${formValues.applyStage || '教师资格认定'} / ${formValues.applicationArea || '待填写认定地区'}`
+}
 
 Page({
   data: {
     types: [],
     selectedType: null,
-    purpose: '',
-    remark: '',
+    selectedTypeIndex: -1,
+    formValues: {},
+    renderedFields: [],
     attachments: [],
     loading: false,
     submitting: false
@@ -30,7 +68,11 @@ Page({
     this.setData({ loading: true })
     try {
       const res = await applyApi.getApplyTypes()
-      this.setData({ types: res.data || [] })
+      const types = (res.data || []).map((item) => ({
+        ...item,
+        displayTitle: item.applyTitle || item.title
+      }))
+      this.setData({ types })
     } catch (e) {
       console.error('加载申请类型失败', e)
     } finally {
@@ -40,18 +82,47 @@ Page({
   
   // 选择类型
   onTypeChange(e) {
-    const index = e.detail.value
-    this.setData({ selectedType: this.data.types[index] })
+    const index = Number(e.detail.value)
+    const selectedType = this.data.types[index]
+    const formValues = buildFormDefaults(selectedType)
+    this.setData({
+      selectedTypeIndex: index,
+      selectedType,
+      formValues,
+      renderedFields: buildRenderedFields(selectedType, formValues),
+      attachments: []
+    })
   },
   
-  // 用途输入
-  onPurposeInput(e) {
-    this.setData({ purpose: e.detail.value })
+  onFieldInput(e) {
+    const { key } = e.currentTarget.dataset
+    const value = e.detail.value
+    const formValues = {
+      ...this.data.formValues,
+      [key]: value
+    }
+    this.setData({
+      formValues,
+      renderedFields: buildRenderedFields(this.data.selectedType, formValues)
+    })
   },
-  
-  // 备注输入
-  onRemarkInput(e) {
-    this.setData({ remark: e.detail.value })
+
+  onFieldSelect(e) {
+    const fieldIndex = Number(e.currentTarget.dataset.index)
+    const field = this.data.renderedFields[fieldIndex]
+    if (!field) return
+
+    const optionIndex = Number(e.detail.value)
+    const nextValue = field.options[optionIndex] || ''
+    const formValues = {
+      ...this.data.formValues,
+      [field.key]: nextValue
+    }
+
+    this.setData({
+      formValues,
+      renderedFields: buildRenderedFields(this.data.selectedType, formValues)
+    })
   },
   
   // 上传附件（使用 chooseMessageFile 支持 PDF/Word/Excel 等多格式）
@@ -103,8 +174,11 @@ Page({
     try {
       await post('/student/certificates/draft', {
         typeId: this.data.selectedType?.id,
-        purpose: this.data.purpose,
-        remark: this.data.remark,
+        typeKey: this.data.selectedType?.key,
+        certificateType: this.data.selectedType?.applyTitle,
+        purpose: buildPurposeFromFields(this.data.selectedType, this.data.formValues),
+        remark: this.data.formValues.applicationNote || '',
+        fieldValues: this.data.formValues,
         attachments: this.data.attachments.map(f => ({ name: f.name, path: f.path }))
       })
       wx.showToast({ title: '草稿已保存', icon: 'success' })
@@ -125,8 +199,16 @@ Page({
     }
     
     // 表单验证
-    if (!this.data.selectedType) {
+    const { selectedType, formValues, attachments } = this.data
+
+    if (!selectedType) {
       wx.showToast({ title: '请选择申请类型', icon: 'none' })
+      return
+    }
+
+    const validateResult = validateApplyForm(selectedType, formValues)
+    if (!validateResult.valid) {
+      wx.showToast({ title: validateResult.message, icon: 'none' })
       return
     }
     
@@ -144,18 +226,38 @@ Page({
   async submitApply() {
     wx.showLoading({ title: '提交中...' })
     try {
-      await applyApi.submitApply({
-        certificateType: this.data.selectedType.title,
-        purpose: this.data.purpose,
-        remark: this.data.remark
+      const payload = {
+        typeId: this.data.selectedType.id,
+        typeKey: this.data.selectedType.key,
+        certificateType: this.data.selectedType.applyTitle,
+        purpose: buildPurposeFromFields(this.data.selectedType, this.data.formValues),
+        remark: this.data.formValues.applicationNote || '',
+        fieldValues: this.data.formValues,
+        attachments: this.data.attachments.map((file) => ({
+          name: file.name,
+          path: file.path,
+          size: file.size
+        }))
+      }
+      const res = await applyApi.submitApply(payload)
+      const statusCode = res?.data?.statusCode || resolveApplyInitialStatus(this.data.selectedType, payload)
+      const statusMeta = getApplyStatusMeta(statusCode)
+
+      wx.showToast({
+        title: statusCode === 'ACTION_REQUIRED' ? '已提交，待继续补充' : '已提交，进入待审核',
+        icon: 'success'
       })
-      wx.showToast({ title: '提交成功', icon: 'success' })
       setTimeout(() => {
         wx.navigateBack()
         // 刷新列表
         const pages = getCurrentPages()
         const listPage = pages.find(p => p.route.includes('apply/list'))
         if (listPage) listPage.onShow()
+        const homePage = pages.find(p => p.route === 'pages/index/index')
+        if (homePage && homePage.syncPendingProgress) {
+          homePage.syncPendingProgress()
+        }
+        console.log('当前申请状态:', statusMeta.title)
       }, 1000)
     } catch (e) {
       wx.showToast({ title: e.message || '提交失败', icon: 'none' })

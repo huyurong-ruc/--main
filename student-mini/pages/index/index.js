@@ -2,20 +2,23 @@
 const app = getApp()
 const { get } = require('../../api/request')
 const { getPartyFlowState } = require('../../api/party-flow')
+const applyApi = require('../../api/apply')
+const { isCompletedStatus, getApplyStatusMeta } = require('../../api/apply-status')
 
-const BASE_PENDING_PROGRESS = [
-  {
-    id: 1,
-    title: '盖章申请',
-    status: '审核中',
-    statusClass: 'warning',
+function buildApplyPendingCard(item = {}) {
+  const statusMeta = getApplyStatusMeta(item.statusCode || item.status)
+  return {
+    id: `apply-${item.id || 'latest'}`,
+    title: item.certificateType || item.typeName || '证明申请',
+    status: statusMeta.listLabel,
+    statusClass: statusMeta.listClass,
     showRightStatus: true,
     typeText: '申',
     typeClass: 'apply',
-    desc: '申请时间：2025-03-25',
-    time: ''
+    desc: item.pendingSummary?.pendingActionText || item.pendingActionText || '请前往证明申请查看处理进度',
+    time: item.createdAt ? item.createdAt.slice(0, 10) : (item.createTime || '')
   }
-]
+}
 
 Page({
   data: {
@@ -24,16 +27,16 @@ Page({
       { id: 1, image: '/static/images/banner2.png' }
     ],
     navs: [
-      { name: '智能检索', iconText: '🔍', class: 'search', handler: 'goToSearch' },
       { name: '政策库', iconText: '📋', class: 'policy', handler: 'goToPolicy' },
       { name: '模板下载', iconText: '📄', class: 'template', handler: 'goToTemplate' },
       { name: '证明申请', iconText: '📝', class: 'apply', handler: 'goToApply' },
       { name: '党团流程', iconText: '🎗️', class: 'party', handler: 'goToParty' },
       { name: '学业分析', iconText: '📊', class: 'academic', handler: 'goToAcademic' },
+      { name: '荣誉展示', iconText: '🏆', class: 'honor', handler: 'goToHonor' },
       { name: '通知聚合', iconText: '🔔', class: 'notice', handler: 'goToMessage' },
       { name: '常见问题', iconText: '❓', class: 'faq', handler: 'goToFaq' }
     ],
-    pendingProgress: BASE_PENDING_PROGRESS,
+    pendingProgress: [],
     news: [
       { id: 'jobfair-2026-spring', title: '2026春季双选会即将开始！', source: '人大就业', time: '2026-03-25' },
       { id: 'innovation-2026', title: '关于组织申报2026年中国人民大学“大学生创新训练计划”创业训练项目的通知', source: '教务处', time: '2026-03-25' }
@@ -58,10 +61,28 @@ Page({
     this.syncPendingProgress()
   },
 
-  syncPendingProgress() {
+  async syncPendingProgress() {
     const studentId = app.globalData.userInfo?.studentId || app.globalData.userInfo?.id
     const flowState = getPartyFlowState(studentId)
-    const nextList = [...BASE_PENDING_PROGRESS]
+    const nextList = []
+
+    try {
+      const res = await applyApi.getApplyList()
+      const applyList = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.list)
+          ? res.data.list
+          : []
+      const pendingApply = applyList
+        .filter((item) => !isCompletedStatus(item.statusCode || item.status))
+        .sort((a, b) => new Date((b.createdAt || '').replace(/-/g, '/')).getTime() - new Date((a.createdAt || '').replace(/-/g, '/')).getTime())[0]
+
+      if (pendingApply) {
+        nextList.push(buildApplyPendingCard(pendingApply))
+      }
+    } catch (e) {
+      console.error('加载证明申请待办失败', e)
+    }
 
     if (flowState.homePartyCard) {
       nextList.push(flowState.homePartyCard)
@@ -96,6 +117,7 @@ Page({
   goToApply() { wx.navigateTo({ url: '/sub-pages/apply/list' }) },
   goToParty() { wx.navigateTo({ url: '/sub-pages/party/index' }) },
   goToAcademic() { wx.navigateTo({ url: '/sub-pages/academic/index' }) },
+  goToHonor() { wx.navigateTo({ url: '/sub-pages/honor/index' }) },
   goToMessage() { wx.switchTab({ url: '/pages/message/index' }) },
   goToFaq() { wx.navigateTo({ url: '/sub-pages/faq/list' }) },
   

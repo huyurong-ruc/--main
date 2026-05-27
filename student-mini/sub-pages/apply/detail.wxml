@@ -5,7 +5,20 @@
     <view class="info-card">
       <view class="info-header">
         <text class="info-type">{{detail.typeName}}</text>
-        <text class="info-status status-{{detail.status}}">{{detail.statusText}}</text>
+        <view class="info-status-row">
+          <text class="info-status status-{{detail.status}}">{{detail.statusText}}</text>
+          <text class="status-help" bindtap="showStatusHelp">?</text>
+        </view>
+      </view>
+
+      <view class="status-tip-card">
+        <text class="status-tip-title">{{detail.statusTitle}}</text>
+        <text class="status-tip-desc">{{detail.statusDescription}}</text>
+      </view>
+
+      <view class="status-tip-card" wx:if="{{detail.materialGuide && detail.materialGuide.length > 0}}">
+        <text class="status-tip-title">材料要求</text>
+        <text wx:for="{{detail.materialGuide}}" wx:key="*this" class="status-tip-desc">• {{item}}</text>
       </view>
       
       <view class="info-item">
@@ -21,6 +34,39 @@
       <view class="info-item">
         <text class="info-label">申请时间</text>
         <text class="info-value">{{detail.createTime}}</text>
+      </view>
+
+      <view class="info-item" wx:if="{{detail.fieldDisplays && detail.fieldDisplays.length > 0}}">
+        <text class="info-label">业务字段</text>
+        <view class="field-list">
+          <view wx:for="{{detail.fieldDisplays}}" wx:key="key" class="field-item">
+            <text class="field-label">{{item.label}}</text>
+            <text class="field-value">{{item.value}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="progress-card" wx:if="{{detail.workflowNodes && detail.workflowNodes.length > 0}}">
+      <view class="progress-title">流程节点说明</view>
+
+      <view class="approval-list">
+        <view
+          wx:for="{{detail.workflowNodes}}"
+          wx:key="id"
+          class="approval-item"
+        >
+          <view class="approval-line"></view>
+          <view class="approval-dot {{item.status}}"></view>
+          <view class="approval-content">
+            <view class="approval-header">
+              <text class="approval-name">{{item.name}}</text>
+              <text class="approval-time">{{item.time || item.owner}}</text>
+            </view>
+            <text class="approval-result {{item.status}}">{{item.statusText}}</text>
+            <text class="approval-comment">{{item.meaning}}</text>
+          </view>
+        </view>
       </view>
     </view>
     

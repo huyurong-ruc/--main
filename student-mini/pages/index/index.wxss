@@ -101,14 +101,14 @@
   color: #ffffff;
 }
 
-.icon-box.search { background: #1890ff; }
 .icon-box.policy { background: #722ed1; }
 .icon-box.template { background: #13c2c2; }
-.icon-box.apply { background: #f5222d; }
+.icon-box.apply { background: #22f5ebff; }
 .icon-box.party { background: #fa8c16; }
 .icon-box.academic { background: #52c41a; }
+.icon-box.honor { background: #fa1414ff; }
 .icon-box.notice { background: #2f54eb; }
-.icon-box.faq { background: #10239e; }
+.icon-box.faq { background: #51c0f8ff; }
 
 .icon-image {
   width: 36rpx;

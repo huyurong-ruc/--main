@@ -58,7 +58,15 @@
             <view class="record-icon">{{item.iconText}}</view>
             <view class="record-main">
               <text class="record-title">{{item.title}}</text>
-              <text class="status-pill status-{{item.statusClass}}">{{item.status}}</text>
+              <view class="status-row">
+                <text class="status-pill status-{{item.statusClass}}">{{item.status}}</text>
+                <text
+                  class="status-help"
+                  catchtap="showStatusHelp"
+                  data-title="{{item.statusTitle}}"
+                  data-description="{{item.statusDescription}}"
+                >?</text>
+              </view>
             </view>
           </view>
           <text class="record-time">申请时间：{{item.time}}</text>

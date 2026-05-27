@@ -61,6 +61,16 @@ Page({
       this.setData({ canceling: false })
     }
   },
+
+  showStatusHelp() {
+    const detail = this.data.detail || {}
+    wx.showModal({
+      title: detail.statusTitle || '状态说明',
+      content: detail.statusDescription || '暂无状态说明',
+      showCancel: false,
+      confirmText: '我知道了'
+    })
+  },
   
   // 下载附件
   downloadFile(e) {

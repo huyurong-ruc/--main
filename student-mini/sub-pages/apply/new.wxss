@@ -22,6 +22,36 @@
   margin-bottom: 0;
 }
 
+.type-intro {
+  margin-bottom: 40rpx;
+  padding: 28rpx;
+  border-radius: 16rpx;
+  background: #f8fafc;
+}
+
+.type-title {
+  display: block;
+  font-size: 30rpx;
+  color: #1f2d3d;
+  font-weight: 700;
+}
+
+.type-desc {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 25rpx;
+  color: #5b6b82;
+  line-height: 1.6;
+}
+
+.type-tip {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #7b8ba5;
+  line-height: 1.6;
+}
+
 .form-label {
   font-size: 28rpx;
   color: #333;
@@ -76,6 +106,17 @@
   display: flex;
   flex-wrap: wrap;
   gap: 24rpx;
+}
+
+.material-guide {
+  margin-bottom: 20rpx;
+}
+
+.material-guide-item {
+  display: block;
+  font-size: 24rpx;
+  color: #7b8ba5;
+  line-height: 1.7;
 }
 
 .attachment-item {

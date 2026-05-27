@@ -1,45 +1,13 @@
 // sub-pages/apply/list.js
 const app = getApp()
 const applyApi = require('../../api/apply')
+const { getApplyStatusMeta, isCompletedStatus } = require('../../api/apply-status')
 
 function parseTime(value = '') {
   const text = String(value || '').trim()
   if (!text) return 0
   const parsed = new Date(text.replace(/-/g, '/')).getTime()
   return Number.isNaN(parsed) ? 0 : parsed
-}
-
-function isCompletedStatus(status = '') {
-  const value = String(status || '').toUpperCase()
-  return [
-    'APPROVED',
-    'COMPLETED',
-    'REJECTED',
-    'CANCELED',
-    'WITHDRAWN',
-    '已通过',
-    '已完成',
-    '已驳回',
-    '已拒绝',
-    '已撤回'
-  ].some((item) => value.includes(item))
-}
-
-function mapStatusText(status = '') {
-  const value = String(status || '').toUpperCase()
-  if (value.includes('APPROVED') || value.includes('已通过') || value.includes('已完成')) return '已通过'
-  if (value.includes('REJECTED') || value.includes('已驳回') || value.includes('已拒绝')) return '已驳回'
-  if (value.includes('CANCELED') || value.includes('WITHDRAWN') || value.includes('已撤回')) return '已撤回'
-  if (value.includes('IN_REVIEW') || value.includes('REVIEW') || value.includes('PROCESS') || value.includes('审核中')) return '审核中'
-  if (value.includes('SUBMITTED') || value.includes('PENDING') || value.includes('待处理')) return '待处理'
-  return String(status || '处理中')
-}
-
-function mapStatusClass(status = '') {
-  const text = mapStatusText(status)
-  if (text === '已通过') return 'success'
-  if (text === '已驳回' || text === '已撤回') return 'muted'
-  return 'warning'
 }
 
 function buildIconText(title = '') {
@@ -51,15 +19,18 @@ function buildIconText(title = '') {
 
 function normalizeApplyItem(item = {}) {
   const title = item.certificateType || item.typeName || item.title || '未命名申请'
-  const rawStatus = item.statusText || item.status || ''
+  const rawStatus = item.statusCode || item.status || item.statusText || ''
+  const statusMeta = getApplyStatusMeta(rawStatus)
   const time = String(item.createdAt || item.createTime || item.time || '')
 
   return {
     id: String(item.id || ''),
     title,
     iconText: buildIconText(title),
-    status: mapStatusText(rawStatus),
-    statusClass: mapStatusClass(rawStatus),
+    status: statusMeta.listLabel,
+    statusClass: statusMeta.listClass,
+    statusTitle: statusMeta.title,
+    statusDescription: statusMeta.description,
     time: time ? time.slice(0, 16) : '',
     sortTime: parseTime(time),
     completed: isCompletedStatus(rawStatus)
@@ -125,8 +96,8 @@ Page({
     } catch (e) {
       console.error('加载申请列表失败', e)
       const fallbackList = sortApplyList([
-        normalizeApplyItem({ id: '3', title: '教师资格证申请', status: '审核中', time: '2026-03-25 09:20' }),
-        normalizeApplyItem({ id: '2', title: '成绩单', status: '待处理', time: '2026-04-08 11:15' }),
+        normalizeApplyItem({ id: '3', title: '教师资格证申请', status: 'ACTION_REQUIRED', time: '2026-03-25 09:20' }),
+        normalizeApplyItem({ id: '2', title: '成绩单', status: 'IN_REVIEW', time: '2026-04-08 11:15' }),
         normalizeApplyItem({ id: '1', title: '在读证明', status: '已通过', time: '2026-04-01 10:30' })
       ])
       this.setData({ rawList: fallbackList })
@@ -230,6 +201,16 @@ Page({
       keyword,
       showSuggestions: false,
       searchInputFocus: false
+    })
+  },
+
+  showStatusHelp(e) {
+    const { title, description } = e.currentTarget.dataset
+    wx.showModal({
+      title: title || '状态说明',
+      content: description || '暂无状态说明',
+      showCancel: false,
+      confirmText: '我知道了'
     })
   },
 

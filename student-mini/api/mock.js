@@ -4,6 +4,17 @@
  */
 
 const { getPartyFlowState } = require('./party-flow')
+const { getApplyStatusMeta, normalizeApplyStatus } = require('./apply-status')
+const {
+  getApplyTypeOptions,
+  findApplyTypeByTitle,
+  findApplyTypeByKey,
+  findApplyTypeById,
+  buildFieldDisplays,
+  resolveApplyInitialStatus,
+  getApplyPendingSummary,
+  buildWorkflowNodes
+} = require('./apply-business')
 
 // 统一使用 CommonJS 语法，避免 ES6/CommonJS 混用导致问题
 const mockData = {
@@ -177,9 +188,9 @@ const mockData = {
   '/affairs': {
     data: {
       list: [
-        { id: '3', typeName: '教师资格证申请', status: 'submitted', statusText: '审核中', createTime: '2026-03-25' },
+        { id: '3', typeName: '教师资格证申请', status: 'action_required', statusCode: 'ACTION_REQUIRED', statusText: '待处理', createTime: '2026-03-25' },
         { id: '1', typeName: '在读证明', status: 'approved', statusText: '已通过', createTime: '2026-04-01' },
-        { id: '2', typeName: '成绩单', status: 'submitted', statusText: '审核中', createTime: '2026-04-08' }
+        { id: '2', typeName: '成绩单', status: 'in_review', statusCode: 'IN_REVIEW', statusText: '待审核', createTime: '2026-04-08' }
       ]
     }
   },
@@ -207,14 +218,15 @@ const mockData = {
     data: {
       id: '3',
       typeName: '教师资格证申请',
-      status: 'submitted',
-      statusText: '审核中',
+      status: 'action_required',
+      statusCode: 'ACTION_REQUIRED',
+      statusText: '待处理',
       purpose: '用于教师资格证认定材料',
       remark: '',
       createTime: '2026-03-25 09:20',
       canCancel: true,
       approvals: [
-        { id: '1', approverName: '学院教务老师', status: 'processing', resultText: '审核中', time: '2026-03-25 10:00', comment: '' }
+        { id: '1', approverName: '学生本人', status: 'processing', resultText: '待处理', time: '2026-03-25 10:00', comment: '需先补充教师资格认定相关材料。' }
       ],
       generatedFile: null
     }
@@ -547,80 +559,73 @@ const honorRecipients = [
   }
 ]
 
-const applyTemplates = [
-  {
-    id: 'tpl-read-cert',
-    title: '在读证明申请模板',
-    description: '适用于奖学金、签证、实习等在读证明申请场景',
-    fileSize: '168 KB',
-    fileType: 'DOCX',
-    updatedAt: '2026-04-12 10:00',
-    department: '学生事务中心',
-    fileUrl: 'https://example.com/templates/read-cert.docx'
-  },
-  {
-    id: 'tpl-transcript',
-    title: '成绩单申请模板',
-    description: '适用于升学、留学和资格审核等成绩单申请场景',
-    fileSize: '224 KB',
-    fileType: 'DOCX',
-    updatedAt: '2026-04-10 09:30',
-    department: '教务处',
-    fileUrl: 'https://example.com/templates/transcript.docx'
-  },
-  {
-    id: 'tpl-teacher-qualification',
-    title: '教师资格证申请模板',
-    description: '适用于教师资格认定材料准备与信息填报',
-    fileSize: '196 KB',
-    fileType: 'DOCX',
-    updatedAt: '2026-04-08 15:20',
-    department: '学院教务办公室',
-    fileUrl: 'https://example.com/templates/teacher-qualification.docx'
-  }
-]
+const applyTemplates = getApplyTypeOptions()
 
 let applyRequestSeed = 3
 let applyRequests = [
   {
     id: '3',
     studentId: 10001,
+    typeKey: 'teacher-qualification',
     certificateType: '教师资格证申请',
-    status: 'SUBMITTED',
+    status: 'ACTION_REQUIRED',
     createdAt: '2026-03-25 09:20',
     purpose: '用于教师资格证认定材料',
     remark: '',
+    fieldValues: {
+      applyStage: '材料补充',
+      subject: '语文',
+      applicationArea: '北京市海淀区',
+      contactPhone: '13800138000',
+      materialReady: '仍需继续补充',
+      applicationNote: '待补充普通话证书扫描件和认定报名截图'
+    },
+    attachments: [
+      { name: '身份证扫描件.pdf', path: '/mock/attachments/id-card.pdf' }
+    ],
     generatedPdfPath: null
   },
   {
     id: '2',
     studentId: 10001,
+    typeKey: 'transcript',
     certificateType: '成绩单',
     status: 'IN_REVIEW',
     createdAt: '2026-04-08 11:15',
     purpose: '用于研究生复试材料',
     remark: '',
+    fieldValues: {
+      useScenario: '研究生复试',
+      termRange: '全部学期',
+      language: '中英双语',
+      needRanking: '附带专业排名',
+      recipientOrg: '中国人民大学研究生院',
+      applicationNote: '需同步展示平均绩点'
+    },
+    attachments: [],
     generatedPdfPath: null
   },
   {
     id: '1',
     studentId: 10001,
+    typeKey: 'read-cert',
     certificateType: '在读证明',
     status: 'APPROVED',
     createdAt: '2026-04-01 10:30',
     purpose: '用于申请签证',
     remark: '',
+    fieldValues: {
+      useScenario: '签证办理',
+      recipientOrg: '英国驻华使馆',
+      language: '英文',
+      deliveryMethod: '电子版即可',
+      copies: '2',
+      applicationNote: ''
+    },
+    attachments: [],
     generatedPdfPath: '/files/proof.pdf'
   }
 ]
-
-const APPLY_STATUS_META = {
-  SUBMITTED: { label: '待处理', detailLabel: '审核中', className: 'warning', canCancel: true },
-  IN_REVIEW: { label: '审核中', detailLabel: '审核中', className: 'warning', canCancel: true },
-  APPROVED: { label: '已通过', detailLabel: '已通过', className: 'success', canCancel: false },
-  REJECTED: { label: '已驳回', detailLabel: '已驳回', className: 'danger', canCancel: false },
-  CANCELED: { label: '已撤回', detailLabel: '已撤回', className: 'default', canCancel: false }
-}
 
 const formatMockDateTime = (date = new Date()) => {
   const year = date.getFullYear()
@@ -631,64 +636,83 @@ const formatMockDateTime = (date = new Date()) => {
   return `${year}-${month}-${day} ${hour}:${minute}`
 }
 
-const getApplyStatusMeta = (status) => APPLY_STATUS_META[String(status || '').toUpperCase()] || {
-  label: '处理中',
-  detailLabel: '处理中',
-  className: 'warning',
-  canCancel: true
-}
-
 const buildApplyListRecord = (item) => ({
   id: item.id,
   studentId: item.studentId,
+  typeKey: item.typeKey,
   certificateType: item.certificateType,
-  status: item.status,
+  status: normalizeApplyStatus(item.status),
+  statusCode: normalizeApplyStatus(item.status),
+  statusText: getApplyStatusMeta(item.status).listLabel,
+  pendingSummary: getApplyPendingSummary(findApplyTypeByKey(item.typeKey) || findApplyTypeByTitle(item.certificateType), normalizeApplyStatus(item.status), item.fieldValues || {}),
   createdAt: item.createdAt,
   purpose: item.purpose,
   remark: item.remark,
+  fieldValues: item.fieldValues || {},
+  attachments: item.attachments || [],
   generatedPdfPath: item.generatedPdfPath
 })
 
 const buildAffairListRecord = (item) => {
   const statusMeta = getApplyStatusMeta(item.status)
+  const typeConfig = findApplyTypeByKey(item.typeKey) || findApplyTypeByTitle(item.certificateType)
+  const pendingSummary = getApplyPendingSummary(typeConfig, normalizeApplyStatus(item.status), item.fieldValues || {})
   return {
     id: item.id,
+    typeKey: item.typeKey,
     typeName: item.certificateType,
-    status: String(item.status || '').toLowerCase(),
-    statusText: statusMeta.label,
-    createTime: item.createdAt ? item.createdAt.slice(0, 10) : ''
+    status: String(normalizeApplyStatus(item.status) || '').toLowerCase(),
+    statusCode: normalizeApplyStatus(item.status),
+    statusText: statusMeta.listLabel,
+    createTime: item.createdAt ? item.createdAt.slice(0, 10) : '',
+    currentNodeName: pendingSummary.currentNodeName,
+    pendingActionText: pendingSummary.pendingActionText
   }
 }
 
 const buildAffairDetail = (item) => {
   const statusMeta = getApplyStatusMeta(item.status)
+  const statusCode = normalizeApplyStatus(item.status)
+  const typeConfig = findApplyTypeByKey(item.typeKey) || findApplyTypeByTitle(item.certificateType)
   const approvals = []
 
-  if (String(item.status).toUpperCase() === 'APPROVED') {
+  if (statusCode === 'APPROVED') {
     approvals.push(
       { id: '1', approverName: '辅导员 张老师', status: 'completed', resultText: '通过', time: item.createdAt, comment: '材料齐全' },
       { id: '2', approverName: '教务处 李老师', status: 'completed', resultText: '通过', time: '2026-04-02 09:00', comment: '已完成盖章' }
     )
-  } else if (String(item.status).toUpperCase() === 'CANCELED') {
+  } else if (statusCode === 'CANCELED') {
     approvals.push(
       { id: '1', approverName: '系统', status: 'completed', resultText: '已撤回', time: formatMockDateTime(), comment: '申请人主动撤回' }
     )
+  } else if (statusCode === 'ACTION_REQUIRED') {
+    approvals.push(
+      { id: '1', approverName: '学生本人', status: 'processing', resultText: '待处理', time: item.createdAt, comment: '需先补充教师资格认定相关材料，完成后系统才会提交老师审核。' }
+    )
   } else {
     approvals.push(
-      { id: '1', approverName: '学院教务老师', status: 'processing', resultText: '审核中', time: item.createdAt, comment: '' }
+      { id: '1', approverName: '学院教务老师', status: 'processing', resultText: '待审核', time: item.createdAt, comment: '已进入老师审核队列，当前正等待审核老师核验材料。' }
     )
   }
 
   return {
     id: item.id,
+    typeKey: item.typeKey,
     typeName: item.certificateType,
-    status: String(item.status || '').toLowerCase(),
+    status: String(statusCode || '').toLowerCase(),
+    statusCode,
     statusText: statusMeta.detailLabel,
+    statusTitle: statusMeta.title,
+    statusDescription: statusMeta.description,
     purpose: item.purpose || '',
     remark: item.remark || '',
     createTime: item.createdAt,
     canCancel: statusMeta.canCancel,
+    fieldDisplays: buildFieldDisplays(typeConfig, item.fieldValues || {}),
+    materialGuide: typeConfig?.attachmentGuide || [],
+    tips: typeConfig?.tips || [],
     approvals,
+    workflowNodes: buildWorkflowNodes(typeConfig, statusCode, item),
     generatedFile: item.generatedPdfPath ? { name: `${item.certificateType}.pdf`, url: item.generatedPdfPath } : null
   }
 }
@@ -1099,14 +1123,20 @@ exports.getMockData = (url, params = {}, method = 'GET') => {
   }
 
   if (plainPath === '/certificates/requests' && String(method).toUpperCase() === 'POST') {
+    const typeConfig = findApplyTypeById((params || {}).typeId) || findApplyTypeByKey((params || {}).typeKey) || findApplyTypeByTitle((params || {}).certificateType)
+    const typeTitle = typeConfig?.applyTitle || String((params || {}).certificateType || '未命名申请')
+    const status = resolveApplyInitialStatus(typeConfig, params || {})
     const created = {
       id: String(++applyRequestSeed),
       studentId: 10001,
-      certificateType: String((params || {}).certificateType || '未命名申请'),
-      status: 'SUBMITTED',
+      typeKey: typeConfig?.key || '',
+      certificateType: typeTitle,
+      status,
       createdAt: formatMockDateTime(),
       purpose: String((params || {}).purpose || ''),
       remark: String((params || {}).remark || ''),
+      fieldValues: (params || {}).fieldValues || {},
+      attachments: Array.isArray((params || {}).attachments) ? (params || {}).attachments : [],
       generatedPdfPath: null
     }
     applyRequests = [created, ...applyRequests]
