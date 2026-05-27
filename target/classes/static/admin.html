@@ -7714,12 +7714,11 @@
         const raw = localStorage.getItem(STORAGE_KEY);
         const list = tryParseJson(raw, null);
         if (Array.isArray(list) && list.length) return list;
-        const year = new Date().getFullYear();
         return [
-          { id: 1, studentNo: "2023001", name: "张三", className: "计算机1班", flow: "入党流程", currentNode: "入党积极分子", progress: 40, status: "OK", deadline: year + "-09-15" },
-          { id: 2, studentNo: "2023002", name: "李四", className: "软件工程2班", flow: "入党流程", currentNode: "党校培训", progress: 60, status: "OK", deadline: year + "-12-20" },
-          { id: 3, studentNo: "2022015", name: "王五", className: "人工智能1班", flow: "党员转正流程", currentNode: "预备党员", progress: 80, status: "SOON", deadline: year + "-04-05" },
-          { id: 4, studentNo: "2023045", name: "赵六", className: "大数据1班", flow: "入党流程", currentNode: "入党积极分子", progress: 40, status: "PAUSED", deadline: "" }
+          { id: 1, studentNo: "2023001", name: "张三", className: "计算机1班", flow: "入党流程", currentNode: "入党积极分子", progress: 40, status: "OK" },
+          { id: 2, studentNo: "2023002", name: "李四", className: "软件工程2班", flow: "入党流程", currentNode: "党校培训", progress: 60, status: "OK" },
+          { id: 3, studentNo: "2022015", name: "王五", className: "人工智能1班", flow: "党员转正流程", currentNode: "预备党员", progress: 80, status: "SOON" },
+          { id: 4, studentNo: "2023045", name: "赵六", className: "大数据1班", flow: "入党流程", currentNode: "入党积极分子", progress: 40, status: "PAUSED" }
         ];
       }
 
@@ -7774,9 +7773,6 @@
         el("div", null, [
           el("h2", { text: "学生进度总览" }),
           el("div", { class: "desc", text: "查看学生在党团流程中的进度与异常" }),
-          el("div", { style: "margin-top: 8px;" }, [
-            el("button", { class: "miniBtn", type: "button", text: "Preview" })
-          ])
         ]),
         el("div", { class: "actions" }, [
           el("button", { class: "flowBtn green", type: "button", text: "批量推进节点" }),
@@ -7833,8 +7829,7 @@
           ["流程", item.flow || "-"],
           ["当前节点", item.currentNode || "-"],
           ["进度", (item.progress == null ? 0 : item.progress) + "%"],
-          ["状态", String(item.status || "").toUpperCase() === "PAUSED" ? "已暂停" : String(item.status || "").toUpperCase() === "SOON" ? "即将到期" : "正常"],
-          ["截止日期", item.deadline || "-"]
+          ["状态", String(item.status || "").toUpperCase() === "PAUSED" ? "已暂停" : String(item.status || "").toUpperCase() === "SOON" ? "即将到期" : "正常"]
         ];
         const body = el("div", { style: "display:grid; gap: 10px;" }, rows.map(([k, v]) => {
           return el("div", { style: "display:flex; gap: 10px; align-items:flex-start;" }, [
@@ -7870,7 +7865,6 @@
           el("th", { text: "当前节点" }),
           el("th", { text: "进度" }),
           el("th", { text: "状态" }),
-          el("th", { text: "截止日期" }),
           el("th", { text: "操作", style: "text-align:right;" })
         ])]));
 
@@ -7908,7 +7902,6 @@
             el("td", null, [el("div", { text: it.currentNode || "-" })]),
             el("td", null, [progress]),
             el("td", null, [statusPill(it.status)]),
-            el("td", null, [el("div", { class: "mono", text: it.deadline || "-" })]),
             el("td", null, [el("div", { class: "certActions" }, [viewBtn, toggleBtn])])
           ]));
         });
