@@ -70,7 +70,7 @@ public class KingbaseAuthService implements AuthApplicationService {
             int failedAttempts = (overlay.getFailedLoginAttempts() == null ? 0 : overlay.getFailedLoginAttempts()) + 1;
             overlay.setFailedLoginAttempts(failedAttempts);
             if (failedAttempts >= platformSecurityPolicyService.maxFailedLoginAttempts()) {
-                overlay.setLockedUntil(LocalDateTime.now().plusMinutes(platformSecurityPolicyService.lockDurationMinutes()));
+                overlay.setLockedUntil(LocalDateTime.now().plusSeconds(20));
             }
             userAccountRepository.save(overlay);
             writeLoginAudit(latestUser.getId(), latestUser.getStudentNo(), overlay.getRole().name(), "LOGIN", "FAILED", "用户名或密码错误");

@@ -1563,7 +1563,7 @@
       const header = el("div", { class: "pageHeader" }, [
         el("div", null, [
           el("h2", { text: "政策管理" }),
-          el("div", { class: "desc", text: "维护政策制度内容和附件" })
+          el("div", { class: "desc", text: "维护政策制度官方链接和附件" })
         ]),
         el("button", { class: "btn primary", style: "padding: 8px 14px; font-size: 14px;", text: "+ 新建政策", onclick: async () => {
           openCreatePolicy();
@@ -1601,12 +1601,71 @@
       content.appendChild(toast);
 
       let allPolicies = [];
+      const POLICY_TAG = "__POLICY__";
+
+      function isPolicyItem(item) {
+        const tags = (item && item.tags != null) ? String(item.tags) : "";
+        return (item && item.category === "政策管理") || tags.includes(POLICY_TAG);
+      }
+
+      function listPolicyCategories(items) {
+        const set = new Set();
+        (items || []).forEach(it => {
+          const c = (it && it.category != null) ? String(it.category).trim() : "";
+          if (c && c !== "政策管理") set.add(c);
+        });
+        return Array.from(set).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+      }
+
+      async function previewOrDownloadPolicyAttachment(fileId, fileName, msgNode) {
+        const tip = msgNode || toast;
+        if (tip) tip.textContent = "";
+        if (!fileId) {
+          if (tip) tip.textContent = "未上传附件";
+          return;
+        }
+        const safeName = (fileName || "attachment").trim() || "attachment";
+        try {
+          const blob = await apiBlob("/api/v1/platform/files/" + fileId + "/download");
+          const url = URL.createObjectURL(blob);
+          const lower = safeName.toLowerCase();
+          const previewable = lower.endsWith(".pdf")
+            || lower.endsWith(".png")
+            || lower.endsWith(".jpg")
+            || lower.endsWith(".jpeg")
+            || lower.endsWith(".gif")
+            || lower.endsWith(".webp")
+            || lower.endsWith(".bmp")
+            || lower.endsWith(".heic");
+          if (previewable) {
+            const w = window.open(url, "_blank");
+            if (!w) {
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = safeName;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+            }
+          } else {
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = safeName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+          }
+          setTimeout(() => URL.revokeObjectURL(url), 15000);
+        } catch (e) {
+          if (tip) tip.textContent = e.message;
+        }
+      }
 
       async function loadPoliciesList() {
         try {
-          const params = { keyword: s.keyword || null, category: "政策管理", size: 1000 };
+          const params = { keyword: s.keyword || null, size: 1000 };
           const pageData = await apiJson("/api/v1/admin/knowledge/page?" + buildQuery(params));
-          allPolicies = (pageData.content || []).filter(item => item.category === "政策管理");
+          allPolicies = (pageData.content || []).filter(isPolicyItem);
           
           const listContainer = document.getElementById("policyListContainer");
           listContainer.innerHTML = "";
@@ -1652,35 +1711,32 @@
         let adminDetail = null;
         try {
           adminDetail = await apiJson("/api/v1/admin/knowledge/" + policy.id + "/detail");
-          if (adminDetail && adminDetail.content) {
-            saveKnowledgeContent(policy.id, String(adminDetail.content));
-          }
         } catch (e) {}
         
         async function togglePublish(nextPublished) {
           const user = getUser();
           const updatedBy = user ? (user.name || user.username) : "系统管理员";
-          let contentText = getKnowledgeContent(policy.id);
-          if (!contentText && adminDetail && adminDetail.content) {
-            contentText = String(adminDetail.content);
-          }
-          contentText = (contentText || "").trim();
-          if (!contentText) {
-            toast.textContent = "未找到政策正文内容，无法发布/撤回";
-            return;
-          }
+          const summaryText = normalizeText(adminDetail && adminDetail.summary ? String(adminDetail.summary) : "");
+          const contentText = (adminDetail && adminDetail.content ? String(adminDetail.content) : "").trim()
+            || summaryText
+            || ("请查看附件或官方链接：" + (policy.officialUrl || "").trim());
           const body = {
             title: (policy.title || "").trim(),
-            category: (policy.category || "政策管理").trim(),
-            summary: normalizeText(adminDetail && adminDetail.summary ? String(adminDetail.summary) : ""),
+            category: normalizeText(policy.category),
+            tags: policy.tags || POLICY_TAG,
+            summary: summaryText,
             content: contentText,
             officialUrl: normalizeUrl(policy.officialUrl),
+            sourceFileId: policy.sourceFileId || null,
             sourceFileName: normalizeText(policy.sourceFileName),
-            audienceScope: normalizeText(policy.audienceScope),
             updatedBy: updatedBy,
             published: !!nextPublished
           };
           Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
+          if (!!nextPublished && !body.officialUrl && !body.sourceFileId) {
+            toast.textContent = "已发布政策必须提供官方链接或附件";
+            return;
+          }
           await apiJson("/api/v1/admin/knowledge/" + policy.id, { method: "PUT", body: JSON.stringify(body) });
           const updated = Object.assign({}, policy, { published: !!nextPublished, updatedBy: updatedBy });
           allPolicies = (allPolicies || []).map(x => String(x.id) === String(policy.id) ? updated : x);
@@ -1721,8 +1777,7 @@
               }
             }}),
             el("button", { class: "btn", text: "删除", onclick: async () => { await doDeletePolicy(); } }),
-            el("button", { class: "iconAction", text: "✎", onclick: async () => { await openEditPolicy(policy); } }),
-            el("button", { class: "iconAction", text: "👁", onclick: async () => { await openPreviewPolicy(policy); } })
+            el("button", { class: "iconAction", text: "✎", onclick: async () => { await openEditPolicy(policy); } })
           ])
         ]);
 
@@ -1732,16 +1787,24 @@
             el("div", { style: "font-weight: 700; color: " + (policy.published ? "#22c55e" : "#ef4444") }, [el("span", { text: policy.published ? "已发布" : "未发布" })])
           ]),
           el("div", null, [
-            el("div", { style: "color: #64748b; margin-bottom: 4px;" }, [el("span", { text: "发布时间" })]),
-            el("div", { style: "font-weight: 700;" }, [el("span", { text: policy.updatedAt || "-" })])
+            el("div", { style: "color: #64748b; margin-bottom: 4px;" }, [el("span", { text: "分类" })]),
+            el("div", { style: "font-weight: 700;" }, [el("span", { text: (policy.category || "-").trim() || "-" })])
           ]),
           el("div", null, [
-            el("div", { style: "color: #64748b; margin-bottom: 4px;" }, [el("span", { text: "来源" })]),
-            el("div", { style: "font-weight: 700;" }, [el("span", { text: policy.sourceFileName || "-" })])
+            el("div", { style: "color: #64748b; margin-bottom: 4px;" }, [el("span", { text: "附件" })]),
+            el("div", { style: "display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 700;" }, [
+              el("span", { text: (policy.sourceFileName || "-") }),
+              el("button", {
+                class: "btn",
+                text: "预览/下载",
+                disabled: !policy.sourceFileId,
+                onclick: async () => await previewOrDownloadPolicyAttachment(policy.sourceFileId, policy.sourceFileName, toast)
+              })
+            ])
           ]),
           el("div", null, [
-            el("div", { style: "color: #64748b; margin-bottom: 4px;" }, [el("span", { text: "创建人" })]),
-            el("div", { style: "font-weight: 700;" }, [el("span", { text: policy.updatedBy || "-" })])
+            el("div", { style: "color: #64748b; margin-bottom: 4px;" }, [el("span", { text: "官方链接" })]),
+            el("div", { style: "font-weight: 700;" }, [el("span", { text: (policy.officialUrl || "-").trim() || "-" })])
           ])
         ]);
 
@@ -1753,57 +1816,10 @@
           el("span", { text: summaryText || "暂无摘要（可在编辑中填写）" })
         ]);
 
-        const contentTitle = el("h4", { text: "正文内容", style: "margin: 16px 0 8px; font-size: 13px; font-weight: 700;" });
-        const content_div = el("div", { style: "font-size: 12px; line-height: 1.8; color: #555; margin-bottom: 16px; padding: 12px; background: #fafafa; border-radius: 8px; border: 1px solid var(--border); padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 16px;" });
-        
-        // 加载内容
-        const savedContent = getKnowledgeContent(policy.id);
-        const remoteContent = adminDetail && adminDetail.content ? String(adminDetail.content) : "";
-        const contentText = (savedContent && String(savedContent).trim()) ? String(savedContent) : remoteContent;
-        if (!contentText || !String(contentText).trim()) {
-          content_div.innerHTML = "<span style='color:#94a3b8;'>暂无正文内容，请点击“编辑”补充。</span>";
-        } else {
-          content_div.innerHTML = String(contentText).replace(/\n/g, "<br>");
-        }
-
-        const attachmentsTitle = el("h4", { text: "附件", style: "margin: 16px 0 8px; font-size: 13px; font-weight: 700;" });
-        const attachmentsDiv = el("div", { style: "margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);" });
-        try {
-          const attachments = await apiJson("/api/v1/admin/knowledge/" + policy.id + "/attachments").catch(() => []);
-          if (attachments && attachments.length > 0) {
-            attachments.forEach(att => {
-              attachmentsDiv.appendChild(el("div", { style: "display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 12px; border-bottom: 1px solid rgba(15,23,42,.06);" }, [
-                el("div", { style: "display: flex; align-items: center; gap: 6px;" }, [
-                  el("span", { text: "📎", style: "font-size: 14px;" }),
-                  el("span", { text: att.fileName || "-" })
-                ]),
-                el("button", { class: "btn", text: "下载", onclick: () => { alert("下载功能：" + att.fileName); } })
-              ]));
-            });
-          } else {
-            attachmentsDiv.appendChild(el("div", { style: "font-size: 12px; color: #94a3b8; padding: 8px 0;" }, [el("span", { text: "暂无附件" })]));
-          }
-        } catch (e) {
-          attachmentsDiv.appendChild(el("div", { style: "font-size: 12px; color: #94a3b8; padding: 8px 0;" }, [el("span", { text: "暂无附件" })]));
-        }
-
-        const keywordsTitle = el("h4", { text: "关键词", style: "margin: 16px 0 8px; font-size: 13px; font-weight: 700;" });
-        const keywordsDiv = el("div", { style: "display: flex; gap: 6px; flex-wrap: wrap;" }, [
-          el("span", { class: "tag", style: "background: rgba(37,99,235,.12); border-color: rgba(37,99,235,.35); color: #2563eb; cursor: pointer;", text: "学生管理" }),
-          el("span", { class: "tag", style: "background: rgba(37,99,235,.12); border-color: rgba(37,99,235,.35); color: #2563eb; cursor: pointer;", text: "规章制度" }),
-          el("span", { class: "tag", style: "background: rgba(37,99,235,.12); border-color: rgba(37,99,235,.35); color: #2563eb; cursor: pointer;", text: "校务" })
-        ]);
-
         detailPanel.appendChild(titleRow);
         detailPanel.appendChild(infoRow);
         detailPanel.appendChild(summaryTitle);
         detailPanel.appendChild(summary);
-        detailPanel.appendChild(contentTitle);
-        detailPanel.appendChild(content_div);
-        detailPanel.appendChild(attachmentsTitle);
-        detailPanel.appendChild(attachmentsDiv);
-        detailPanel.appendChild(keywordsTitle);
-        detailPanel.appendChild(keywordsDiv);
       }
 
       async function openCreatePolicy() {
@@ -1811,30 +1827,37 @@
         const user = getUser();
         const updatedBy = user ? (user.name || user.username) : "系统管理员";
         const titleInput = el("input", { placeholder: "政策标题（必填）" });
-        const categoryInput = el("input", { value: "政策管理", placeholder: "分类" });
+        const datalistId = "policyCategoryOptions_" + String(Date.now());
+        const categoryInput = el("input", { placeholder: "分类（可空，可新建）", list: datalistId });
+        const categoryDatalist = el("datalist", { id: datalistId }, listPolicyCategories(allPolicies).map(c => el("option", { value: c }, [])));
         const summaryInput = el("textarea", { placeholder: "摘要（可空，建议 80 字以内）" });
-        const contentInput = el("textarea", { placeholder: "政策内容（必填）" });
         const officialUrlInput = el("input", { placeholder: "官方链接（可空，http/https）" });
-        const sourceFileInput = el("input", { placeholder: "来源文件名（可空）" });
-        const scopeInput = el("input", { placeholder: "适用人群（可空，如：全体学生）" });
-        const publishHint = el("div", { class: "sub", text: "提示：已发布政策必须提供官方链接或来源文件名；官方链接必须以 http/https 开头。" });
+        let pendingSourceFile = null;
+        const sourceFilePicker = el("input", { type: "file", accept: ".pdf,.doc,.docx,image/*" });
+        const sourceFileStatus = el("div", { class: "sub", text: "未选择附件" });
+        const publishHint = el("div", { class: "sub", text: "提示：已发布政策必须提供官方链接或附件；官方链接必须以 http/https 开头。" });
         const msg = el("div", { class: "toast" }, []);
+
+        sourceFilePicker.addEventListener("change", () => {
+          const f = sourceFilePicker.files && sourceFilePicker.files[0] ? sourceFilePicker.files[0] : null;
+          pendingSourceFile = f;
+          sourceFileStatus.textContent = f ? ("已选择：" + f.name + "（保存后上传）") : "未选择附件";
+        });
 
         setUserModalContent([
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 260px;" }, [el("label", { text: "标题" }), titleInput]),
-            el("div", { class: "field", style: "min-width: 180px;" }, [el("label", { text: "分类" }), categoryInput]),
+            el("div", { class: "field", style: "min-width: 220px;" }, [el("label", { text: "分类" }), categoryInput, categoryDatalist]),
           ]),
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "摘要" }), summaryInput])
           ]),
           el("div", { class: "row" }, [
-            el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "内容" }), contentInput])
-          ]),
-          el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 320px;" }, [el("label", { text: "官方链接" }), officialUrlInput]),
-            el("div", { class: "field", style: "flex:1; min-width: 220px;" }, [el("label", { text: "来源文件" }), sourceFileInput]),
-            el("div", { class: "field", style: "flex:1; min-width: 220px;" }, [el("label", { text: "适用人群" }), scopeInput])
+            el("div", { class: "field", style: "flex:1; min-width: 260px;" }, [
+              el("label", { text: "附件" }),
+              el("div", { style: "display:flex; flex-direction: column; gap: 6px;" }, [sourceFilePicker, sourceFileStatus])
+            ])
           ]),
           publishHint,
           msg
@@ -1843,25 +1866,33 @@
           el("button", { class: "btn", text: "保存为草稿", onclick: async () => {
             msg.textContent = "";
             try {
+              const normalizedCategory = normalizeText(categoryInput.value);
+              const normalizedSummary = normalizeText(summaryInput.value);
+              const contentText = normalizedSummary || ("请查看附件或官方链接：" + normalizeUrl(officialUrlInput.value));
               const body = {
                 title: titleInput.value.trim(),
-                category: categoryInput.value.trim(),
-                summary: normalizeText(summaryInput.value),
-                content: contentInput.value.trim(),
+                category: normalizedCategory,
+                tags: POLICY_TAG,
+                summary: normalizedSummary,
+                content: contentText,
                 officialUrl: normalizeUrl(officialUrlInput.value),
-                sourceFileName: normalizeText(sourceFileInput.value),
-                audienceScope: normalizeText(scopeInput.value),
+                sourceFileId: null,
+                sourceFileName: null,
                 updatedBy: updatedBy,
                 published: false
               };
               Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
-              if (!body.title || !body.content) {
-                msg.textContent = "标题和内容不能为空";
+              if (!body.title) {
+                msg.textContent = "标题不能为空";
                 return;
               }
               const created = await apiJson("/api/v1/admin/knowledge", { method: "POST", body: JSON.stringify(body) });
-              if (created && created.id != null) {
-                saveKnowledgeContent(created.id, body.content);
+              if (created && created.id != null && pendingSourceFile) {
+                const fd = new FormData();
+                fd.append("file", pendingSourceFile);
+                const uploaded = await apiJson("/api/v1/platform/files/upload?" + buildQuery({ bizType: "KNOWLEDGE_SOURCE", bizId: created.id }), { method: "POST", body: fd });
+                const updateBody = Object.assign({}, body, { sourceFileId: uploaded.id, sourceFileName: uploaded.fileName, published: false });
+                await apiJson("/api/v1/admin/knowledge/" + created.id, { method: "PUT", body: JSON.stringify(updateBody) });
               }
               hideUserOverlay();
               await loadPoliciesList();
@@ -1873,30 +1904,49 @@
             msg.textContent = "";
             try {
               if (!confirm("确认发布该政策？")) return;
+              const normalizedCategory = normalizeText(categoryInput.value);
+              const normalizedSummary = normalizeText(summaryInput.value);
+              const contentText = normalizedSummary || ("请查看附件或官方链接：" + normalizeUrl(officialUrlInput.value));
               const body = {
                 title: titleInput.value.trim(),
-                category: categoryInput.value.trim(),
-                summary: normalizeText(summaryInput.value),
-                content: contentInput.value.trim(),
+                category: normalizedCategory,
+                tags: POLICY_TAG,
+                summary: normalizedSummary,
+                content: contentText,
                 officialUrl: normalizeUrl(officialUrlInput.value),
-                sourceFileName: normalizeText(sourceFileInput.value),
-                audienceScope: normalizeText(scopeInput.value),
+                sourceFileId: null,
+                sourceFileName: null,
                 updatedBy: updatedBy,
-                published: true
+                published: false
               };
               Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
-              if (!body.title || !body.content) {
-                msg.textContent = "标题和内容不能为空";
+              if (!body.title) {
+                msg.textContent = "标题不能为空";
                 return;
               }
-              if (!body.officialUrl && !body.sourceFileName) {
-                msg.textContent = "已发布政策必须提供官方链接或来源文件名";
+              if (!body.officialUrl && !pendingSourceFile) {
+                msg.textContent = "已发布政策必须提供官方链接或附件";
                 return;
               }
               const created = await apiJson("/api/v1/admin/knowledge", { method: "POST", body: JSON.stringify(body) });
-              if (created && created.id != null) {
-                saveKnowledgeContent(created.id, body.content);
+              if (!created || created.id == null) {
+                throw new Error("创建失败");
               }
+              let sourceFileId = null;
+              let sourceFileName = null;
+              if (pendingSourceFile) {
+                const fd = new FormData();
+                fd.append("file", pendingSourceFile);
+                const uploaded = await apiJson("/api/v1/platform/files/upload?" + buildQuery({ bizType: "KNOWLEDGE_SOURCE", bizId: created.id }), { method: "POST", body: fd });
+                sourceFileId = uploaded.id;
+                sourceFileName = uploaded.fileName;
+              }
+              const publishBody = Object.assign({}, body, {
+                published: true,
+                sourceFileId: sourceFileId,
+                sourceFileName: sourceFileName
+              });
+              await apiJson("/api/v1/admin/knowledge/" + created.id, { method: "PUT", body: JSON.stringify(publishBody) });
               hideUserOverlay();
               await loadPoliciesList();
             } catch (e) {
@@ -1911,40 +1961,68 @@
         const user = getUser();
         const updatedBy = user ? (user.name || user.username) : "系统管理员";
         const titleInput = el("input", { value: policy.title || "" });
-        const categoryInput = el("input", { value: policy.category || "政策管理" });
+        const datalistId = "policyCategoryOptions_" + String(Date.now());
+        const categoryInput = el("input", { value: (policy.category || ""), placeholder: "分类（可空，可新建）", list: datalistId });
+        const categoryDatalist = el("datalist", { id: datalistId }, listPolicyCategories(allPolicies).map(c => el("option", { value: c }, [])));
         const summaryInput = el("textarea", { placeholder: "摘要（可空，建议 80 字以内）" });
-        const contentInput = el("textarea", { placeholder: "内容" });
         const officialUrlInput = el("input", { value: normalizeUrlForInput(policy.officialUrl), placeholder: "官方链接（可空，http/https）" });
-        const sourceFileInput = el("input", { value: policy.sourceFileName || "", placeholder: "来源文件名（可空）" });
-        const scopeInput = el("input", { value: policy.audienceScope || "", placeholder: "适用人群（可空，如：全体学生）" });
-        const publishHint = el("div", { class: "sub", text: "提示：已发布政策必须提供官方链接或来源文件名；官方链接必须以 http/https 开头。" });
+        let sourceFileId = policy.sourceFileId || null;
+        let sourceFileName = (policy.sourceFileName || "").trim();
+        const sourceFilePicker = el("input", { type: "file", accept: ".pdf,.doc,.docx,image/*" });
+        const sourceFileStatus = el("div", { class: "sub", text: sourceFileName ? ("已上传：" + sourceFileName) : "未上传附件" });
+        const sourceFileDownloadBtn = el("button", {
+          class: "btn",
+          text: "预览/下载",
+          disabled: !sourceFileId,
+          onclick: async () => await previewOrDownloadPolicyAttachment(sourceFileId, sourceFileName, msg)
+        });
+        const publishHint = el("div", { class: "sub", text: "提示：已发布政策必须提供官方链接或附件；官方链接必须以 http/https 开头。" });
         const msg = el("div", { class: "toast" }, []);
 
-        const savedContent = getKnowledgeContent(policy.id);
-        if (savedContent) {
-          contentInput.value = savedContent;
-        }
+        sourceFilePicker.addEventListener("change", async () => {
+          msg.textContent = "";
+          const f = sourceFilePicker.files && sourceFilePicker.files[0] ? sourceFilePicker.files[0] : null;
+          if (!f) return;
+          try {
+            sourceFileStatus.textContent = "上传中...";
+            const fd = new FormData();
+            fd.append("file", f);
+            const uploaded = await apiJson("/api/v1/platform/files/upload?" + buildQuery({ bizType: "KNOWLEDGE_SOURCE", bizId: policy.id }), { method: "POST", body: fd });
+            sourceFileId = uploaded.id;
+            sourceFileName = uploaded.fileName;
+            sourceFileStatus.textContent = "已上传：" + sourceFileName;
+            sourceFileDownloadBtn.disabled = false;
+            msg.textContent = "附件已上传（点击保存/发布以绑定到该政策）";
+          } catch (e) {
+            sourceFileStatus.textContent = sourceFileName ? ("已上传：" + sourceFileName) : "未上传附件";
+            msg.textContent = e.message;
+          } finally {
+            sourceFilePicker.value = "";
+          }
+        });
+
         try {
           const detail = await apiJson("/api/v1/admin/knowledge/" + policy.id + "/detail");
-          if (!savedContent && detail && detail.content) contentInput.value = detail.content;
           if (detail && detail.summary) summaryInput.value = detail.summary;
         } catch (e) {}
 
         setUserModalContent([
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 260px;" }, [el("label", { text: "标题" }), titleInput]),
-            el("div", { class: "field", style: "min-width: 180px;" }, [el("label", { text: "分类" }), categoryInput]),
+            el("div", { class: "field", style: "min-width: 220px;" }, [el("label", { text: "分类" }), categoryInput, categoryDatalist]),
           ]),
           el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "摘要" }), summaryInput])
           ]),
           el("div", { class: "row" }, [
-            el("div", { class: "field", style: "flex:1; min-width: 420px;" }, [el("label", { text: "内容" }), contentInput])
-          ]),
-          el("div", { class: "row" }, [
             el("div", { class: "field", style: "flex:1; min-width: 320px;" }, [el("label", { text: "官方链接" }), officialUrlInput]),
-            el("div", { class: "field", style: "flex:1; min-width: 220px;" }, [el("label", { text: "来源文件" }), sourceFileInput]),
-            el("div", { class: "field", style: "flex:1; min-width: 220px;" }, [el("label", { text: "适用人群" }), scopeInput])
+            el("div", { class: "field", style: "flex:1; min-width: 260px;" }, [
+              el("label", { text: "附件" }),
+              el("div", { style: "display:flex; flex-direction: column; gap: 6px;" }, [
+                sourceFilePicker,
+                el("div", { style: "display:flex; align-items:center; gap: 8px; flex-wrap: wrap;" }, [sourceFileStatus, sourceFileDownloadBtn])
+              ])
+            ])
           ]),
           publishHint,
           msg
@@ -1953,24 +2031,27 @@
           el("button", { class: "btn", text: "保存为草稿", onclick: async () => {
             msg.textContent = "";
             try {
+              const normalizedCategory = normalizeText(categoryInput.value);
+              const normalizedSummary = normalizeText(summaryInput.value);
+              const contentText = normalizedSummary || ("请查看附件或官方链接：" + normalizeUrl(officialUrlInput.value));
               const body = {
                 title: titleInput.value.trim(),
-                category: categoryInput.value.trim(),
-                summary: normalizeText(summaryInput.value),
-                content: contentInput.value.trim(),
+                category: normalizedCategory,
+                tags: policy.tags || POLICY_TAG,
+                summary: normalizedSummary,
+                content: contentText,
                 officialUrl: normalizeUrl(officialUrlInput.value),
-                sourceFileName: normalizeText(sourceFileInput.value),
-                audienceScope: normalizeText(scopeInput.value),
+                sourceFileId: sourceFileId,
+                sourceFileName: sourceFileName ? sourceFileName : null,
                 updatedBy: updatedBy,
                 published: false
               };
               Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
-              if (!body.title || !body.content) {
-                msg.textContent = "标题和内容不能为空";
+              if (!body.title) {
+                msg.textContent = "标题不能为空";
                 return;
               }
               await apiJson("/api/v1/admin/knowledge/" + policy.id, { method: "PUT", body: JSON.stringify(body) });
-              saveKnowledgeContent(policy.id, body.content);
               hideUserOverlay();
               await loadPoliciesList();
               const updatedItem = (allPolicies || []).find(x => String(x.id) === String(policy.id)) || policy;
@@ -1983,28 +2064,31 @@
             msg.textContent = "";
             try {
               if (!confirm("确认发布该政策？")) return;
+              const normalizedCategory = normalizeText(categoryInput.value);
+              const normalizedSummary = normalizeText(summaryInput.value);
+              const contentText = normalizedSummary || ("请查看附件或官方链接：" + normalizeUrl(officialUrlInput.value));
               const body = {
                 title: titleInput.value.trim(),
-                category: categoryInput.value.trim(),
-                summary: normalizeText(summaryInput.value),
-                content: contentInput.value.trim(),
+                category: normalizedCategory,
+                tags: policy.tags || POLICY_TAG,
+                summary: normalizedSummary,
+                content: contentText,
                 officialUrl: normalizeUrl(officialUrlInput.value),
-                sourceFileName: normalizeText(sourceFileInput.value),
-                audienceScope: normalizeText(scopeInput.value),
+                sourceFileId: sourceFileId,
+                sourceFileName: sourceFileName ? sourceFileName : null,
                 updatedBy: updatedBy,
                 published: true
               };
               Object.keys(body).forEach(k => { if (body[k] == null) delete body[k]; });
-              if (!body.title || !body.content) {
-                msg.textContent = "标题和内容不能为空";
+              if (!body.title) {
+                msg.textContent = "标题不能为空";
                 return;
               }
-              if (!body.officialUrl && !body.sourceFileName) {
-                msg.textContent = "已发布政策必须提供官方链接或来源文件名";
+              if (!body.officialUrl && !body.sourceFileId) {
+                msg.textContent = "已发布政策必须提供官方链接或附件";
                 return;
               }
               await apiJson("/api/v1/admin/knowledge/" + policy.id, { method: "PUT", body: JSON.stringify(body) });
-              saveKnowledgeContent(policy.id, body.content);
               hideUserOverlay();
               await loadPoliciesList();
               const updatedItem = (allPolicies || []).find(x => String(x.id) === String(policy.id)) || policy;
@@ -2013,29 +2097,6 @@
               msg.textContent = e.message;
             }
           }})
-        ]);
-      }
-
-      async function openPreviewPolicy(policy) {
-        showUserOverlay("政策预览 · " + policy.title);
-        const savedContent = getKnowledgeContent(policy.id);
-        let previewContent = savedContent || "";
-        
-        if (!savedContent) {
-          try {
-            const detail = await apiJson("/api/v1/admin/knowledge/" + policy.id + "/detail");
-            if (detail && detail.content) previewContent = detail.content;
-          } catch (e) {}
-        }
-        if (!previewContent || !String(previewContent).trim()) {
-          previewContent = "暂无正文内容";
-        }
-
-        const contentDiv = el("div", { style: "font-size: 13px; line-height: 1.8; color: #555; padding: 12px; background: #fafafa; border-radius: 8px; min-height: 200px; white-space: pre-wrap; word-wrap: break-word;" });
-        contentDiv.textContent = previewContent;
-
-        setUserModalContent([contentDiv], [
-          el("button", { class: "btn", text: "关闭", onclick: () => hideUserOverlay() })
         ]);
       }
 
@@ -3868,6 +3929,13 @@
             el("line", { x1: "12", y1: "3", x2: "12", y2: "15" })
           ]);
         }
+        if (type === "download") {
+          return el("svg", common, [
+            el("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }),
+            el("polyline", { points: "7 10 12 15 17 10" }),
+            el("line", { x1: "12", y1: "15", x2: "12", y2: "3" })
+          ]);
+        }
         if (type === "trash") {
           return el("svg", common, [
             el("polyline", { points: "3 6 5 6 21 6" }),
@@ -3893,6 +3961,40 @@
         if (n.endsWith(".pdf")) return "PDF";
         if (n.endsWith(".docx") || n.endsWith(".doc")) return "DOCX";
         return fallbackFormat || "PDF";
+      }
+
+      async function downloadTemplateFile(item) {
+        toast.textContent = "";
+        if (!item || !item.fileId) {
+          toast.textContent = "该模板未绑定文件";
+          return;
+        }
+        const fileName = item.fileName || (item.code || "template") + "." + String(item.format || "pdf").toLowerCase();
+        try {
+          const blob = await apiBlob("/api/v1/platform/files/" + item.fileId + "/download");
+          const url = URL.createObjectURL(blob);
+          if (String(item.format || "").toUpperCase() === "PDF") {
+            const w = window.open(url, "_blank");
+            if (!w) {
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = fileName;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+            }
+          } else {
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+          }
+          setTimeout(() => URL.revokeObjectURL(url), 15000);
+        } catch (e) {
+          toast.textContent = e.message;
+        }
       }
 
       let items = [];
@@ -4166,6 +4268,7 @@
           el("th", { text: "输出格式" }),
           el("th", { text: "状态" }),
           el("th", { text: "关键词" }),
+          el("th", { text: "模板文件" }),
           el("th", { text: "操作", style: "text-align:right;" })
         ])]));
 
@@ -4175,6 +4278,7 @@
           const editBtn = el("button", { class: "certIconBtn green", type: "button", title: "编辑" }, [svgIcon("edit")]);
           const copyBtn = el("button", { class: "certIconBtn purple", type: "button", title: "复制" }, [svgIcon("copy")]);
           const uploadBtn = el("button", { class: "certIconBtn orange", type: "button", title: "绑定文件" }, [svgIcon("upload")]);
+          const downloadBtn = el("button", { class: "certIconBtn", type: "button", title: "预览/下载模板文件" }, [svgIcon("download")]);
           const delBtn = el("button", { class: "certIconBtn red", type: "button", title: "删除" }, [svgIcon("trash")]);
 
           viewBtn.addEventListener("click", () => openViewModal(item));
@@ -4201,6 +4305,7 @@
             }
             fileInput.click();
           });
+          downloadBtn.addEventListener("click", async () => await downloadTemplateFile(item));
           delBtn.addEventListener("click", async () => {
             toast.textContent = "";
             if (!confirm("确认删除模板 " + (item.name || item.code) + " 吗？")) return;
@@ -4224,7 +4329,8 @@
             el("td", null, [formatPill(item.format || "-")]),
             el("td", null, [statusPill(!!item.active)]),
             el("td", null, [el("div", { text: item.keywords || "-" })]),
-            el("td", null, [el("div", { class: "certActions" }, [viewBtn, editBtn, copyBtn, uploadBtn, delBtn])])
+            el("td", null, [el("div", { class: "mono", text: item.fileName || "-" })]),
+            el("td", null, [el("div", { class: "certActions" }, [viewBtn, editBtn, copyBtn, uploadBtn, downloadBtn, delBtn])])
           ]));
         });
 

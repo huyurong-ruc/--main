@@ -10,6 +10,7 @@ import edu.ruc.platform.auth.domain.LatestUser;
 import edu.ruc.platform.auth.dto.StudentDataScopeSnapshot;
 import edu.ruc.platform.auth.repository.UserAccountRepository;
 import edu.ruc.platform.auth.repository.LoginAuditLogRepository;
+import edu.ruc.platform.auth.repository.LatestUserAuthRepository;
 import edu.ruc.platform.auth.repository.LatestUserRepository;
 import edu.ruc.platform.auth.repository.RevokedTokenRecordRepository;
 import edu.ruc.platform.auth.repository.UserSessionRecordRepository;
@@ -128,6 +129,7 @@ public class PlatformService implements PlatformApplicationService {
     private final LatestAuditImportJobRepository latestAuditImportJobRepository;
     private final LatestSysOperationLogRepository latestSysOperationLogRepository;
     private final LatestUserRepository latestUserRepository;
+    private final LatestUserAuthRepository latestUserAuthRepository;
     private final LatestFileObjectRepository latestFileObjectRepository;
     private final ObjectMapper objectMapper;
     private final Environment environment;
@@ -348,7 +350,16 @@ public class PlatformService implements PlatformApplicationService {
                 : request.newPassword();
         validatePassword(password, "重置密码长度不能少于 6 位");
         user.setPasswordHash(passwordEncoder.encode(password));
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
         userAccountRepository.save(user);
+        if (isKingbaseProfile()) {
+            latestUserAuthRepository.findByStudentNoAndLoginMethodAndIsDeleted(user.getUsername(), "password", 0)
+                    .ifPresent(auth -> {
+                        auth.setPasswordHash(passwordEncoder.encode(password));
+                        latestUserAuthRepository.save(auth);
+                    });
+        }
         writePlatformOperationLog("PLATFORM_USER", "RESET_PASSWORD", "user#" + user.getId(), "SUCCESS", user.getUsername());
         return new PlatformUserPasswordResetResponse(user.getId(), user.getUsername(), password, LocalDateTime.now());
     }

@@ -297,6 +297,7 @@ public class AdminService implements AdminApplicationService {
                         item.getVersion(),
                         Boolean.TRUE.equals(item.getPublished()),
                         item.getOfficialUrl(),
+                        null,
                         item.getSourceFileName(),
                         item.getAudienceScope(),
                         item.getUpdatedBy(),
@@ -336,7 +337,7 @@ public class AdminService implements AdminApplicationService {
                 .sorted(java.util.Comparator.comparing(KnowledgeCategoryStatsResponse::itemCount).reversed())
                 .toList();
         long totalAttachments = isKingbaseProfile()
-                ? filtered.stream().filter(item -> item.sourceFileName() != null && !item.sourceFileName().isBlank()).count()
+                ? filtered.stream().filter(item -> item.sourceFileId() != null).count()
                 : filtered.stream()
                 .map(AdminKnowledgeItemResponse::id)
                 .mapToLong(id -> knowledgeAttachmentRepository.findByKnowledgeIdOrderByCreatedAtDesc(id).size())
@@ -1353,7 +1354,8 @@ public class AdminService implements AdminApplicationService {
     private void populateKnowledgeItem(KnowledgeDocument item, AdminKnowledgeUpsertRequest request) {
         AuthenticatedUser currentUser = currentUserService.requireCurrentUser();
         item.setTitle(request.title());
-        item.setCategory(request.category());
+        String normalizedCategory = QueryFilterSupport.trimToNull(request.category());
+        item.setCategory(normalizedCategory == null ? "未分类" : normalizedCategory.trim());
         item.setTags(request.tags());
         item.setSummary(QueryFilterSupport.trimToNull(request.summary()) != null
                 ? request.summary().trim()
@@ -1375,6 +1377,7 @@ public class AdminService implements AdminApplicationService {
                 item.getVersion(),
                 Boolean.TRUE.equals(item.getPublished()),
                 item.getOfficialUrl(),
+                null,
                 item.getSourceFileName(),
                 item.getAudienceScope(),
                 item.getUpdatedBy(),
@@ -1606,6 +1609,7 @@ public class AdminService implements AdminApplicationService {
                 1,
                 item.getIsPublished() != null && item.getIsPublished() == 1,
                 item.getSourceUrl(),
+                item.getAttachmentFileId(),
                 sourceFileName,
                 meta.get("audienceScope"),
                 meta.get("updatedBy"),
@@ -1687,8 +1691,11 @@ public class AdminService implements AdminApplicationService {
                 ? request.summary().trim()
                 : buildKnowledgeSummary(request.content()));
         item.setContent(request.content());
-        item.setSourceType(request.sourceFileName() == null || request.sourceFileName().isBlank() ? "manual" : "import");
+        boolean hasSourceFile = request.sourceFileId() != null
+                || (request.sourceFileName() != null && !request.sourceFileName().isBlank());
+        item.setSourceType(hasSourceFile ? "import" : "manual");
         item.setSourceUrl(request.officialUrl());
+        item.setAttachmentFileId(request.sourceFileId());
         item.setIsPublished(Boolean.TRUE.equals(request.published()) ? 1 : 0);
         item.setPublishedAt(Boolean.TRUE.equals(request.published()) ? LocalDateTime.now() : null);
         item.setCreatedBy(user.userId());
@@ -1705,8 +1712,9 @@ public class AdminService implements AdminApplicationService {
 
     private String buildLatestKnowledgeMetaJson(AdminKnowledgeUpsertRequest request) {
         Map<String, String> meta = new java.util.LinkedHashMap<>();
-        meta.put("category", request.category());
+        meta.put("category", QueryFilterSupport.trimToNull(request.category()));
         meta.put("tags", request.tags());
+        meta.put("sourceFileId", request.sourceFileId() == null ? null : String.valueOf(request.sourceFileId()));
         meta.put("sourceFileName", request.sourceFileName());
         meta.put("audienceScope", request.audienceScope());
         meta.put("updatedBy", request.updatedBy());

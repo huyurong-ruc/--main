@@ -18,7 +18,6 @@ function validatePassword(value = '') {
 
 Page({
   data: {
-    name: '',
     studentNo: '',
     password: '',
     passwordTouched: false,
@@ -40,11 +39,6 @@ Page({
   },
   
   // 输入处理
-  onNameInput(e) {
-    this.setData({ name: e.detail.value })
-    this.updateCanSubmit()
-  },
-  
   onStudentNoInput(e) {
     this.setData({ studentNo: e.detail.value })
     this.updateCanSubmit()
@@ -71,9 +65,9 @@ Page({
   },
 
   updateCanSubmit() {
-    const { name, studentNo, password } = this.data
+    const { studentNo, password } = this.data
     const passwordResult = validatePassword(password)
-    const canSubmit = Boolean(name.trim()) && Boolean(studentNo.trim()) && passwordResult.valid
+    const canSubmit = Boolean(studentNo.trim()) && passwordResult.valid
     if (canSubmit !== this.data.canSubmit) {
       this.setData({ canSubmit })
     }
@@ -81,7 +75,7 @@ Page({
   
   // 登录提交
   async handleLogin() {
-    const { name, studentNo, password, loading, locked } = this.data
+    const { studentNo, password, loading, locked } = this.data
     
     if (locked) {
       wx.showToast({ title: `请${this.data.lockTime}秒后再试`, icon: 'none' })
@@ -91,11 +85,6 @@ Page({
     if (loading) return
     
     // 表单验证
-    if (!name.trim()) {
-      wx.showToast({ title: '请输入真实姓名', icon: 'none' })
-      return
-    }
-    
     if (!studentNo.trim()) {
       wx.showToast({ title: '请输入学号', icon: 'none' })
       return
@@ -127,17 +116,29 @@ Page({
       const payload = res.data || {}
       const userId = payload.userId || (payload.userInfo && payload.userInfo.id) || ''
       const role = payload.role || (payload.userInfo && payload.userInfo.role) || 'STUDENT'
+
+      let profile = null
+      try {
+        const meRes = await api.getCurrentUser()
+        profile = meRes && meRes.data ? meRes.data : null
+      } catch (e) {
+        profile = null
+      }
       
       // 保存登录数据
       app.setLoginData(payload.token, {
-        id: userId || studentNo.trim(),
-        studentId: userId || studentNo.trim(),
-        name: name.trim(),
-        studentNo: studentNo.trim(),
-        role
+        id: profile?.userId || userId || studentNo.trim(),
+        studentId: profile?.studentId || profile?.userId || userId || studentNo.trim(),
+        name: profile?.name || profile?.username || studentNo.trim(),
+        studentNo: profile?.studentNo || studentNo.trim(),
+        role: profile?.role || role,
+        major: profile?.major || '',
+        grade: profile?.grade || ''
       })
       
       wx.showToast({ title: '登录成功', icon: 'success' })
+
+      this.setData({ errorCount: 0, locked: false, lockTime: 0 })
       
       setTimeout(() => {
         wx.switchTab({
@@ -149,13 +150,12 @@ Page({
       console.error('登录失败', e)
       wx.showToast({ title: e.message || '登录失败，请检查账号密码', icon: 'none' })
       
-      // 累计失败次数
+      // 累计失败次数（前端先行短暂锁定，避免触发后端长时间锁）
       const newCount = this.data.errorCount + 1
       this.setData({ errorCount: newCount })
       
-      if (newCount >= 5) {
-        // 锁定30分钟
-        this.startLock(30 * 60)
+      if (newCount >= 3) {
+        this.startLock(20)
       }
     } finally {
       this.setData({ loading: false })

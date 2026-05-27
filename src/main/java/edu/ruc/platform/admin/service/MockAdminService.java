@@ -160,6 +160,7 @@ public class MockAdminService implements AdminApplicationService {
                             version,
                             item.published(),
                             item.officialUrl(),
+                            item.sourceFileId(),
                             item.sourceFileName(),
                             item.audienceScope(),
                             item.updatedBy(),
@@ -458,6 +459,7 @@ public class MockAdminService implements AdminApplicationService {
                 1,
                 Boolean.TRUE.equals(request.published()),
                 request.officialUrl(),
+                request.sourceFileId(),
                 request.sourceFileName(),
                 request.audienceScope(),
                 user.name(),
@@ -492,6 +494,7 @@ public class MockAdminService implements AdminApplicationService {
                         nextVersion,
                         Boolean.TRUE.equals(request.published()),
                         request.officialUrl(),
+                        request.sourceFileId(),
                         request.sourceFileName(),
                         request.audienceScope(),
                         user.name(),
@@ -1303,6 +1306,7 @@ public class MockAdminService implements AdminApplicationService {
                         1,
                         true,
                         item.officialUrl(),
+                        null,
                         item.title() + ".pdf",
                         "全体学生",
                         "胡浩老师",
@@ -1322,6 +1326,7 @@ public class MockAdminService implements AdminApplicationService {
                 1,
                 false,
                 "https://example.edu/internal",
+                null,
                 "internal-note.pdf",
                 "辅导员",
                 "系统管理员",
@@ -1554,9 +1559,10 @@ public class MockAdminService implements AdminApplicationService {
         String category = request.category() == null ? null : request.category().trim();
         boolean isFaq = category != null && "FAQ管理".equalsIgnoreCase(category);
         boolean hasOfficialUrl = request.officialUrl() != null && !request.officialUrl().isBlank();
-        boolean hasSourceFile = request.sourceFileName() != null && !request.sourceFileName().isBlank();
+        boolean hasSourceFile = request.sourceFileId() != null
+                || (request.sourceFileName() != null && !request.sourceFileName().isBlank());
         if (published && !isFaq && !hasOfficialUrl && !hasSourceFile) {
-            throw new BusinessException("已发布知识条目必须提供官方链接或来源文件名");
+            throw new BusinessException("已发布知识条目必须提供官方链接或附件");
         }
         if (hasOfficialUrl && !(request.officialUrl().startsWith("http://") || request.officialUrl().startsWith("https://"))) {
             throw new BusinessException("官方链接格式不正确");

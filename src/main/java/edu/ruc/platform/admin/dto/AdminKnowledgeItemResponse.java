@@ -10,6 +10,7 @@ public record AdminKnowledgeItemResponse(
         Integer version,
         boolean published,
         String officialUrl,
+        Long sourceFileId,
         String sourceFileName,
         String audienceScope,
         String updatedBy,

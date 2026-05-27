@@ -41,18 +41,172 @@ public class MockHonorService implements HonorApplicationService {
 
     private final CurrentUserService currentUserService;
     private final AtomicLong ids = new AtomicLong(1000);
+    private volatile boolean seeded = false;
     private final List<ShowcaseRow> showcases = new ArrayList<>();
     private final List<RecipientRow> recipients = new ArrayList<>();
     private final List<MemberRow> members = new ArrayList<>();
     private final List<AttachmentRow> attachments = new ArrayList<>();
 
+    private void ensureSeeded() {
+        if (seeded) {
+            return;
+        }
+        synchronized (this) {
+            if (seeded) {
+                return;
+            }
+            LocalDateTime now = LocalDateTime.now();
+
+            ShowcaseRow scholarship = new ShowcaseRow(
+                    ids.incrementAndGet(),
+                    2024,
+                    "信息学院",
+                    "PERSONAL",
+                    "信息学院国家奖学金（2024）",
+                    "用于展示信息学院 2024 年国家奖学金获得者。",
+                    true,
+                    10,
+                    now.minusMonths(3),
+                    now.plusMonths(9),
+                    null,
+                    "系统管理员",
+                    "系统管理员",
+                    now.minusDays(12),
+                    now.minusDays(12)
+            );
+            showcases.add(scholarship);
+
+            ShowcaseRow collective = new ShowcaseRow(
+                    ids.incrementAndGet(),
+                    2024,
+                    "信息学院",
+                    "COLLECTIVE",
+                    "优秀班集体（2024）",
+                    "用于展示信息学院 2024 年优秀班集体。",
+                    true,
+                    20,
+                    now.minusMonths(3),
+                    now.plusMonths(9),
+                    null,
+                    "系统管理员",
+                    "系统管理员",
+                    now.minusDays(11),
+                    now.minusDays(11)
+            );
+            showcases.add(collective);
+
+            recipients.add(new RecipientRow(
+                    ids.incrementAndGet(),
+                    scholarship.id,
+                    "PERSONAL",
+                    10001L,
+                    "20240001",
+                    "赵一鸣",
+                    "计算机科学与技术",
+                    "2024级",
+                    "计科一班",
+                    "国家奖学金获得者",
+                    "成绩优异、科研积极，综合表现突出。",
+                    null,
+                    true,
+                    10,
+                    now.minusMonths(3),
+                    now.plusMonths(9),
+                    null,
+                    "系统管理员",
+                    "系统管理员",
+                    now.minusDays(10),
+                    now.minusDays(10)
+            ));
+            recipients.add(new RecipientRow(
+                    ids.incrementAndGet(),
+                    scholarship.id,
+                    "PERSONAL",
+                    10002L,
+                    "20240002",
+                    "林书涵",
+                    "信息安全",
+                    "2024级",
+                    "信安一班",
+                    "国家奖学金获得者",
+                    "学习踏实、竞赛表现优秀，积极参与志愿服务。",
+                    null,
+                    true,
+                    20,
+                    now.minusMonths(3),
+                    now.plusMonths(9),
+                    null,
+                    "系统管理员",
+                    "系统管理员",
+                    now.minusDays(10),
+                    now.minusDays(10)
+            ));
+            recipients.add(new RecipientRow(
+                    ids.incrementAndGet(),
+                    scholarship.id,
+                    "PERSONAL",
+                    10003L,
+                    "20240003",
+                    "周子墨",
+                    "软件工程",
+                    "2024级",
+                    "软工一班",
+                    "国家奖学金获得者",
+                    "综合素质全面，具备良好团队协作与实践能力。",
+                    null,
+                    true,
+                    30,
+                    now.minusMonths(3),
+                    now.plusMonths(9),
+                    null,
+                    "系统管理员",
+                    "系统管理员",
+                    now.minusDays(10),
+                    now.minusDays(10)
+            ));
+
+            RecipientRow collectiveRecipient = new RecipientRow(
+                    ids.incrementAndGet(),
+                    collective.id,
+                    "COLLECTIVE",
+                    null,
+                    null,
+                    "信息学院 2024级 计科一班",
+                    "计算机科学与技术",
+                    "2024级",
+                    "计科一班",
+                    "优秀班集体",
+                    "班风学风良好，集体荣誉突出，组织建设完善。",
+                    null,
+                    true,
+                    10,
+                    now.minusMonths(3),
+                    now.plusMonths(9),
+                    null,
+                    "系统管理员",
+                    "系统管理员",
+                    now.minusDays(9),
+                    now.minusDays(9)
+            );
+            recipients.add(collectiveRecipient);
+
+            members.add(new MemberRow(ids.incrementAndGet(), collectiveRecipient.id, 10001L, "20240001", "赵一鸣", "计算机科学与技术", "2024级", "计科一班", "班长", 10, now.minusDays(9)));
+            members.add(new MemberRow(ids.incrementAndGet(), collectiveRecipient.id, 10004L, "20240004", "许念安", "计算机科学与技术", "2024级", "计科一班", "团支书", 20, now.minusDays(9)));
+            members.add(new MemberRow(ids.incrementAndGet(), collectiveRecipient.id, 10005L, "20240005", "江晚舟", "计算机科学与技术", "2024级", "计科一班", "学习委员", 30, now.minusDays(9)));
+
+            seeded = true;
+        }
+    }
+
     @Override
     public PageResponse<HonorShowcaseAdminResponse> pageAdminShowcases(HonorShowcaseFilterRequest request, int page, int size) {
+        ensureSeeded();
         return toPage(filterShowcases(request).stream().map(item -> toAdminShowcase(item, false)).toList(), page, size);
     }
 
     @Override
     public HonorShowcaseAdminResponse getAdminShowcase(Long id) {
+        ensureSeeded();
         return toAdminShowcase(requireShowcase(id), true);
     }
 
@@ -90,6 +244,7 @@ public class MockHonorService implements HonorApplicationService {
 
     @Override
     public void deleteShowcase(Long id) {
+        ensureSeeded();
         requireShowcase(id);
         List<Long> recipientIds = recipients.stream().filter(item -> item.showcaseId.equals(id)).map(item -> item.id).toList();
         attachments.removeIf(item -> recipientIds.contains(item.recipientId));
@@ -100,12 +255,14 @@ public class MockHonorService implements HonorApplicationService {
 
     @Override
     public PageResponse<HonorRecipientAdminResponse> pageAdminRecipients(Long showcaseId, HonorRecipientFilterRequest request, int page, int size) {
+        ensureSeeded();
         requireShowcase(showcaseId);
         return toPage(filterRecipients(showcaseId, request).stream().map(item -> toAdminRecipient(item, false)).toList(), page, size);
     }
 
     @Override
     public HonorRecipientAdminResponse getAdminRecipient(Long recipientId) {
+        ensureSeeded();
         return toAdminRecipient(requireRecipient(recipientId), true);
     }
 
@@ -225,6 +382,7 @@ public class MockHonorService implements HonorApplicationService {
 
     @Override
     public PageResponse<HonorShowcaseStudentResponse> pageStudentShowcases(HonorShowcaseFilterRequest request, int page, int size) {
+        ensureSeeded();
         return toPage(filterShowcases(request).stream()
                 .filter(this::visible)
                 .map(item -> toStudentShowcase(item, false))
@@ -234,6 +392,7 @@ public class MockHonorService implements HonorApplicationService {
 
     @Override
     public HonorShowcaseStudentResponse getStudentShowcase(Long id) {
+        ensureSeeded();
         ShowcaseRow row = requireShowcase(id);
         if (!visible(row)) {
             throw new BusinessException("荣誉展示模块未公开或不在展示时效内");
@@ -243,6 +402,7 @@ public class MockHonorService implements HonorApplicationService {
 
     @Override
     public List<HonorRecipientStudentResponse> listStudentRecipients(Long showcaseId) {
+        ensureSeeded();
         ShowcaseRow row = requireShowcase(showcaseId);
         if (!visible(row)) {
             throw new BusinessException("荣誉展示模块未公开或不在展示时效内");
@@ -252,6 +412,7 @@ public class MockHonorService implements HonorApplicationService {
 
     @Override
     public HonorRecipientStudentResponse getStudentRecipient(Long recipientId) {
+        ensureSeeded();
         RecipientRow row = requireRecipient(recipientId);
         ShowcaseRow showcase = requireShowcase(row.showcaseId);
         if (!visible(showcase) || !visible(row)) {

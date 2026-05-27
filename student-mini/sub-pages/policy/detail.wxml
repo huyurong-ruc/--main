@@ -4,8 +4,8 @@
     <view class="detail-header">
       <text class="detail-title">{{detail.title}}</text>
       <view class="detail-meta">
-        <text class="detail-date">{{detail.publishDate}}</text>
-        <text class="detail-source" wx:if="{{detail.source}}">{{detail.source}}</text>
+        <text class="detail-source" wx:if="{{detail.category}}">{{detail.category}}</text>
+        <text class="detail-source" wx:if="{{detail.officialUrl}}">{{detail.officialUrl}}</text>
       </view>
     </view>
     
@@ -20,11 +20,11 @@
         wx:key="id"
         class="attachment-item"
         bindtap="downloadFile"
-        data-url="{{item.url}}"
-        data-name="{{item.name}}"
+        data-id="{{item.id}}"
+        data-name="{{item.fileName}}"
       >
         <text class="attachment-icon">📎</text>
-        <text class="attachment-name">{{item.name}}</text>
+        <text class="attachment-name">{{item.fileName}}</text>
         <text class="attachment-download">下载</text>
       </view>
     </view>

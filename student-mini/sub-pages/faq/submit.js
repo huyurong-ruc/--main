@@ -39,8 +39,8 @@ Page({
   async submitTicket() {
     wx.showLoading({ title: '提交中...' })
     try {
-      await post('/kb/tickets', {
-        content: this.data.content.trim(),
+      await post('/student/qa-tickets', {
+        questionText: this.data.content.trim(),
         contact: this.data.contact.trim()
       })
       wx.showToast({ title: '提交成功', icon: 'success' })

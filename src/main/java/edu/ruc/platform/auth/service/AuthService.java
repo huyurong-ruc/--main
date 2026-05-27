@@ -55,7 +55,7 @@ public class AuthService implements AuthApplicationService {
             int failedAttempts = (user.getFailedLoginAttempts() == null ? 0 : user.getFailedLoginAttempts()) + 1;
             user.setFailedLoginAttempts(failedAttempts);
             if (failedAttempts >= platformSecurityPolicyService.maxFailedLoginAttempts()) {
-                user.setLockedUntil(LocalDateTime.now().plusMinutes(platformSecurityPolicyService.lockDurationMinutes()));
+                user.setLockedUntil(LocalDateTime.now().plusSeconds(20));
             }
             userAccountRepository.save(user);
             writeLoginAudit(user.getId(), user.getUsername(), user.getRole().name(), "LOGIN", "FAILED", "用户名或密码错误");

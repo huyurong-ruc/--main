@@ -64,21 +64,25 @@ Page({
     
     const { activeTab, page, pageSize } = this.data
     let url = ''
+    let params = { page, pageSize }
     
     // 根据 Tab 选择对应的后端接口
     if (activeTab === 0) {
-      // 政策文件 - 知识搜索
-      url = '/knowledge/search'
+      // 政策文件 - 学生侧分页（对接真实数据库 kb_policy）
+      url = '/student/policies/page'
+      params = { page: Math.max(page - 1, 0), size: pageSize }
     } else if (activeTab === 1) {
       // 通知通告 - 学生通知列表
       url = '/student/notices'
+      params = {}
     } else {
       // 模板下载 - 知识模板
       url = '/certificate-templates/active'
+      params = {}
     }
     
     try {
-      const res = await get(url, { page, pageSize })
+      const res = await get(url, params)
       // 处理不同接口的返回格式
       let list = []
       if (res.data?.content) {

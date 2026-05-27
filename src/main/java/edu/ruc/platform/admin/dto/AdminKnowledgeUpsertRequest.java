@@ -5,11 +5,12 @@ import jakarta.validation.constraints.NotNull;
 
 public record AdminKnowledgeUpsertRequest(
         @NotBlank(message = "标题不能为空") String title,
-        @NotBlank(message = "分类不能为空") String category,
+        String category,
         String tags,
         String summary,
         @NotBlank(message = "内容不能为空") String content,
         String officialUrl,
+        Long sourceFileId,
         String sourceFileName,
         String audienceScope,
         @NotBlank(message = "更新人不能为空") String updatedBy,

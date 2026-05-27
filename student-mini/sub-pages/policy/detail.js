@@ -25,8 +25,22 @@ Page({
     this.setData({ loading: true })
     
     try {
-      const res = await get(`/kb/policies/${this.data.id}`)
-      this.setData({ detail: res.data })
+      const res = await get(`/knowledge/${this.data.id}`)
+      const raw = res.data || {}
+      const answerText = raw.answer == null ? '' : String(raw.answer)
+      const contentHtml = answerText
+        ? answerText.replace(/\n/g, '<br/>')
+        : ''
+      this.setData({
+        detail: {
+          id: raw.id,
+          title: raw.title,
+          category: raw.category,
+          officialUrl: raw.officialUrl,
+          content: contentHtml,
+          attachments: Array.isArray(raw.attachments) ? raw.attachments : []
+        }
+      })
     } catch (e) {
       console.error('加载详情失败', e)
     } finally {
@@ -36,11 +50,19 @@ Page({
   
   // 下载附件
   downloadFile(e) {
-    const { url, name } = e.currentTarget.dataset
+    const { id, name } = e.currentTarget.dataset
+    if (!id) {
+      wx.showToast({ title: '附件信息缺失', icon: 'none' })
+      return
+    }
     wx.showLoading({ title: '正在下载...' })
     
+    const token = app.globalData.token
+    const baseUrl = (app.globalData.baseUrl || '').replace(/\/$/, '')
+    const url = baseUrl + `/platform/files/${id}/download`
     wx.downloadFile({
       url,
+      header: token ? { Authorization: `Bearer ${token}` } : {},
       success: (res) => {
         wx.hideLoading()
         wx.openDocument({
