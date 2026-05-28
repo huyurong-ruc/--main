@@ -19,6 +19,8 @@ import edu.ruc.platform.party.domain.PartyProgressRecord;
 import edu.ruc.platform.party.repository.PartyProgressRecordRepository;
 import edu.ruc.platform.student.domain.StudentProfile;
 import edu.ruc.platform.student.repository.StudentProfileRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
@@ -41,6 +43,7 @@ public class KingbaseKnowledgeService implements KnowledgeApplicationService {
     private final CertificateRequestRepository certificateRequestRepository;
     private final PartyProgressRecordRepository partyProgressRecordRepository;
     private final edu.ruc.platform.knowledge.service.SearchQueryLogService searchQueryLogService;
+    private final ObjectMapper objectMapper;
 
     @Override
     public List<KnowledgeSearchResponse> search(String keyword) {
@@ -152,6 +155,11 @@ public class KingbaseKnowledgeService implements KnowledgeApplicationService {
     }
 
     private String resolveCategory(LatestKnowledgePolicy policy) {
+        String extCategory = resolveExtCategory(policy == null ? null : policy.getExtJson());
+        if (extCategory != null && extCategory.contains("FAQ管理")) {
+            return "FAQ管理";
+        }
+
         String text = ((policy.getTitle() == null ? "" : policy.getTitle()) + " "
                 + (policy.getSummary() == null ? "" : policy.getSummary()) + " "
                 + (policy.getContent() == null ? "" : policy.getContent())).toLowerCase(Locale.ROOT);
@@ -165,6 +173,23 @@ public class KingbaseKnowledgeService implements KnowledgeApplicationService {
             return "学业发展";
         }
         return "政策知识";
+    }
+
+    private String resolveExtCategory(String extJson) {
+        if (extJson == null || extJson.isBlank()) {
+            return null;
+        }
+        try {
+            java.util.Map<String, Object> map = objectMapper.readValue(extJson, new TypeReference<>() {});
+            Object c = map.get("category");
+            if (c == null) {
+                return null;
+            }
+            String v = String.valueOf(c).trim();
+            return v.isBlank() ? null : v;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String resolveAnswer(LatestKnowledgePolicy policy) {

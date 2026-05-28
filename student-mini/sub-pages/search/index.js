@@ -1,13 +1,12 @@
 // sub-pages/search/index.js
-const { getModuleSearchIndex } = require('../../api/search-index')
+const policyApi = require('../../api/policy')
 
 const TAB_TYPE_MAP = {
   0: 'all',
   1: 'policy',
   2: 'notice',
   3: 'qa',
-  4: 'template',
-  5: 'service'
+  4: 'template'
 }
 
 function escapeRegExp(text = '') {
@@ -160,7 +159,6 @@ function buildSuggestionList(keyword = '', list = []) {
   if (!normalizedKeyword) return []
 
   return list
-    .filter((item) => item.type === 'service')
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score
       if (b.aliasHits !== a.aliasHits) return b.aliasHits - a.aliasHits
@@ -169,12 +167,12 @@ function buildSuggestionList(keyword = '', list = []) {
     .slice(0, 4)
     .map((item) => ({
       id: item.id,
+      type: item.type,
       title: item.title,
-      desc: item.guideText || item.body,
-      entryLabel: item.entryLabel || '进入模块',
-      route: item.route,
-      routeType: item.routeType,
-      typeClass: item.typeClass
+      desc: item.body || '',
+      entryLabel: item.type === 'notice' ? '查看通知' : (item.type === 'template' ? '查看模板' : '查看详情'),
+      typeClass: item.typeClass,
+      typeIcon: item.typeIcon
     }))
 }
 
@@ -184,106 +182,114 @@ function filterByTab(list = [], activeTab = 0) {
   return list.filter((item) => item.type === type)
 }
 
+function isQaCategory(category = '') {
+  const raw = String(category || '')
+  const lower = raw.toLowerCase()
+  return lower.includes('faq') || raw.includes('问答') || raw.includes('FAQ管理') || raw.includes('faq管理')
+}
+
+function normalizeNoticeTime(value = '') {
+  if (!value) return ''
+  const text = String(value)
+  return text.includes('T') ? text.replace('T', ' ').slice(0, 16) : text.slice(0, 16)
+}
+
+function mapKnowledgeResult(item = {}) {
+  const category = item.category || ''
+  if (isQaCategory(category)) {
+    return {
+      id: String(item.id || ''),
+      type: 'qa',
+      category,
+      question: item.title || '',
+      answer: item.answer || '',
+      updatedAt: ''
+    }
+  }
+
+  return {
+    id: String(item.id || ''),
+    type: 'policy',
+    title: item.title || '',
+    department: category || '知识库',
+    publishDate: '',
+    content: item.answer || '',
+    summary: item.answer || ''
+  }
+}
+
+function mapNoticeResult(item = {}) {
+  return {
+    id: String(item.id || ''),
+    type: 'notice',
+    title: item.title || '',
+    summary: item.summary || '',
+    content: item.summary || '',
+    department: '官方',
+    publishTime: normalizeNoticeTime(item.publishTime)
+  }
+}
+
+function mapTemplateResult(item = {}) {
+  return {
+    id: String(item.id || ''),
+    type: 'template',
+    fileName: item.templateName || item.templateCode || '模板文件',
+    description: item.description || `用于${item.certificateType || '证明'}模板下载`,
+    fileType: item.outputFormat || '-',
+    updatedAt: normalizeNoticeTime(item.updatedAt)
+  }
+}
+
+function safeArray(value) {
+  return Array.isArray(value) ? value : []
+}
+
+function setDataAsync(ctx, payload) {
+  return new Promise((resolve) => ctx.setData(payload, resolve))
+}
+
 Page({
   data: {
     keyword: '',
     hasResult: false,
     activeTab: 0,
-    tabs: ['全部', '政策', '通知', '问答', '模板', '功能'],
+    tabs: ['全部', '政策', '通知', '问答', '模板'],
     historyList: ['证明申请', '学业分析', '办事指南', '成绩单', '消息中心', '放假通知'],
     hotList: ['入党流程', '教师资格证申请', '学生证补办', '个人档案', '通知聚合'],
     suggestionList: [],
-    resultList: [
-      {
-        id: 'p1',
-        type: 'policy',
-        title: '比选资助学生评审条件',
-        department: '校人大',
-        publishDate: '2025-03-28',
-        content: '面向家庭经济困难且综合表现优秀的学生，需提交成绩单、资助申请表和相关佐证材料。'
-      },
-      {
-        id: 'p2',
-        type: 'policy',
-        title: '学生管理条例（节选）',
-        department: '学生处',
-        publishDate: '2026-03-15',
-        content: '针对学籍异动、证明开具、请销假等学生事务办理流程进行统一说明。'
-      },
-      {
-        id: 'n1',
-        type: 'notice',
-        title: '2026春季双选会即将开始',
-        department: '人大就业',
-        publishTime: '2025-03-25',
-        content: '双选会将于本周五在世纪馆举办，现场提供简历诊断、岗位咨询与面试指导。'
-      },
-      {
-        id: 'n2',
-        type: 'notice',
-        title: '关于2026年春季学期选课安排的通知',
-        department: '教务处',
-        publishTime: '2026-04-10',
-        content: '本次选课分为预选、正选和补退选三个阶段，请同学按时完成课程确认。'
-      },
-      {
-        id: 'q1',
-        type: 'qa',
-        category: '奖助学金',
-        question: '奖助学金常见问题（FAQ）',
-        answer: '可在“奖助信息”模块查看评审时间与材料要求。',
-        updatedAt: '2025-03-25'
-      },
-      {
-        id: 'q2',
-        type: 'qa',
-        category: '学籍事务',
-        question: '如何办理在读证明？',
-        answer: '在“证明申请”模块提交用途后即可申请。',
-        updatedAt: '2026-04-01'
-      },
-      {
-        id: 't1',
-        type: 'template',
-        fileName: '活动预算表',
-        fileType: 'XLSX',
-        updatedAt: '2025-03-25',
-        description: '适用于学生活动经费预算申报，可填写预算科目、金额及审批说明。'
-      },
-      {
-        id: 't2',
-        type: 'template',
-        fileName: '学生证补办申请表',
-        fileType: 'DOCX',
-        updatedAt: '2026-03-20',
-        description: '用于学生证遗失补办申请，需填写个人信息、遗失原因和辅导员确认意见。'
-      }
-    ].concat(getModuleSearchIndex()),
+    resultList: [],
     filteredList: []
   },
 
   onLoad() {
+    this.remoteCache = {}
+    this.remoteSearchTimer = null
     this.applyFilter()
   },
   
   onSearchInput(e) {
     const keyword = e.detail.value
-    const suggestionList = this.buildSuggestions(keyword)
-    this.setData({ keyword, suggestionList })
-    if (this.data.hasResult) {
-      this.applyFilter(keyword)
-    }
+    this.setData({ keyword, suggestionList: [] })
+    this.applyFilter(keyword)
+    this.triggerRemoteSearch(keyword)
   },
   
   handleSearch() {
     const keyword = String(this.data.keyword || '').trim()
     if (!keyword) return
     this.setData({ keyword, hasResult: true, activeTab: 0 })
-    this.applyFilter(keyword)
+    this.triggerRemoteSearch(keyword, { immediate: true })
   },
   
   clearSearch() {
     this.setData({ keyword: '', hasResult: false, activeTab: 0, suggestionList: [] })
+    if (this.remoteSearchTimer) {
+      clearTimeout(this.remoteSearchTimer)
+      this.remoteSearchTimer = null
+    }
+    this.remoteCache = {}
+    this.setData({ resultList: [] })
     this.applyFilter()
   },
   
@@ -314,6 +320,62 @@ Page({
   onSuggestionTap(e) {
     const item = e.currentTarget.dataset.item
     this.openSearchItem(item)
+  },
+
+  triggerRemoteSearch(keyword = '', options = {}) {
+    const normalized = String(keyword || '').trim()
+    const immediate = options.immediate === true
+
+    if (this.remoteSearchTimer) {
+      clearTimeout(this.remoteSearchTimer)
+      this.remoteSearchTimer = null
+    }
+
+    if (!normalized) {
+      this.setData({ resultList: [] })
+      this.applyFilter('')
+      return
+    }
+
+    if (immediate) {
+      this.performRemoteSearch(normalized)
+      return
+    }
+
+    this.remoteSearchTimer = setTimeout(() => {
+      this.remoteSearchTimer = null
+      this.performRemoteSearch(normalized)
+    }, 450)
+  },
+
+  async performRemoteSearch(keyword = '') {
+    const normalizedKeyword = String(keyword || '').trim()
+    if (!normalizedKeyword) return
+
+    if (this.remoteCache && this.remoteCache[normalizedKeyword]) {
+      await setDataAsync(this, { resultList: this.remoteCache[normalizedKeyword] || [] })
+      this.applyFilter(normalizedKeyword)
+      return
+    }
+
+    const tasks = await Promise.allSettled([
+      policyApi.getPolicies({ keyword: normalizedKeyword }),
+      policyApi.getNotices(),
+      policyApi.getTemplates()
+    ])
+
+    const knowledgeList = tasks[0].status === 'fulfilled' ? safeArray(tasks[0].value?.data) : []
+    const noticeList = tasks[1].status === 'fulfilled' ? safeArray(tasks[1].value?.data) : []
+    const templateList = tasks[2].status === 'fulfilled' ? safeArray(tasks[2].value?.data) : []
+
+    const mappedKnowledge = knowledgeList.map(mapKnowledgeResult).filter((item) => item && item.id)
+    const mappedNotices = noticeList.map(mapNoticeResult).filter((item) => item && item.id)
+    const mappedTemplates = templateList.map(mapTemplateResult).filter((item) => item && item.id)
+
+    const mergedRemote = [...mappedKnowledge, ...mappedNotices, ...mappedTemplates]
+    this.remoteCache[normalizedKeyword] = mergedRemote
+    await setDataAsync(this, { resultList: mergedRemote })
+    this.applyFilter(normalizedKeyword)
   },
 
   buildSuggestions(keyword = '') {
@@ -350,17 +412,11 @@ Page({
     }
 
     if (item.type === 'qa') {
-      wx.navigateTo({ url: '/sub-pages/faq/list' })
+      wx.navigateTo({ url: `/sub-pages/policy/detail?id=${item.id}` })
       return
     }
 
-    if (item.type === 'service') {
-      if (item.routeType === 'switchTab') {
-        wx.switchTab({ url: item.route })
-      } else {
-        wx.navigateTo({ url: item.route })
-      }
-    }
+    return
   },
 
   applyFilter(keyword = this.data.keyword) {
@@ -385,8 +441,6 @@ Page({
       .filter((item) => !normalizedKeyword || item.matched)
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score
-        if (b.type === 'service' && a.type !== 'service') return 1
-        if (a.type === 'service' && b.type !== 'service') return -1
         if (b.aliasHits !== a.aliasHits) return b.aliasHits - a.aliasHits
         if (b.titleHits !== a.titleHits) return b.titleHits - a.titleHits
         if (b.bodyHits !== a.bodyHits) return b.bodyHits - a.bodyHits

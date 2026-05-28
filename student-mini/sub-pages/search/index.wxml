@@ -29,7 +29,7 @@
       bindtap="onSuggestionTap"
       data-item="{{item}}"
     >
-      <view class="suggestion-icon {{item.typeClass}}">功</view>
+      <view class="suggestion-icon {{item.typeClass}}">{{item.typeIcon || ''}}</view>
       <view class="suggestion-content">
         <text class="suggestion-title">{{item.title}}</text>
         <text class="suggestion-desc">{{item.desc}}</text>
