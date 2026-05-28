@@ -470,6 +470,43 @@ const mockData = {
  * @param {string} url - API 路径
  * @param {object} params - 请求参数
  */
+const qaTicketEntries = [
+  {
+    id: 1,
+    studentName: '张三',
+    status: 'IN_PROGRESS',
+    summary: 'FAE1',
+    questionText: 'FAE1',
+    createdAt: '2026-05-28 14:31',
+    matchedFaqId: 308,
+    messages: [
+      { id: 11, actorName: '系统管理员', actorRole: 'SUPER_ADMIN', createdAt: '2026-05-28 14:32', content: '这是 FAQ 管理模块中已发布的示例问答内容，可在小程序端直接展开查看。' }
+    ]
+  },
+  {
+    id: 2,
+    studentName: '张三',
+    status: 'CLOSED',
+    summary: 'FAQ：实习证明怎么开',
+    questionText: 'FAQ：实习证明怎么开',
+    createdAt: '2026-05-28 14:19',
+    matchedFaqId: 309,
+    messages: [
+      { id: 12, actorName: '辅导员', actorRole: 'COUNSELOR', createdAt: '2026-05-28 14:20', content: '可通过“证明申请”模块发起实习证明申请，按页面要求填写单位、岗位和起止时间。' }
+    ]
+  },
+  {
+    id: 3,
+    studentName: '张三',
+    status: 'OPEN',
+    summary: '阿达',
+    questionText: '阿达',
+    createdAt: '2026-05-28 13:58',
+    matchedFaqId: null,
+    messages: []
+  }
+]
+
 const honorShowcases = [
   {
     id: 101,
@@ -1026,6 +1063,84 @@ const getHonorMockData = (url, params = {}) => {
   return null
 }
 
+const getFaqMockData = (url, params = {}) => {
+  if (url === '/student/qa-tickets/page') {
+    const page = Number(params.page || 0)
+    const size = Number(params.size || 10)
+    const status = String(params.status || '').trim().toUpperCase()
+    const content = qaTicketEntries
+      .filter((item) => !status || item.status === status)
+      .map((item) => ({
+        id: item.id,
+        studentName: item.studentName,
+        status: item.status,
+        summary: item.summary,
+        createdAt: item.createdAt
+      }))
+
+    return {
+      data: {
+        content: content.slice(page * size, page * size + size),
+        totalElements: content.length,
+        totalPages: Math.ceil(content.length / size),
+        page,
+        size
+      },
+      success: true
+    }
+  }
+
+  const detailMatch = url.match(/^\/student\/qa-tickets\/(\d+)$/)
+  if (detailMatch) {
+    const id = Number(detailMatch[1])
+    const target = qaTicketEntries.find((item) => item.id === id)
+    return target ? { data: target, success: true } : { success: false, message: '工单不存在' }
+  }
+
+  return null
+}
+
+const getKnowledgeSearchMockData = (url, params = {}) => {
+  if (url !== '/knowledge/search') {
+    return null
+  }
+
+  const keyword = String(params.keyword || '').trim()
+  if (!keyword) {
+    return { success: false, message: 'keyword不能为空', data: null }
+  }
+
+  const policyItems = (((mockData['/kb/policies'] || {}).data || {}).list || []).map((item) => ({
+    id: item.id,
+    title: item.title,
+    category: item.category || '政策',
+    officialUrl: '',
+    answer: item.summary || `${item.title || '政策'}相关说明`,
+    responseStrategy: 'STANDARD_ANSWER',
+    officialLinkOnly: false
+  }))
+
+  const faqItems = qaTicketEntries.map((item) => ({
+    id: item.id,
+    title: item.questionText,
+    category: 'FAQ管理',
+    officialUrl: '',
+    answer: (item.messages && item.messages[0] && item.messages[0].content) || '',
+    responseStrategy: 'STANDARD_ANSWER',
+    officialLinkOnly: false
+  }))
+
+  const list = [...faqItems, ...policyItems].filter((item) => {
+    const haystack = `${item.title}${item.category}${item.answer}`.toLowerCase()
+    return haystack.includes(keyword.toLowerCase())
+  })
+
+  return {
+    success: true,
+    data: list
+  }
+}
+
 exports.getMockData = (url, params = {}, method = 'GET') => {
   const testAccounts = [
     {
@@ -1072,6 +1187,10 @@ exports.getMockData = (url, params = {}, method = 'GET') => {
 
   if (plainPath === '/knowledge/templates' && String(method).toUpperCase() === 'GET') {
     return { success: true, data: applyTemplates }
+  }
+
+  if (plainPath === '/knowledge/search' && String(method).toUpperCase() === 'GET') {
+    return getKnowledgeSearchMockData(plainPath, params)
   }
 
   if (plainPath === '/certificate-templates/active' && String(method).toUpperCase() === 'GET') {
@@ -1216,6 +1335,11 @@ exports.getMockData = (url, params = {}, method = 'GET') => {
   const growthMock = getGrowthMockData(url, params, method)
   if (growthMock) {
     return growthMock
+  }
+
+  const faqMock = getFaqMockData(url, params)
+  if (faqMock) {
+    return faqMock
   }
 
   const honorMock = getHonorMockData(url, params)

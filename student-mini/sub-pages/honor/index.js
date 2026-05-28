@@ -1,5 +1,5 @@
 const app = getApp()
-const { listHonors } = require('../../api/honor')
+const { listHonors, normalizeRecipientType } = require('../../api/honor')
 
 const recipientTypeText = {
   PERSONAL: '个人',
@@ -20,7 +20,8 @@ Page({
     size: 10,
     totalElements: 0,
     hasMore: true,
-    loading: false
+    loading: false,
+    errorMessage: ''
   },
 
   onLoad() {
@@ -45,7 +46,7 @@ Page({
   },
 
   onFilterTap(e) {
-    const value = e.currentTarget.dataset.value
+    const value = normalizeRecipientType(e.currentTarget.dataset.value) || ''
     if (value === this.data.activeType) return
     this.setData({ activeType: value })
     this.loadHonors(true)
@@ -63,20 +64,27 @@ Page({
         page: nextPage,
         size: this.data.size,
         keyword: this.data.keyword || undefined,
-        recipientType: this.data.activeType || undefined
+        recipientType: normalizeRecipientType(this.data.activeType)
       })
-      const pageData = res.data || {}
-      const content = (pageData.content || []).map(this.normalizeHonor)
+      const pageData = res?.data || {}
+      const rawList = Array.isArray(pageData.content)
+        ? pageData.content
+        : (Array.isArray(pageData.list) ? pageData.list : [])
+      const content = rawList.map((item) => this.normalizeHonor(item))
+      const totalPages = Number(pageData.totalPages || 0)
+      const totalElements = Number(pageData.totalElements || 0)
       this.setData({
         honors: reset ? content : this.data.honors.concat(content),
         page: nextPage + 1,
-        totalElements: pageData.totalElements || 0,
-        hasMore: nextPage + 1 < (pageData.totalPages || 0)
+        totalElements: totalElements || content.length,
+        hasMore: totalPages > 0 ? nextPage + 1 < totalPages : content.length >= this.data.size,
+        errorMessage: ''
       })
     } catch (e) {
-      console.error('加载奖助信息失败', e)
+      console.error('加载荣誉展示失败', e)
+      const message = e?.message || e?.data?.message || e?.msg || '荣誉展示内容加载失败'
       if (reset) {
-        this.setData({ honors: [], hasMore: false, totalElements: 0 })
+        this.setData({ honors: [], hasMore: false, totalElements: 0, errorMessage: message })
       }
     } finally {
       this.setData({ loading: false })
@@ -86,12 +94,15 @@ Page({
 
   normalizeHonor(item) {
     const typeText = recipientTypeText[item.recipientType] || '展示'
+    const awardYear = item.awardYear ? `${item.awardYear}年` : ''
+    const honorCategory = item.honorCategory || '荣誉项目'
+    const recipientCount = Number(item.recipientCount || 0)
     return {
       ...item,
       typeText,
-      displayTitle: item.title || `${item.awardYear || ''}年${item.honorCategory || ''}`,
+      displayTitle: item.title || `${awardYear}${honorCategory}`,
       summary: item.description || '点击查看获奖者、简介与先进事迹',
-      countText: `${item.recipientCount || 0}位${typeText}获奖者`
+      countText: `${recipientCount}位${typeText}获奖者`
     }
   },
 

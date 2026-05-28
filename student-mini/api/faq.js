@@ -1,12 +1,21 @@
 // api/faq.js
 const { get, post } = require('./request')
 
+function normalizeFaqKeyword(value = '') {
+  const raw = String(value || '').trim()
+  return raw || 'FAQ'
+}
+
 /**
- * 获取FAQ列表（知识搜索）
- * 后端: GET /api/v1/knowledge/search?keyword=xxx
+ * 获取FAQ列表
+ * 后端: GET /api/v1/knowledge/search
  * @param {Object} params - { keyword }
  */
-exports.getFaqs = (params) => get('/knowledge/search', params)
+exports.getFaqs = (params = {}) => {
+  return get('/knowledge/search', {
+    keyword: normalizeFaqKeyword(params.keyword)
+  }, { showLoading: false })
+}
 
 /**
  * 提交工单
@@ -33,5 +42,5 @@ exports.getTickets = (params) => {
  * @param {string} id - 工单ID
  */
 exports.getTicketDetail = (id) => {
-  return get(`/student/qa-tickets/${id}`)
+  return get(`/student/qa-tickets/${id}`, {}, { showLoading: false })
 }

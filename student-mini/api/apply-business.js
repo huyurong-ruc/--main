@@ -232,6 +232,31 @@ function findApplyTypeByKey(key = '') {
   return APPLY_TYPE_CONFIGS.find((item) => item.key === key) || null
 }
 
+function normalizeApplyTitleText(title = '') {
+  const rawTitle = String(title || '').trim()
+  if (!rawTitle) return ''
+  if (rawTitle.includes('成绩单')) return '成绩单申请'
+  return rawTitle
+    .replace(/申请模板/g, '')
+    .replace(/模板/g, '')
+    .trim()
+}
+
+function getApplyDisplayTitle(input = '', typeKey = '') {
+  const config = typeof input === 'object' && input
+    ? input
+    : findApplyTypeByKey(typeKey) || findApplyTypeByTitle(String(input || ''))
+
+  if (config) {
+    if (config.key === 'transcript') {
+      return '成绩单申请'
+    }
+    return config.applyTitle || normalizeApplyTitleText(config.title || '')
+  }
+
+  return normalizeApplyTitleText(input)
+}
+
 function buildFormDefaults(config) {
   return (config?.formFields || []).reduce((acc, field) => {
     acc[field.key] = ''
@@ -486,6 +511,7 @@ module.exports = {
   findApplyTypeById,
   findApplyTypeByTitle,
   findApplyTypeByKey,
+  getApplyDisplayTitle,
   buildFormDefaults,
   buildFieldDisplays,
   getFieldLabel,

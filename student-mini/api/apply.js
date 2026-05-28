@@ -13,7 +13,7 @@ exports.getApplyList = (studentId) => get(`/certificates/requests/student/${stud
  * 后端: GET /api/v1/certificates/requests/{requestId}/preview
  * @param {string} id - 申请ID
  */
-exports.getApplyDetail = (id) => get(`/certificates/requests/${id}/preview`)
+exports.getApplyDetail = (id, options = {}) => get(`/certificates/requests/${id}/preview`, {}, options)
 
 /**
  * 提交申请（电子证明申请）

@@ -127,7 +127,15 @@ Page({
   goToTemplate() { wx.navigateTo({ url: '/sub-pages/policy/template' }) },
   goToApply() { wx.navigateTo({ url: '/sub-pages/apply/list' }) },
   goToParty() { wx.navigateTo({ url: '/sub-pages/party/index' }) },
-  goToAcademic() { wx.navigateTo({ url: '/sub-pages/academic/index' }) },
+  goToAcademic() {
+    wx.showModal({
+      title: '功能开发中',
+      content: '当前该功能正在开发过程中，敬请期待',
+      showCancel: false,
+      confirmText: '我知道了',
+      confirmColor: '#1677ff'
+    })
+  },
   goToHonor() { wx.navigateTo({ url: '/sub-pages/honor/index' }) },
   goToMessage() { wx.switchTab({ url: '/pages/message/index' }) },
   goToFaq() { wx.navigateTo({ url: '/sub-pages/faq/list' }) },

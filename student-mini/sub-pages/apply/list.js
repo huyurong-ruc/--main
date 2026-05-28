@@ -1,13 +1,33 @@
 // sub-pages/apply/list.js
 const app = getApp()
 const applyApi = require('../../api/apply')
+const { getApplyDisplayTitle } = require('../../api/apply-business')
 const { getApplyStatusMeta, isCompletedStatus } = require('../../api/apply-status')
 
 function parseTime(value = '') {
+  if (Array.isArray(value)) {
+    const [year, month, day, hour = 0, minute = 0] = value
+    const parsed = new Date(year, (month || 1) - 1, day || 1, hour, minute).getTime()
+    return Number.isNaN(parsed) ? 0 : parsed
+  }
+
   const text = String(value || '').trim()
   if (!text) return 0
-  const parsed = new Date(text.replace(/-/g, '/')).getTime()
+  const normalized = text.includes('T') ? text.replace('T', ' ') : text
+  const parsed = new Date(normalized.replace(/-/g, '/')).getTime()
   return Number.isNaN(parsed) ? 0 : parsed
+}
+
+function formatApplyTime(value = '') {
+  if (Array.isArray(value) && value.length >= 3) {
+    const [year, month, day, hour = 0, minute = 0] = value
+    return `${year}-${String(month || 1).padStart(2, '0')}-${String(day || 1).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+  }
+
+  const text = String(value || '').trim()
+  if (!text) return ''
+  const normalized = text.includes('T') ? text.replace('T', ' ') : text
+  return normalized.length >= 16 ? normalized.slice(0, 16) : normalized
 }
 
 function buildIconText(title = '') {
@@ -17,11 +37,13 @@ function buildIconText(title = '') {
   return '申'
 }
 
-function normalizeApplyItem(item = {}) {
-  const title = item.certificateType || item.typeName || item.title || '未命名申请'
+function normalizeApplyItem(item = {}, displayMeta = {}) {
+  const rawTitle = displayMeta.title || item.certificateType || item.typeName || item.title || '未命名申请'
+  const title = getApplyDisplayTitle(rawTitle, item.typeKey)
   const rawStatus = item.statusCode || item.status || item.statusText || ''
   const statusMeta = getApplyStatusMeta(rawStatus)
-  const time = String(item.createdAt || item.createTime || item.time || '')
+  const timeValue = displayMeta.time || item.createdAt || item.createTime || item.submittedAt || item.time || ''
+  const time = formatApplyTime(timeValue)
 
   return {
     id: String(item.id || ''),
@@ -31,10 +53,34 @@ function normalizeApplyItem(item = {}) {
     statusClass: statusMeta.listClass,
     statusTitle: statusMeta.title,
     statusDescription: statusMeta.description,
-    time: time ? time.slice(0, 16) : '',
-    sortTime: parseTime(time),
+    time,
+    sortTime: parseTime(timeValue),
     completed: isCompletedStatus(rawStatus)
   }
+}
+
+async function buildApplyDisplayMeta(sourceList = []) {
+  const detailEntries = await Promise.allSettled(
+    sourceList.map(async (item) => {
+      const detailRes = await applyApi.getApplyDetail(item.id, { showLoading: false })
+      const detail = detailRes?.data || {}
+      return [
+        String(item.id || ''),
+        {
+          title: getApplyDisplayTitle(detail.certificateType || item.certificateType || item.typeName || item.title || '', item.typeKey),
+          time: detail.submittedAt || detail.createTime || detail.createdAt || ''
+        }
+      ]
+    })
+  )
+
+  return detailEntries.reduce((acc, result) => {
+    if (result.status === 'fulfilled') {
+      const [id, meta] = result.value
+      acc[id] = meta
+    }
+    return acc
+  }, {})
 }
 
 function sortApplyList(list = []) {
@@ -98,7 +144,8 @@ Page({
         : Array.isArray(res.data?.list)
           ? res.data.list
           : []
-      const rawList = sortApplyList(sourceList.map(normalizeApplyItem))
+      const displayMeta = await buildApplyDisplayMeta(sourceList)
+      const rawList = sortApplyList(sourceList.map((item) => normalizeApplyItem(item, displayMeta[String(item.id || '')] || {})))
       this.setData({ rawList })
       this.applyFilter(this.data.keyword)
     } catch (e) {

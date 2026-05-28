@@ -112,7 +112,11 @@
         </div>
 
         <!-- 工单列表 -->
-        <div v-if="activeTab === 'tickets'" class="ticket-list">
+        <div v-if="activeTab === 'tickets' && errorMessage" class="empty-state">
+          <div>{{ errorMessage }}</div>
+          <button class="btn-action" @click="loadTickets">重新加载</button>
+        </div>
+        <div v-else-if="activeTab === 'tickets'" class="ticket-list">
           <div v-for="ticket in tickets" :key="ticket.id" class="ticket-card" :class="ticket.status">
             <div class="ticket-header">
               <div class="ticket-meta">
@@ -148,7 +152,7 @@
             </div>
           </div>
           <div v-if="tickets.length === 0" class="empty-state">
-            暂无工单记录
+            {{ loading ? '加载中...' : '暂无工单记录' }}
           </div>
         </div>
 
@@ -220,6 +224,37 @@
 </template>
 
 <script>
+import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  getQATickets,
+  getQATicketDetail,
+  answerQATicket,
+  closeQATicket,
+  createFaq as takeQATicket
+} from '@/api'
+
+const STATUS_TEXT_MAP = {
+  OPEN: '待处理',
+  IN_PROGRESS: '处理中',
+  ANSWERED: '已回答',
+  CLOSED: '已关闭'
+}
+
+function resolveErrorMessage(error) {
+  const status = error?.response?.status
+  if (status === 500) return 'FAQ接口返回500，请稍后重试'
+  if (status === 404) return 'FAQ接口不存在，请核对后台配置'
+  if (error?.code === 'ECONNABORTED') return 'FAQ接口请求超时，请重新加载'
+  return error?.response?.data?.message || error?.message || 'FAQ加载失败，请稍后重试'
+}
+
+function pickLatestReply(messages = []) {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return {}
+  }
+  return [...messages].reverse().find((item) => String(item.actorRole || '').toUpperCase() !== 'STUDENT') || messages[messages.length - 1]
+}
+
 export default {
   name: 'QATicketPage',
   data() {
@@ -232,6 +267,9 @@ export default {
       page: 1,
       total: 0,
       totalPages: 1,
+      loading: false,
+      errorMessage: '',
+      allTickets: [],
       showAnswerDialog: false,
       currentTicket: {},
       answerContent: '',
@@ -241,18 +279,12 @@ export default {
         { key: 'stats', name: '统计分析' }
       ],
       stats: {
-        total: 156,
-        open: 23,
-        answered: 98,
-        closed: 35
+        total: 0,
+        open: 0,
+        answered: 0,
+        closed: 0
       },
-      tickets: [
-        { id: 'T-2024-001', askerName: '张三', question: '如何申请国家奖学金？需要满足哪些条件？', answer: '国家奖学金申请条件包括：1.学习成绩优异...', status: 'answered', createdAt: '2024-03-14 10:30', handledAt: '2024-03-14 14:20', handler: '李老师', matchedFaq: '国家奖学金申请指南' },
-        { id: 'T-2024-002', askerName: '李四', question: '我的学分为什么没有更新？', answer: '', status: 'open', createdAt: '2024-03-15 09:00', handledAt: '', handler: '', matchedFaq: '' },
-        { id: 'T-2024-003', askerName: '王五', question: '勤工助学岗位在哪里申请？', answer: '您可以在学生服务中心网站在线申请...', status: 'answered', createdAt: '2024-03-13 15:20', handledAt: '2024-03-13 16:00', handler: '张老师', matchedFaq: '勤工助学申请流程' },
-        { id: 'T-2024-004', askerName: '赵六', question: '转专业需要什么手续？', answer: '', status: 'open', createdAt: '2024-03-15 11:00', handledAt: '', handler: '', matchedFaq: '' },
-        { id: 'T-2024-005', askerName: '钱七', question: '考试时间冲突怎么办？', answer: '请携带相关证明材料到教务处办理缓考手续。', status: 'closed', createdAt: '2024-03-10 08:30', handledAt: '2024-03-10 10:00', handler: '王老师', matchedFaq: '' }
-      ],
+      tickets: [],
       trendData: [
         { date: '03-09', count: 12 },
         { date: '03-10', count: 18 },
@@ -275,16 +307,23 @@ export default {
     }
   },
   mounted() {
-    this.total = this.tickets.length
-    this.totalPages = Math.ceil(this.total / 10)
+    this.loadTickets()
+  },
+  watch: {
+    filterStatus() {
+      this.page = 1
+      this.loadTickets()
+    },
+    searchKeyword() {
+      this.applyClientFilter()
+    }
   },
   methods: {
     getStatusText(status) {
-      const map = { 'open': '待处理', 'answered': '已回答', 'closed': '已关闭' }
-      return map[status] || status
+      return STATUS_TEXT_MAP[String(status || '').toUpperCase()] || status
     },
     getTabCount(tab) {
-      if (tab === 'tickets') return this.tickets.filter(t => t.status === 'open').length
+      if (tab === 'tickets') return this.stats.open
       return 0
     },
     answerTicket(ticket) {
@@ -296,31 +335,52 @@ export default {
     closeAnswerDialog() {
       this.showAnswerDialog = false
     },
-    submitAnswer() {
+    async submitAnswer() {
       if (!this.answerContent) {
-        alert('请输入回答内容')
+        ElMessage.warning('请输入回答内容')
         return
       }
-      console.log('提交回答:', { ticket: this.currentTicket, answer: this.answerContent, createFaq: this.createFaq })
-      this.currentTicket.answer = this.answerContent
-      this.currentTicket.status = 'answered'
-      this.currentTicket.handledAt = new Date().toLocaleString()
-      this.currentTicket.handler = '当前用户'
-      this.closeAnswerDialog()
+
+      try {
+        if (String(this.currentTicket.status || '').toUpperCase() === 'OPEN') {
+          await takeQATicket(this.currentTicket.id)
+        }
+        await answerQATicket(this.currentTicket.id, {
+          content: this.answerContent,
+          publishAsFaq: this.createFaq,
+          closeTicket: false
+        })
+        ElMessage.success('回复成功')
+        this.closeAnswerDialog()
+        this.loadTickets()
+      } catch (error) {
+        this.errorMessage = resolveErrorMessage(error)
+      }
     },
-    closeTicket(ticket) {
-      ticket.status = 'closed'
-      console.log('关闭工单:', ticket)
+    async closeTicket(ticket) {
+      try {
+        await ElMessageBox.confirm('确认关闭该工单吗？', '提示', { type: 'warning' })
+        await closeQATicket(ticket.id)
+        ElMessage.success('工单已关闭')
+        this.loadTickets()
+      } catch (error) {
+        if (error !== 'cancel') {
+          this.errorMessage = resolveErrorMessage(error)
+        }
+      }
     },
     viewFaq(faqTitle) {
-      alert('模拟打开FAQ详情: ' + faqTitle)
+      ElMessage.info(`关联FAQ：${faqTitle}`)
     },
     resetFilter() {
       this.filterStatus = ''
       this.searchKeyword = ''
+      this.page = 1
+      this.loadTickets()
     },
     changePage(newPage) {
       this.page = newPage
+      this.loadTickets()
     },
     navigateTo(path) {
       this.$router.push(path)
@@ -329,6 +389,71 @@ export default {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       this.$router.push('/login')
+    },
+    normalizeTicket(item = {}, detail = {}) {
+      const latestReply = pickLatestReply(detail.messages)
+      const status = String(detail.status || item.status || '').toUpperCase()
+      return {
+        id: item.id,
+        askerName: detail.studentName || item.studentName || '-',
+        status,
+        question: detail.questionText || item.summary || '',
+        answer: latestReply.content || '',
+        createdAt: detail.createdAt || item.createdAt || '',
+        handledAt: latestReply.createdAt || '',
+        handler: latestReply.actorName || '',
+        matchedFaq: detail.matchedFaqId ? `FAQ #${detail.matchedFaqId}` : ''
+      }
+    },
+    applyClientFilter(source = this.allTickets) {
+      const keyword = String(this.searchKeyword || '').trim()
+      this.tickets = keyword
+        ? source.filter((item) => `${item.question}${item.answer}${item.askerName}`.includes(keyword))
+        : source
+    },
+    updateStats(source = []) {
+      this.stats = {
+        total: this.total,
+        open: source.filter((item) => item.status === 'OPEN').length,
+        answered: source.filter((item) => item.status === 'ANSWERED' || item.status === 'IN_PROGRESS').length,
+        closed: source.filter((item) => item.status === 'CLOSED').length
+      }
+    },
+    async loadTickets() {
+      this.loading = true
+      this.errorMessage = ''
+
+      try {
+        const res = await getQATickets({
+          page: Math.max(this.page - 1, 0),
+          size: 10,
+          status: this.filterStatus || undefined
+        })
+        const pageData = res?.data || {}
+        const baseList = Array.isArray(pageData.content) ? pageData.content : []
+        const detailEntries = await Promise.allSettled(baseList.map((item) => getQATicketDetail(item.id)))
+        const normalized = detailEntries.map((result, index) => {
+          if (result.status === 'fulfilled') {
+            return this.normalizeTicket(baseList[index], result.value?.data || {})
+          }
+          return this.normalizeTicket(baseList[index], {})
+        })
+
+        this.allTickets = normalized
+        this.total = Number(pageData.totalElements || normalized.length)
+        this.totalPages = Math.max(Number(pageData.totalPages || 1), 1)
+        this.applyClientFilter(normalized)
+        this.updateStats(normalized)
+      } catch (error) {
+        this.allTickets = []
+        this.tickets = []
+        this.total = 0
+        this.totalPages = 1
+        this.updateStats([])
+        this.errorMessage = resolveErrorMessage(error)
+      } finally {
+        this.loading = false
+      }
     }
   }
 }

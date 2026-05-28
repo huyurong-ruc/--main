@@ -1,6 +1,6 @@
 const { get } = require('./request')
 
-const API_PREFIX = '/student/academic'
+const API_PREFIX = '/academic'
 const TRANSCRIPT_STORAGE_KEY = 'academicTranscriptMockState'
 
 function isMockMode() {
@@ -88,11 +88,173 @@ function buildTranscriptStatus(studentId) {
   }
 }
 
+function requestSilently(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    let app
+    try {
+      app = getApp()
+    } catch (e) {
+      reject({ success: false, message: '应用未初始化' })
+      return
+    }
+
+    wx.request({
+      url: `${String(app.globalData?.baseUrl || '').trim()}${url}`,
+      method: options.method || 'GET',
+      data: options.data,
+      timeout: 30000,
+      header: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+        'Authorization': app.globalData?.token ? `Bearer ${app.globalData.token}` : '',
+        ...(options.header || {})
+      },
+      success: (res) => {
+        if (res.statusCode === 200 && res.data?.success) {
+          resolve(res.data)
+          return
+        }
+        reject({
+          statusCode: res.statusCode,
+          data: res.data,
+          message: res.data?.message || '请求失败'
+        })
+      },
+      fail: (err) => reject(err)
+    })
+  })
+}
+
+function hasAcademicReport(raw = {}) {
+  const missingModules = Array.isArray(raw.missingModules) ? raw.missingModules : []
+  const recommendedCourses = Array.isArray(raw.recommendedCourses) ? raw.recommendedCourses : []
+  const summary = String(raw.summary || '')
+  return (
+    missingModules.length > 0 ||
+    recommendedCourses.length > 0 ||
+    Number(raw.totalRequiredCredits || 0) > 0 ||
+    Number(raw.totalEarnedCredits || 0) > 0 ||
+    Number(raw.totalMissingCredits || 0) > 0 ||
+    !summary.includes('暂无有效审计报告')
+  )
+}
+
+function normalizeTranscriptRecord(transcript = {}) {
+  if (!transcript || !transcript.transcriptId) {
+    return null
+  }
+  return {
+    id: transcript.transcriptId,
+    name: transcript.term ? `${transcript.term}成绩单` : '成绩单',
+    size: 0,
+    uploadTime: transcript.parsedAt ? String(transcript.parsedAt).replace('T', ' ').slice(0, 16) : '',
+    valid: true
+  }
+}
+
+function buildStatusFromRemote(studentId, transcript = null, analysis = null) {
+  const transcriptRecord = normalizeTranscriptRecord(transcript)
+  const canLoadReport = hasAcademicReport(analysis || {})
+  const fallbackRecord = canLoadReport ? {
+    id: `report-${studentId}`,
+    name: '已有学业分析报告',
+    size: 0,
+    uploadTime: '',
+    valid: true
+  } : null
+
+  return {
+    hasCurrentTranscript: !!transcriptRecord,
+    hasHistoryTranscript: !!transcriptRecord || canLoadReport,
+    canLoadReport,
+    currentTranscript: transcriptRecord || fallbackRecord,
+    latestHistoryTranscript: transcriptRecord || fallbackRecord
+  }
+}
+
+function buildGradeDistribution(report = {}) {
+  const earned = Number(report.totalEarnedCredits || 0)
+  const missing = Number(report.totalMissingCredits || 0)
+  const total = earned + missing
+  if (total <= 0) {
+    return []
+  }
+  return [
+    {
+      range: '已完成',
+      count: earned,
+      percent: Math.round((earned / total) * 100),
+      color: '#52c41a'
+    },
+    {
+      range: '待补足',
+      count: missing,
+      percent: Math.round((missing / total) * 100),
+      color: '#faad14'
+    }
+  ].filter((item) => item.count > 0)
+}
+
+function normalizeAnalysisReport(raw = {}) {
+  const missingModules = Array.isArray(raw.missingModules) ? raw.missingModules : []
+  return {
+    studentId: raw.studentId,
+    gpa: raw.completionRate != null ? `${raw.completionRate}%` : '--',
+    credits: raw.totalEarnedCredits ?? 0,
+    rank: raw.grade || '待更新',
+    warningCount: missingModules.length,
+    percent: raw.completionRate ?? 0,
+    currentCredits: raw.totalEarnedCredits ?? 0,
+    totalCredits: raw.totalRequiredCredits ?? 0,
+    updateTime: raw.dataSourceNote ? '已同步' : '-',
+    modules: missingModules.map((item) => ({
+      name: item.moduleName || '模块',
+      current: item.earnedCredits ?? 0,
+      total: item.requiredCredits ?? 0,
+      percent: item.completionRate ?? 0
+    })),
+    gradeDistribution: buildGradeDistribution(raw),
+    gpaTrend: [],
+    warnings: missingModules.map((item, index) => ({
+      id: String(index + 1),
+      type: item.moduleName || '模块缺口',
+      description: `已获 ${item.earnedCredits ?? 0}/${item.requiredCredits ?? 0} 学分，仍缺 ${item.missingCredits ?? 0} 学分${item.recommendedCourses ? `，建议课程：${item.recommendedCourses}` : ''}`
+    })),
+    summary: raw.summary || '',
+    reviewHints: raw.reviewHints || [],
+    dataSourceNote: raw.dataSourceNote || ''
+  }
+}
+
 const getAcademicTranscriptStatus = (studentId) => {
   if (isMockMode()) {
     return Promise.resolve({ success: true, data: buildTranscriptStatus(studentId) })
   }
-  return get(`${API_PREFIX}/transcript-status/${studentId}`, {}, { showLoading: false })
+  return Promise.allSettled([
+    requestSilently(`/academic/programs/transcripts/student/${studentId}`),
+    get(`${API_PREFIX}/analysis/${studentId}`, {}, { showLoading: false })
+  ]).then(([transcriptResult, analysisResult]) => {
+    if (analysisResult.status !== 'fulfilled') {
+      throw analysisResult.reason
+    }
+
+    let transcript = null
+    if (transcriptResult.status === 'fulfilled') {
+      transcript = transcriptResult.value?.data || null
+    } else {
+      const message = String(transcriptResult.reason?.message || transcriptResult.reason?.data?.message || '')
+      const statusCode = transcriptResult.reason?.statusCode
+      const isNotUploaded = statusCode === 400 || statusCode === 404 || message.includes('未找到成绩单')
+      if (!isNotUploaded) {
+        throw transcriptResult.reason
+      }
+    }
+
+    return {
+      success: true,
+      data: buildStatusFromRemote(studentId, transcript, analysisResult.value?.data || {})
+    }
+  })
 }
 
 /**
@@ -110,6 +272,10 @@ const getAcademicOverview = (studentId) => {
     return Promise.resolve({ success: true, data: report })
   }
   return get(`${API_PREFIX}/analysis/${studentId}`, {}, { showLoading: false })
+    .then((res) => ({
+      ...res,
+      data: normalizeAnalysisReport(res.data || {})
+    }))
 }
 
 /**
@@ -120,7 +286,11 @@ const getAcademicReport = (studentId) => {
   if (isMockMode()) {
     return getAcademicOverview(studentId)
   }
-  return get(`${API_PREFIX}/analysis/${studentId}`)
+  return get(`${API_PREFIX}/analysis/${studentId}`, {}, { showLoading: false })
+    .then((res) => ({
+      ...res,
+      data: normalizeAnalysisReport(res.data || {})
+    }))
 }
 
 const saveUploadedTranscript = (studentId, fileInfo = {}) => {

@@ -93,8 +93,9 @@ Page({
 
       // 上传文件
       await new Promise((resolve, reject) => {
+        const targetStudentId = studentId || 1
         wx.uploadFile({
-          url: app.globalData.baseUrl + '/academic/upload',
+          url: `${String(app.globalData.baseUrl || '').trim()}/academic/programs/transcripts/student/${targetStudentId}`,
           filePath: this.data.file.path,
           name: 'file',
           header: {

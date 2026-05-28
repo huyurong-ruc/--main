@@ -329,4 +329,5 @@ public class MockKnowledgeService implements KnowledgeApplicationService {
         }
         return "当前回复优先采用知识库标准答案，如遇特殊场景请以学院正式通知为准。";
     }
+
 }

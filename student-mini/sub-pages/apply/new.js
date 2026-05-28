@@ -4,6 +4,7 @@ const { post } = require('../../api/request')
 const applyApi = require('../../api/apply')
 const {
   buildFormDefaults,
+  getApplyDisplayTitle,
   validateApplyForm,
   resolveApplyInitialStatus
 } = require('../../api/apply-business')
@@ -75,7 +76,8 @@ Page({
         return {
           ...((typeof item === 'object' && item) ? item : {}),
           title,
-          displayTitle: title
+          submitTitle: title,
+          displayTitle: getApplyDisplayTitle(typeof item === 'object' ? item : title)
         }
       })
       this.setData({ types })
@@ -181,7 +183,7 @@ Page({
       await post('/student/certificates/draft', {
         typeId: this.data.selectedType?.id,
         typeKey: this.data.selectedType?.key,
-        certificateType: this.data.selectedType?.applyTitle,
+        certificateType: this.data.selectedType?.submitTitle || this.data.selectedType?.applyTitle || this.data.selectedType?.title,
         purpose: buildPurposeFromFields(this.data.selectedType, this.data.formValues),
         remark: this.data.formValues.applicationNote || '',
         fieldValues: this.data.formValues,
@@ -241,7 +243,7 @@ Page({
         return
       }
 
-      const certificateType = this.data.selectedType.displayTitle || this.data.selectedType.title || ''
+      const certificateType = this.data.selectedType.submitTitle || this.data.selectedType.applyTitle || this.data.selectedType.title || ''
       if (!certificateType) {
         wx.showToast({ title: '证明类型不能为空', icon: 'none' })
         return

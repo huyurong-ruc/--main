@@ -1,21 +1,36 @@
 // sub-pages/apply/detail.js
 const app = getApp()
 const applyApi = require('../../api/apply')
+const { getApplyDisplayTitle } = require('../../api/apply-business')
 const { getApplyStatusMeta, normalizeApplyStatus } = require('../../api/apply-status')
+
+function formatApplyTime(value = '') {
+  if (Array.isArray(value) && value.length >= 3) {
+    const [year, month, day, hour = 0, minute = 0] = value
+    return `${year}-${String(month || 1).padStart(2, '0')}-${String(day || 1).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+  }
+
+  const text = String(value || '').trim()
+  if (!text) return ''
+  const normalized = text.includes('T') ? text.replace('T', ' ') : text
+  return normalized.length >= 16 ? normalized.slice(0, 16) : normalized
+}
 
 function normalizeDetail(payload = {}) {
   const statusRaw = payload.statusCode || payload.status || payload.statusText || ''
   const statusCode = normalizeApplyStatus(statusRaw)
   const meta = getApplyStatusMeta(statusCode)
+  const rawTypeName = payload.typeName || payload.certificateType || payload.typeTitle || payload.title || '申请详情'
+  const rawCreateTime = payload.submittedAt || payload.createTime || payload.createdAt || payload.createAt || payload.time || ''
 
   return {
     ...payload,
-    typeName: payload.typeName || payload.certificateType || payload.typeTitle || payload.title || '申请详情',
+    typeName: getApplyDisplayTitle(rawTypeName, payload.typeKey),
     status: statusCode,
     statusText: payload.statusText || meta.detailLabel || meta.listLabel,
     statusTitle: payload.statusTitle || meta.title,
     statusDescription: payload.statusDescription || meta.description,
-    createTime: payload.submittedAt || payload.createTime || payload.createdAt || payload.createAt || payload.time || '',
+    createTime: formatApplyTime(rawCreateTime),
     canCancel: typeof payload.canWithdraw === 'boolean'
       ? payload.canWithdraw
       : (typeof payload.canCancel === 'boolean' ? payload.canCancel : meta.canCancel)

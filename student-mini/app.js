@@ -7,7 +7,7 @@ App({
     // 真机测试前，请通过内网穿透工具（如 ngrok / cpolar / 花生壳）将本地 8080 端口暴露为公网 HTTPS 地址，
     // 然后在下方替换为实际可访问的地址，并在小程序后台配置 request 合法域名。
     // TODO: 替换为实际后端 HTTPS 地址，例如: 'https://abc123.ngrok-free.app/api/v1'
-    baseUrl: 'https://repaint-doorman-nutrient.ngrok-free.dev/api/v1',
+    baseUrl: 'https://camping-penny-concert.ngrok-free.dev/api/v1',
     // 对接真实后端时关闭 mock
     USE_MOCK: false,
     // 云开发代理模式开关：true 时通过云函数代理请求，false 时直接请求 baseUrl

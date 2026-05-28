@@ -476,49 +476,49 @@ export const togglePolicyPublish = (id) => api.post(`/knowledge/policies/${id}/t
 /**
  * 获取 FAQ 列表
  */
-export const getFaqs = (params) => api.get('/knowledge/faqs', { params })
+export const getFaqs = (params) => api.get('/admin/qa-tickets/page', { params })
 
 /**
  * 获取 FAQ 详情
  */
-export const getFaqDetail = (id) => api.get(`/knowledge/faqs/${id}`)
+export const getFaqDetail = (id) => api.get(`/admin/qa-tickets/${id}`)
 
 /**
  * 创建 FAQ
  */
-export const createFaq = (data) => api.post('/knowledge/faqs', data)
+export const createFaq = (id) => api.post(`/admin/qa-tickets/${id}/take`)
 
 /**
  * 更新 FAQ
  */
-export const updateFaq = (id, data) => api.put(`/knowledge/faqs/${id}`, data)
+export const updateFaq = (id, data) => api.post(`/admin/qa-tickets/${id}/reply`, data)
 
 /**
  * 删除 FAQ
  */
-export const deleteFaq = (id) => api.delete(`/knowledge/faqs/${id}`)
+export const deleteFaq = (id) => api.post(`/admin/qa-tickets/${id}/close`)
 
 // ============ 15. 问答工单模块（业务扩展） ============
 
 /**
  * 获取问答工单列表
  */
-export const getQATickets = (params) => api.get('/knowledge/qa-tickets', { params })
+export const getQATickets = (params) => api.get('/admin/qa-tickets/page', { params })
 
 /**
  * 获取问答工单详情
  */
-export const getQATicketDetail = (id) => api.get(`/knowledge/qa-tickets/${id}`)
+export const getQATicketDetail = (id) => api.get(`/admin/qa-tickets/${id}`)
 
 /**
  * 回答工单
  */
-export const answerQATicket = (id, data) => api.post(`/knowledge/qa-tickets/${id}/answer`, data)
+export const answerQATicket = (id, data) => api.post(`/admin/qa-tickets/${id}/reply`, data)
 
 /**
  * 关闭工单
  */
-export const closeQATicket = (id) => api.post(`/knowledge/qa-tickets/${id}/close`)
+export const closeQATicket = (id) => api.post(`/admin/qa-tickets/${id}/close`)
 
 // ============ 16. 关键词模块（业务扩展） ============
 

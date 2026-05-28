@@ -114,7 +114,12 @@
 .card-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+}
+
+.question-block {
+  flex: 1;
+  padding-right: 20rpx;
 }
 
 .question-text {
@@ -122,8 +127,14 @@
   font-weight: 600;
   color: #1f2d3d;
   line-height: 1.4;
-  flex: 1;
-  padding-right: 20rpx;
+}
+
+.question-meta {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: #8a94a6;
+  line-height: 1.4;
 }
 
 .toggle-icon {
@@ -198,6 +209,18 @@
   font-size: 26rpx;
   color: #7b8ba5;
   text-align: center;
+}
+
+.retry-btn {
+  margin-top: 28rpx;
+  min-width: 240rpx;
+  height: 76rpx;
+  line-height: 76rpx;
+  border-radius: 38rpx;
+  background: #e8f1ff;
+  color: #1677ff;
+  font-size: 28rpx;
+  font-weight: 600;
 }
 
 .loading-state {

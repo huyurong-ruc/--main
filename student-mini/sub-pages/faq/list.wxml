@@ -24,7 +24,7 @@
   </view>
 
   <view class="result-meta" wx:if="{{faqList.length > 0}}">
-    <text>共 {{faqList.length}} 个常见问题</text>
+    <text>共 {{total || faqList.length}} 个常见问题</text>
   </view>
 
   <!-- 列表 -->
@@ -37,7 +37,10 @@
       data-index="{{index}}"
     >
       <view class="card-header">
-        <text class="question-text">{{item.question}}</text>
+        <view class="question-block">
+          <text class="question-text">{{item.question}}</text>
+          <text class="question-meta">{{item.statusText}}{{item.createdAt ? ' · ' + item.createdAt : ''}}</text>
+        </view>
         <text class="toggle-icon">{{item.expanded ? '▾' : '▸'}}</text>
       </view>
       <view class="card-content" wx:if="{{item.expanded}}">
@@ -47,8 +50,9 @@
     
     <view wx:if="{{faqList.length === 0 && !loading}}" class="empty-state">
       <image src="/static/illustrations/faq.svg" class="empty-illustration" mode="aspectFit" />
-      <text class="empty-title">未找到相关问题</text>
-      <text class="empty-desc">您可以尝试更换关键词，或点击下方提交咨询</text>
+      <text class="empty-title">{{errorMessage ? 'FAQ加载失败' : '未找到相关问题'}}</text>
+      <text class="empty-desc">{{errorMessage || '您可以尝试更换关键词，或点击下方提交咨询'}}</text>
+      <button wx:if="{{errorMessage}}" class="retry-btn" bindtap="retryLoad">重新加载</button>
     </view>
   </view>
   
