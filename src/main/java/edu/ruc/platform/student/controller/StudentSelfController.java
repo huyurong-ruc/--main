@@ -116,6 +116,7 @@ public class StudentSelfController {
                                                                                 @Min(value = 1, message = "size不能小于1") @RequestParam(defaultValue = "10") int size) {
         currentUserService.requireAnyRole(RoleType.STUDENT);
         List<edu.ruc.platform.knowledge.domain.LatestKnowledgePolicy> all = latestKnowledgePolicyRepository.findByIsDeletedAndIsPublished(0, 1).stream()
+                .filter(item -> !isFaqPolicy(item))
                 .sorted(Comparator.comparing(edu.ruc.platform.knowledge.domain.LatestKnowledgePolicy::getUpdatedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
                 .toList();
         int normalizedPage = Math.max(page, 0);
@@ -125,12 +126,13 @@ public class StudentSelfController {
         int totalPages = (int) Math.ceil(all.size() / (double) normalizedSize);
         List<StudentPolicyListItemResponse> content = all.subList(fromIndex, toIndex).stream().map(item -> {
             String category = resolvePolicyCategory(item.getExtJson());
+            String sourceFileName = resolvePolicyMeta(item.getExtJson()).get("sourceFileName");
             return new StudentPolicyListItemResponse(
                     item.getId(),
                     item.getTitle(),
                     category == null ? "未分类" : category,
                     item.getSourceUrl(),
-                    null,
+                    sourceFileName,
                     format(item.getUpdatedAt())
             );
         }).toList();
@@ -247,19 +249,35 @@ public class StudentSelfController {
     }
 
     private String resolvePolicyCategory(String extJson) {
+        String value = resolvePolicyMeta(extJson).get("category");
+        return (value == null || value.isBlank()) ? null : value.trim();
+    }
+
+    private boolean isFaqPolicy(edu.ruc.platform.knowledge.domain.LatestKnowledgePolicy item) {
+        String category = resolvePolicyCategory(item == null ? null : item.getExtJson());
+        if (category == null) {
+            return false;
+        }
+        String normalized = category.trim().toLowerCase();
+        return normalized.contains("faq") || category.contains("FAQ管理") || category.contains("问答");
+    }
+
+    private Map<String, String> resolvePolicyMeta(String extJson) {
         if (extJson == null || extJson.isBlank()) {
-            return null;
+            return Map.of();
         }
         try {
             Map<String, Object> map = objectMapper.readValue(extJson, new TypeReference<>() {});
-            Object c = map.get("category");
-            if (c == null) {
-                return null;
-            }
-            String v = String.valueOf(c).trim();
-            return v.isBlank() ? null : v;
+            return map.entrySet().stream()
+                    .filter(entry -> entry.getValue() != null)
+                    .collect(java.util.stream.Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry -> String.valueOf(entry.getValue()),
+                            (left, right) -> right,
+                            java.util.LinkedHashMap::new
+                    ));
         } catch (Exception e) {
-            return null;
+            return Map.of();
         }
     }
 }

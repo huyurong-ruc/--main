@@ -75,6 +75,14 @@ const request = (options) => {
       useCloudProxy = false
     }
 
+    if (typeof options.useMock === 'boolean') {
+      useMock = options.useMock
+    }
+
+    if (typeof options.useCloudProxy === 'boolean') {
+      useCloudProxy = options.useCloudProxy
+    }
+
     // Mock 模式
     if (useMock) {
       try {

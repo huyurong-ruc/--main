@@ -1,6 +1,6 @@
 // pages/message/detail.js
 const app = getApp()
-const { get } = require('../../api/request')
+const policyApi = require('../../api/policy')
 
 Page({
   data: {
@@ -25,10 +25,9 @@ Page({
     this.setData({ loading: true, detail: null })
     
     try {
-      const res = await get('/student/notices')
-      const list = Array.isArray(res?.data) ? res.data : []
-      const hit = list.find((item) => String(item.id) === String(this.data.id))
-      if (!hit) {
+      const res = await policyApi.getNoticeDetail(this.data.id)
+      const hit = res?.data || {}
+      if (!hit || !hit.id) {
         wx.showToast({ title: '未找到该通知', icon: 'none' })
         return
       }

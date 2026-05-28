@@ -1,6 +1,6 @@
 // sub-pages/policy/detail.js
 const app = getApp()
-const { get } = require('../../api/request')
+const policyApi = require('../../api/policy')
 
 Page({
   data: {
@@ -25,7 +25,7 @@ Page({
     this.setData({ loading: true })
     
     try {
-      const res = await get(`/knowledge/${this.data.id}`)
+      const res = await policyApi.getPolicyDetail(this.data.id)
       const raw = res.data || {}
       const answerText = raw.answer == null ? '' : String(raw.answer)
       const contentHtml = answerText

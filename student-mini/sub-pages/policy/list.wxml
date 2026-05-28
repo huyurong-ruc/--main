@@ -40,6 +40,9 @@
           <text class="policy-title">{{item.title}}</text>
           <text class="type-tag">{{item.category || '政策'}}</text>
         </view>
+        <view class="card-content">
+          <text class="policy-summary">{{item.summary}}</text>
+        </view>
         <view class="card-footer">
           <text class="policy-time">{{item.publishTime || item.updatedAt || '-'}}</text>
           <text class="detail-link">查看详情 ›</text>
@@ -89,8 +92,11 @@
           </view>
           <text class="type-tag template">模板</text>
         </view>
+        <view class="card-content">
+          <text class="policy-summary">{{item.description}}</text>
+        </view>
         <view class="card-footer">
-          <text class="policy-time">文件大小: {{item.fileSize || '-'}}</text>
+          <text class="policy-time">文件大小: {{item.fileSize || '-'}}{{item.updatedAt ? ' · 更新：' + item.updatedAt : ''}}</text>
           <text class="detail-link">查看模板 ›</text>
         </view>
       </view>
@@ -101,8 +107,9 @@
       class="empty-state"
     >
       <image src="/static/illustrations/policy.svg" class="empty-illustration" mode="aspectFit" />
-      <text class="empty-title">暂无相关内容</text>
-      <text class="empty-desc">当前分类下暂无发布的文件或通知</text>
+      <text class="empty-title">{{errorMessage ? '加载失败' : '暂无相关内容'}}</text>
+      <text class="empty-desc">{{errorMessage || '当前分类下暂无发布的文件或通知'}}</text>
+      <button wx:if="{{errorMessage}}" class="retry-btn" bindtap="retryLoad">重新加载</button>
     </view>
   </view>
 

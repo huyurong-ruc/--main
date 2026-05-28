@@ -31,6 +31,10 @@ function normalizeTemplate(item = {}) {
   }
 }
 
+function shouldUsePolicyMock() {
+  return false
+}
+
 function logTemplateDownload(stage, payload = {}) {
   console.info('[template-download]', stage, payload)
 }
@@ -223,7 +227,9 @@ Page({
       return
     }
 
-    if (!downloadUrl && !app.globalData.USE_MOCK) {
+    const useMockMode = shouldUsePolicyMock()
+
+    if (!downloadUrl && !useMockMode) {
       wx.showToast({ title: '当前模板暂不支持下载', icon: 'none' })
       return
     }
@@ -233,11 +239,11 @@ Page({
     logTemplateDownload('start', {
       id: target.id,
       templateCode: target.templateCode,
-      useMock: app.globalData.USE_MOCK,
+      useMock: useMockMode,
       downloadUrl
     })
 
-    if (app.globalData.USE_MOCK) {
+    if (useMockMode) {
       try {
         const filePath = await writeMockTemplateFile(target)
         logTemplateDownload('mock-file-written', { id: target.id, filePath })
