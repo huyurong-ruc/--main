@@ -1,6 +1,7 @@
 // sub-pages/login/index.js
 const app = getApp()
 const api = require('../../api/auth')
+const { normalizeUserProfile } = require('../../utils/user-profile')
 
 function validatePassword(value = '') {
   const password = String(value)
@@ -125,16 +126,27 @@ Page({
         profile = null
       }
       
-      // 保存登录数据
-      app.setLoginData(payload.token, {
-        id: profile?.userId || userId || studentNo.trim(),
-        studentId: profile?.studentId || profile?.userId || userId || studentNo.trim(),
-        name: profile?.name || profile?.username || studentNo.trim(),
-        studentNo: profile?.studentNo || studentNo.trim(),
+      // 统一规范展示字段与业务字段，避免把内部 studentId 误显示成学号
+      const normalizedUser = normalizeUserProfile({
+        ...(payload.userInfo || {}),
+        ...payload,
+        ...profile,
         role: profile?.role || role,
         major: profile?.major || '',
         grade: profile?.grade || ''
+      }, {
+        id: userId || studentNo.trim(),
+        userId: userId || studentNo.trim(),
+        studentId: profile?.studentId || profile?.userId || userId || '',
+        username: payload.username || studentNo.trim(),
+        studentNo: profile?.studentNo || studentNo.trim(),
+        name: profile?.name || '',
+        role,
+        major: profile?.major || '',
+        grade: profile?.grade || ''
       })
+
+      app.setLoginData(payload.token, normalizedUser)
       
       wx.showToast({ title: '登录成功', icon: 'success' })
 
