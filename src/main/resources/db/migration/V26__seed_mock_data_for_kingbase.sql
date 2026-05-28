@@ -154,19 +154,6 @@ VALUES
     (107, TIMESTAMP '2026-05-07 13:10:00', TIMESTAMP '2026-05-07 13:10:00', 10001, '英语六级证书', DATE '2025-02-20', '国家级', '成绩 580 分')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO knowledge_document (
-    id, created_at, updated_at, title, category, summary, content, official_url, source_file_name,
-    audience_scope, updated_by, published, tags, version, deleted
-)
-VALUES
-    (1, TIMESTAMP '2026-03-20 09:00:00', TIMESTAMP '2026-03-20 09:00:00', '奖学金评选与常见问题', '奖助学金', '适合回答名额、资格、申请节点等标准问题；特殊情况请联系负责老师。', '适合回答名额、资格、申请节点等标准问题；特殊情况请联系负责老师。', 'https://example.edu/scholarship', NULL, 'ALL', '系统管理员', TRUE, '奖助学金,标准答复', 1, FALSE),
-    (2, TIMESTAMP '2026-03-21 11:00:00', TIMESTAMP '2026-03-21 11:00:00', '入党全流程说明', '党团事务', '入党流程稳定，可按申请人、积极分子、发展对象、预备党员、正式党员阶段查询。', '入党流程稳定，可按申请人、积极分子、发展对象、预备党员、正式党员阶段查询。', 'https://example.edu/party', 'party-process.pdf', 'ALL', '系统管理员', TRUE, '党团事务,流程', 1, FALSE),
-    (3, TIMESTAMP '2026-03-21 11:05:00', TIMESTAMP '2026-03-21 11:05:00', '入团流程与材料要求', '党团事务', '入团流程适合做固定步骤说明和节点提醒。', '入团流程适合做固定步骤说明和节点提醒。', 'https://example.edu/league', NULL, 'ALL', '系统管理员', TRUE, '党团事务,流程', 1, FALSE),
-    (4, TIMESTAMP '2026-03-22 09:00:00', TIMESTAMP '2026-03-22 09:00:00', '学生信息字段公开与保密原则', '数据安全', '该主题涉及隐私和敏感字段，前台仅提供公开口径与官方链接，具体数据不直接展示。', '该主题涉及隐私和敏感字段，前台仅提供公开口径与官方链接，具体数据不直接展示。', 'https://example.edu/security', NULL, 'ALL', '系统管理员', TRUE, '数据安全,保密', 1, FALSE),
-    (5, TIMESTAMP '2026-03-22 09:05:00', TIMESTAMP '2026-03-22 09:05:00', '电子证明与常用表格入口', '日常事务', '可统一提供在读证明、请假条、活动预算表等模板下载和流程说明。', '可统一提供在读证明、请假条、活动预算表等模板下载和流程说明。', 'https://example.edu/forms', NULL, 'ALL', '系统管理员', TRUE, '日常事务,表格', 1, FALSE),
-    (299, TIMESTAMP '2026-03-22 11:00:00', TIMESTAMP '2026-03-22 11:00:00', '辅导员内部口径说明', '内部资料', '内部使用资料，不对学生端公开。', '内部使用资料，不对学生端公开。', 'https://example.edu/internal', 'internal-note.pdf', 'INTERNAL', '系统管理员', FALSE, '内部,辅导员', 1, FALSE)
-ON CONFLICT (id) DO NOTHING;
-
 INSERT INTO file_object (
     id, purpose, original_name, mime_type, size_bytes, sha256, storage_provider, storage_path,
     uploaded_by, uploaded_at, created_at, updated_at, is_deleted
@@ -180,18 +167,6 @@ VALUES
     (5101, 'knowledge_attachment', 'party-process.pdf', 'application/pdf', 1024, 'sha-knowledge-5101', 'local', '/uploads/knowledge/2/party-process.pdf', 1, TIMESTAMP '2026-03-22 11:00:00', TIMESTAMP '2026-03-22 11:00:00', TIMESTAMP '2026-03-22 11:00:00', 0)
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO kb_policy (
-    id, title, summary, content, source_type, source_url, attachment_file_id, is_published, published_at,
-    created_by, ext_json, created_at, updated_at, is_deleted
-)
-VALUES
-    (1, '奖学金评选与常见问题', '适合回答名额、资格、申请节点等标准问题；特殊情况请联系负责老师。', '适合回答名额、资格、申请节点等标准问题；特殊情况请联系负责老师。', 'manual', 'https://example.edu/scholarship', NULL, 1, TIMESTAMP '2026-03-20 09:00:00', 1, '{"category":"奖助学金"}', TIMESTAMP '2026-03-20 09:00:00', TIMESTAMP '2026-03-20 09:00:00', 0),
-    (2, '入党全流程说明', '入党流程稳定，可按申请人、积极分子、发展对象、预备党员、正式党员阶段查询。', '入党流程稳定，可按申请人、积极分子、发展对象、预备党员、正式党员阶段查询。', 'manual', 'https://example.edu/party', 5101, 1, TIMESTAMP '2026-03-21 11:00:00', 1, '{"category":"党团事务"}', TIMESTAMP '2026-03-21 11:00:00', TIMESTAMP '2026-03-21 11:00:00', 0),
-    (3, '入团流程与材料要求', '入团流程适合做固定步骤说明和节点提醒。', '入团流程适合做固定步骤说明和节点提醒。', 'manual', 'https://example.edu/league', NULL, 1, TIMESTAMP '2026-03-21 11:05:00', 1, '{"category":"党团事务"}', TIMESTAMP '2026-03-21 11:05:00', TIMESTAMP '2026-03-21 11:05:00', 0),
-    (4, '学生信息字段公开与保密原则', '该主题涉及隐私和敏感字段，前台仅提供公开口径与官方链接，具体数据不直接展示。', '该主题涉及隐私和敏感字段，前台仅提供公开口径与官方链接，具体数据不直接展示。', 'manual', 'https://example.edu/security', NULL, 1, TIMESTAMP '2026-03-22 09:00:00', 1, '{"category":"数据安全"}', TIMESTAMP '2026-03-22 09:00:00', TIMESTAMP '2026-03-22 09:00:00', 0),
-    (5, '电子证明与常用表格入口', '可统一提供在读证明、请假条、活动预算表等模板下载和流程说明。', '可统一提供在读证明、请假条、活动预算表等模板下载和流程说明。', 'manual', 'https://example.edu/forms', NULL, 1, TIMESTAMP '2026-03-22 09:05:00', 1, '{"category":"日常事务"}', TIMESTAMP '2026-03-22 09:05:00', TIMESTAMP '2026-03-22 09:05:00', 0),
-    (299, '辅导员内部口径说明', '内部使用资料，不对学生端公开。', '内部使用资料，不对学生端公开。', 'manual', 'https://example.edu/internal', NULL, 0, NULL, 1, '{"category":"内部资料"}', TIMESTAMP '2026-03-22 11:00:00', TIMESTAMP '2026-03-22 11:00:00', 0)
-ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO knowledge_attachment (
     id, created_at, updated_at, knowledge_id, file_name, content_type, file_size, storage_path, uploaded_by
