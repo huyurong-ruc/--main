@@ -3,13 +3,10 @@ const { get, post, put } = require('./request')
 
 /**
  * 获取申请列表（电子证明申请记录）
- * 后端: GET /api/v1/student/certificates/requests
- * 状态约定:
- * - ACTION_REQUIRED: 学生仍需完成前置节点，前端展示为“待处理”
- * - IN_REVIEW: 已进入老师审核队列，前端展示为“待审核”
- * @param {Object} params - { page, pageSize }
+ * 后端: GET /api/v1/certificates/requests/student/{studentId}
+ * @param {number|string} studentId
  */
-exports.getApplyList = (params) => get('/student/certificates/requests', params)
+exports.getApplyList = (studentId) => get(`/certificates/requests/student/${studentId}`)
 
 /**
  * 获取申请详情
@@ -34,6 +31,6 @@ exports.cancelApply = (id) => post(`/certificates/requests/${id}/action`, { acti
 
 /**
  * 获取申请类型列表
- * 后端: GET /api/v1/knowledge/templates
+ * 后端: GET /api/v1/certificates/types
  */
-exports.getApplyTypes = () => get('/knowledge/templates')
+exports.getApplyTypes = () => get('/certificates/types')

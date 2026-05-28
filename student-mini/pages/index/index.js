@@ -69,12 +69,16 @@ Page({
   },
 
   async syncPendingProgress() {
-    const studentId = app.globalData.userInfo?.studentId || app.globalData.userInfo?.id
+    const studentId = Number(app.globalData.userInfo?.studentId || app.globalData.userInfo?.id || 0)
     const flowState = getPartyFlowState(studentId)
     const nextList = []
 
     try {
-      const res = await applyApi.getApplyList()
+      if (!studentId || Number.isNaN(studentId)) {
+        throw new Error('登录信息缺少学生ID')
+      }
+
+      const res = await applyApi.getApplyList(studentId)
       const applyList = Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.data?.list)

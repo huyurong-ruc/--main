@@ -1,6 +1,26 @@
 // sub-pages/apply/detail.js
 const app = getApp()
-const { get, put } = require('../../api/request')
+const applyApi = require('../../api/apply')
+const { getApplyStatusMeta, normalizeApplyStatus } = require('../../api/apply-status')
+
+function normalizeDetail(payload = {}) {
+  const statusRaw = payload.statusCode || payload.status || payload.statusText || ''
+  const statusCode = normalizeApplyStatus(statusRaw)
+  const meta = getApplyStatusMeta(statusCode)
+
+  return {
+    ...payload,
+    typeName: payload.typeName || payload.certificateType || payload.typeTitle || payload.title || '申请详情',
+    status: statusCode,
+    statusText: payload.statusText || meta.detailLabel || meta.listLabel,
+    statusTitle: payload.statusTitle || meta.title,
+    statusDescription: payload.statusDescription || meta.description,
+    createTime: payload.submittedAt || payload.createTime || payload.createdAt || payload.createAt || payload.time || '',
+    canCancel: typeof payload.canWithdraw === 'boolean'
+      ? payload.canWithdraw
+      : (typeof payload.canCancel === 'boolean' ? payload.canCancel : meta.canCancel)
+  }
+}
 
 Page({
   data: {
@@ -26,8 +46,8 @@ Page({
     this.setData({ loading: true })
     
     try {
-      const res = await get(`/affairs/${this.data.id}`)
-      this.setData({ detail: res.data })
+      const res = await applyApi.getApplyDetail(this.data.id)
+      this.setData({ detail: normalizeDetail(res.data) })
     } catch (e) {
       console.error('加载详情失败', e)
     } finally {
@@ -52,7 +72,7 @@ Page({
     this.setData({ canceling: true })
     
     try {
-      await put(`/affairs/${this.data.id}/cancel`)
+      await applyApi.cancelApply(this.data.id)
       wx.showToast({ title: '已撤回', icon: 'success' })
       this.loadDetail()
     } catch (e) {

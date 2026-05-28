@@ -1164,6 +1164,28 @@ exports.getMockData = (url, params = {}, method = 'GET') => {
     }
   }
 
+  const certificatePreviewMatch = plainPath.match(/^\/certificates\/requests\/([^/]+)\/preview$/)
+  if (certificatePreviewMatch && String(method).toUpperCase() === 'GET') {
+    const target = applyRequests.find((item) => item.id === certificatePreviewMatch[1])
+    if (!target) {
+      return { success: false, message: '申请不存在', data: null }
+    }
+    return { success: true, data: buildAffairDetail(target) }
+  }
+
+  const certificateActionMatch = plainPath.match(/^\/certificates\/requests\/([^/]+)\/action$/)
+  if (certificateActionMatch && String(method).toUpperCase() === 'POST') {
+    const action = String((params || {}).action || '').toLowerCase()
+    if (action === 'withdraw') {
+      applyRequests = applyRequests.map((item) => item.id === certificateActionMatch[1]
+        ? { ...item, status: 'CANCELED' }
+        : item)
+      const updated = applyRequests.find((item) => item.id === certificateActionMatch[1])
+      return { success: true, data: updated ? buildAffairDetail(updated) : null }
+    }
+    return { success: false, message: '不支持的操作', data: null }
+  }
+
   if (plainPath === '/affairs' && String(method).toUpperCase() === 'GET') {
     return {
       success: true,

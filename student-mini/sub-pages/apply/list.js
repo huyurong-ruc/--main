@@ -84,7 +84,15 @@ Page({
     this.setData({ loading: true })
 
     try {
-      const res = await applyApi.getApplyList()
+      const profile = app.globalData.userInfo || {}
+      const studentId = Number(profile.studentId || profile.id || 0)
+      if (!studentId || Number.isNaN(studentId)) {
+        wx.showToast({ title: '登录信息缺少学生ID', icon: 'none' })
+        this.setData({ rawList: [], applyList: [] })
+        return
+      }
+
+      const res = await applyApi.getApplyList(studentId)
       const sourceList = Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.data?.list)

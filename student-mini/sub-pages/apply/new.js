@@ -52,7 +52,9 @@ Page({
     renderedFields: [],
     attachments: [],
     loading: false,
-    submitting: false
+    submitting: false,
+    enableExtraFields: false,
+    enableDraft: false
   },
   
   onLoad() {
@@ -68,10 +70,14 @@ Page({
     this.setData({ loading: true })
     try {
       const res = await applyApi.getApplyTypes()
-      const types = (res.data || []).map((item) => ({
-        ...item,
-        displayTitle: item.applyTitle || item.title
-      }))
+      const types = (res.data || []).map((item) => {
+        const title = typeof item === 'string' ? item : (item.applyTitle || item.title || '')
+        return {
+          ...((typeof item === 'object' && item) ? item : {}),
+          title,
+          displayTitle: title
+        }
+      })
       this.setData({ types })
     } catch (e) {
       console.error('加载申请类型失败', e)
@@ -84,12 +90,12 @@ Page({
   onTypeChange(e) {
     const index = Number(e.detail.value)
     const selectedType = this.data.types[index]
-    const formValues = buildFormDefaults(selectedType)
+    const formValues = this.data.enableExtraFields ? buildFormDefaults(selectedType) : {}
     this.setData({
       selectedTypeIndex: index,
       selectedType,
       formValues,
-      renderedFields: buildRenderedFields(selectedType, formValues),
+      renderedFields: this.data.enableExtraFields ? buildRenderedFields(selectedType, formValues) : [],
       attachments: []
     })
   },
@@ -206,10 +212,12 @@ Page({
       return
     }
 
-    const validateResult = validateApplyForm(selectedType, formValues)
-    if (!validateResult.valid) {
-      wx.showToast({ title: validateResult.message, icon: 'none' })
-      return
+    if (this.data.enableExtraFields) {
+      const validateResult = validateApplyForm(selectedType, formValues)
+      if (!validateResult.valid) {
+        wx.showToast({ title: validateResult.message, icon: 'none' })
+        return
+      }
     }
     
     this.setData({ submitting: true })
@@ -226,21 +234,26 @@ Page({
   async submitApply() {
     wx.showLoading({ title: '提交中...' })
     try {
+      const profile = app.globalData.userInfo || {}
+      const studentId = Number(profile.studentId || profile.id || 0)
+      if (!studentId || Number.isNaN(studentId)) {
+        wx.showToast({ title: '登录信息缺少学生ID', icon: 'none' })
+        return
+      }
+
+      const certificateType = this.data.selectedType.displayTitle || this.data.selectedType.title || ''
+      if (!certificateType) {
+        wx.showToast({ title: '证明类型不能为空', icon: 'none' })
+        return
+      }
+
       const payload = {
-        typeId: this.data.selectedType.id,
-        typeKey: this.data.selectedType.key,
-        certificateType: this.data.selectedType.applyTitle,
-        purpose: buildPurposeFromFields(this.data.selectedType, this.data.formValues),
-        remark: this.data.formValues.applicationNote || '',
-        fieldValues: this.data.formValues,
-        attachments: this.data.attachments.map((file) => ({
-          name: file.name,
-          path: file.path,
-          size: file.size
-        }))
+        studentId,
+        certificateType,
+        reason: ''
       }
       const res = await applyApi.submitApply(payload)
-      const statusCode = res?.data?.statusCode || resolveApplyInitialStatus(this.data.selectedType, payload)
+      const statusCode = res?.data?.status || resolveApplyInitialStatus(this.data.selectedType, payload)
       const statusMeta = getApplyStatusMeta(statusCode)
 
       wx.showToast({
