@@ -233,7 +233,8 @@ public class KingbaseCertificateService implements CertificateApplicationService
                 updated.studentId(),
                 updated.certificateType(),
                 updated.status(),
-                buildPreviewUrl(certApplication)
+                buildPreviewUrl(certApplication),
+                List.of()
         );
     }
 
@@ -438,7 +439,8 @@ public class KingbaseCertificateService implements CertificateApplicationService
                 affairRequest.getRequesterUserId(),
                 resolveCertificateType(certApplication),
                 toApprovalStatus(affairRequest.getStatus()),
-                buildPreviewUrl(certApplication)
+                buildPreviewUrl(certApplication),
+                List.of()
         );
     }
 

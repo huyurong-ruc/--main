@@ -62,6 +62,15 @@ public class KingbaseKnowledgeService implements KnowledgeApplicationService {
     }
 
     @Override
+    public List<KnowledgeSearchResponse> listFaqs() {
+        return latestKnowledgePolicyRepository.findByIsDeletedAndIsPublished(0, 1).stream()
+                .filter(this::isFaqPolicy)
+                .sorted(Comparator.comparing(LatestKnowledgePolicy::getId))
+                .map(this::toSearchResponse)
+                .toList();
+    }
+
+    @Override
     public List<KnowledgeSearchResponse> listTemplates() {
         return latestCertTemplateRepository.findByIsDeletedAndIsActive(0, 1).stream()
                 .sorted(Comparator.comparing(LatestCertTemplate::getId))
@@ -173,6 +182,19 @@ public class KingbaseKnowledgeService implements KnowledgeApplicationService {
             return "学业发展";
         }
         return "政策知识";
+    }
+
+    private boolean isFaqPolicy(LatestKnowledgePolicy policy) {
+        String extCategory = resolveExtCategory(policy == null ? null : policy.getExtJson());
+        if (extCategory != null && extCategory.contains("FAQ管理")) {
+            return true;
+        }
+        String category = resolveCategory(policy);
+        if (category == null) {
+            return false;
+        }
+        String lower = category.toLowerCase(Locale.ROOT);
+        return lower.contains("faq") || category.contains("问答");
     }
 
     private String resolveExtCategory(String extJson) {

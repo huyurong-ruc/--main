@@ -28,6 +28,11 @@ public class KnowledgeController {
         return ApiResponse.success(knowledgeService.search(keyword));
     }
 
+    @GetMapping("/faqs")
+    public ApiResponse<List<KnowledgeSearchResponse>> listFaqs() {
+        return ApiResponse.success(knowledgeService.listFaqs());
+    }
+
     @GetMapping("/templates")
     public ApiResponse<List<KnowledgeSearchResponse>> listTemplates() {
         return ApiResponse.success(knowledgeService.listTemplates());

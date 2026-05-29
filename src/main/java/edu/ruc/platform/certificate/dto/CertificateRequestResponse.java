@@ -1,4 +1,13 @@
 package edu.ruc.platform.certificate.dto;
 
-public record CertificateRequestResponse(Long id, Long studentId, String certificateType, String status, String generatedPdfPath) {
+import java.util.List;
+
+public record CertificateRequestResponse(
+        Long id,
+        Long studentId,
+        String certificateType,
+        String status,
+        String generatedPdfPath,
+        List<CertificateAttachmentResponse> attachments
+) {
 }

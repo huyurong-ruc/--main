@@ -153,6 +153,33 @@ public class MockKnowledgeService implements KnowledgeApplicationService {
     }
 
     @Override
+    public List<KnowledgeSearchResponse> listFaqs() {
+        List<KnowledgeSearchResponse> merged = new ArrayList<>();
+        Map<Long, KnowledgeSearchResponse> seen = new HashMap<>();
+        mockDataStore.knowledgeDocuments().forEach(item -> {
+            if (item == null || item.id() == null) return;
+            seen.put(item.id(), item);
+        });
+        listDynamicPublishedDocuments().forEach(item -> {
+            if (item == null || item.id() == null) return;
+            KnowledgeSearchResponse existing = seen.get(item.id());
+            boolean existingHasAnswer = existing != null && QueryFilterSupport.trimToNull(existing.answer()) != null;
+            boolean dynamicHasAnswer = QueryFilterSupport.trimToNull(item.answer()) != null;
+            if (!existingHasAnswer || dynamicHasAnswer) {
+                seen.put(item.id(), item);
+            }
+        });
+        seen.values().forEach(item -> {
+            if (isFaqCategory(item.category())) {
+                merged.add(toSafeSearchResponse(item));
+            }
+        });
+        return merged.stream()
+                .sorted(Comparator.comparing(KnowledgeSearchResponse::id))
+                .toList();
+    }
+
+    @Override
     public List<KnowledgeSearchResponse> listTemplates() {
         return List.of(
                 new KnowledgeSearchResponse(101L, "在读证明模板", "模板下载", "/templates/study-certificate.docx", "标准在读证明模板下载", "STANDARD_ANSWER", false),
@@ -292,6 +319,15 @@ public class MockKnowledgeService implements KnowledgeApplicationService {
             score += 1;
         }
         return score;
+    }
+
+    private boolean isFaqCategory(String category) {
+        String raw = QueryFilterSupport.trimToNull(category);
+        if (raw == null) {
+            return false;
+        }
+        String lower = raw.toLowerCase(Locale.ROOT);
+        return lower.contains("faq") || raw.contains("问答") || raw.contains("FAQ管理") || raw.contains("faq管理");
     }
 
     private KnowledgeSearchResponse toSafeSearchResponse(KnowledgeSearchResponse item) {

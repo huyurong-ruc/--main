@@ -11,6 +11,8 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -27,6 +29,8 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 @RestController
@@ -39,6 +43,7 @@ public class CertificateTemplateController {
 
     private final CertificateTemplateApplicationService templateService;
     private final ResourceLoader resourceLoader;
+    private final Environment environment;
 
     @GetMapping
     @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR})
@@ -70,24 +75,33 @@ public class CertificateTemplateController {
             RoleType.CLASS_ADVISOR, RoleType.STUDENT})
     public ResponseEntity<ByteArrayResource> download(@Positive(message = "模板ID必须大于0") @PathVariable Long id) {
         CertificateTemplateResponse template = templateService.getById(id);
-        String normalizedPath = normalizeTemplateFilePath(template.templateFilePath());
+        boolean isKingbase = isKingbaseProfile();
+        String normalizedPath = normalizeTemplateFilePath(template.templateFilePath(), isKingbase);
         String originalFileName = StringUtils.getFilename(normalizedPath);
         String downloadFileName = buildDownloadFileName(template.templateName(), originalFileName);
-        Resource resource = resourceLoader.getResource("classpath:/static" + normalizedPath);
 
         log.info("certificate template download start: id={}, code={}, path={}",
                 template.id(), template.templateCode(), normalizedPath);
 
-        if (!resource.exists() || !resource.isReadable()) {
+        byte[] bytes;
+        MediaType mediaType = MediaTypeFactory.getMediaType(originalFileName)
+                .orElse(MediaType.APPLICATION_OCTET_STREAM);
+
+        if (isKingbase) {
+            bytes = readFromLocalStorage(normalizedPath);
+            if (bytes == null && normalizedPath.startsWith("/templates/")) {
+                bytes = readFromClasspathStatic(normalizedPath);
+            }
+        } else {
+            bytes = readFromClasspathStatic(normalizedPath);
+        }
+
+        if (bytes == null) {
             log.warn("certificate template file missing: id={}, path={}", template.id(), normalizedPath);
             throw new BusinessException("模板文件不存在");
         }
 
-        try (InputStream inputStream = resource.getInputStream()) {
-            byte[] bytes = FileCopyUtils.copyToByteArray(inputStream);
-            MediaType mediaType = MediaTypeFactory.getMediaType(originalFileName)
-                    .orElse(MediaType.APPLICATION_OCTET_STREAM);
-
+        try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(mediaType);
             headers.setContentDisposition(ContentDisposition.attachment()
@@ -103,9 +117,8 @@ public class CertificateTemplateController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(new ByteArrayResource(bytes));
-        } catch (IOException exception) {
-            log.error("certificate template download failed: id={}, code={}",
-                    template.id(), template.templateCode(), exception);
+        } catch (Exception exception) {
+            log.error("certificate template download failed: id={}, code={}", template.id(), template.templateCode(), exception);
             throw new BusinessException("模板下载失败");
         }
     }
@@ -143,13 +156,20 @@ public class CertificateTemplateController {
         return ApiResponse.success(templateService.renderPreview(id, studentId));
     }
 
-    private String normalizeTemplateFilePath(String filePath) {
+    private String normalizeTemplateFilePath(String filePath, boolean allowUploads) {
         if (filePath == null || filePath.isBlank()) {
             throw new BusinessException("模板文件路径缺失");
         }
 
         String normalizedPath = filePath.trim().replace('\\', '/');
-        if (!normalizedPath.startsWith("/templates/") || normalizedPath.contains("..")) {
+        if (normalizedPath.contains("..")) {
+            throw new BusinessException("模板文件路径非法");
+        }
+        if (allowUploads) {
+            if (!normalizedPath.startsWith("/templates/") && !normalizedPath.startsWith("/uploads/")) {
+                throw new BusinessException("模板文件路径非法");
+            }
+        } else if (!normalizedPath.startsWith("/templates/")) {
             throw new BusinessException("模板文件路径非法");
         }
 
@@ -169,5 +189,50 @@ public class CertificateTemplateController {
             return baseName + extension;
         }
         return baseName;
+    }
+
+    private boolean isKingbaseProfile() {
+        return environment.acceptsProfiles(Profiles.of("kingbase"));
+    }
+
+    private byte[] readFromClasspathStatic(String normalizedPath) {
+        Resource resource = resourceLoader.getResource("classpath:/static" + normalizedPath);
+        if (!resource.exists() || !resource.isReadable()) {
+            return null;
+        }
+        try (InputStream inputStream = resource.getInputStream()) {
+            return FileCopyUtils.copyToByteArray(inputStream);
+        } catch (IOException exception) {
+            return null;
+        }
+    }
+
+    private byte[] readFromLocalStorage(String storagePath) {
+        try {
+            Path path = resolveUploadPath(storagePath);
+            if (!Files.exists(path) || !Files.isRegularFile(path)) {
+                return null;
+            }
+            return Files.readAllBytes(path);
+        } catch (Exception exception) {
+            return null;
+        }
+    }
+
+    private Path resolveUploadPath(String storagePath) {
+        String normalized = storagePath == null ? "" : storagePath.trim();
+        if (normalized.isEmpty()) {
+            throw new BusinessException("文件路径为空");
+        }
+        String relative = normalized.startsWith("/") ? normalized.substring(1) : normalized;
+        String home = System.getProperty("user.home");
+        Path base = (home == null || home.isBlank())
+                ? Path.of(System.getProperty("java.io.tmpdir"), "ssp-uploads")
+                : Path.of(home, ".ssp", "uploads");
+        Path resolved = base.resolve(relative).normalize();
+        if (!resolved.startsWith(base)) {
+            throw new BusinessException("文件路径非法");
+        }
+        return resolved;
     }
 }
