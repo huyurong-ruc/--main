@@ -9,6 +9,8 @@ public interface KnowledgeApplicationService {
 
     List<KnowledgeSearchResponse> search(String keyword);
 
+    List<KnowledgeSearchResponse> listFaqs();
+
     List<KnowledgeSearchResponse> listTemplates();
 
     KnowledgeDetailResponse getDetail(Long id);

@@ -1,5 +1,5 @@
 const app = getApp()
-const { getFaqs } = require('../../api/faq')
+const { getFaqs, listFaqs } = require('../../api/faq')
 
 function isQaCategory(category = '') {
   const raw = String(category || '')
@@ -78,7 +78,7 @@ Page({
     this.setData({ loading: true })
 
     try {
-      const res = await getFaqs({ keyword })
+      const res = keyword ? await getFaqs({ keyword }) : await listFaqs()
       const sourceList = Array.isArray(res.data) ? res.data : []
       const list = sourceList
         .filter((item) => isQaCategory(item.category))

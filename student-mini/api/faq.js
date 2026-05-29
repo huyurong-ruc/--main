@@ -3,7 +3,7 @@ const { get, post } = require('./request')
 
 function normalizeFaqKeyword(value = '') {
   const raw = String(value || '').trim()
-  return raw || 'FAQ'
+  return raw
 }
 
 /**
@@ -15,6 +15,10 @@ exports.getFaqs = (params = {}) => {
   return get('/knowledge/search', {
     keyword: normalizeFaqKeyword(params.keyword)
   }, { showLoading: false })
+}
+
+exports.listFaqs = () => {
+  return get('/knowledge/faqs', {}, { showLoading: false })
 }
 
 /**

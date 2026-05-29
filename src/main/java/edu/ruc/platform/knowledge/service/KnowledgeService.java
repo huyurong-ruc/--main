@@ -54,6 +54,17 @@ public class KnowledgeService implements KnowledgeApplicationService {
     }
 
     @Override
+    public List<KnowledgeSearchResponse> listFaqs() {
+        return knowledgeDocumentRepository.findAll()
+                .stream()
+                .filter(doc -> Boolean.TRUE.equals(doc.getPublished()))
+                .filter(doc -> isFaqCategory(doc.getCategory()))
+                .sorted(Comparator.comparing(doc -> doc.getId() == null ? 0L : doc.getId()))
+                .map(this::toSafeSearchResponse)
+                .toList();
+    }
+
+    @Override
     public List<KnowledgeSearchResponse> listTemplates() {
         return List.of(
                 new KnowledgeSearchResponse(101L, "在读证明模板", "模板下载", "/templates/study-certificate.docx", "标准在读证明模板下载", "STANDARD_ANSWER", false),
@@ -152,6 +163,15 @@ public class KnowledgeService implements KnowledgeApplicationService {
             score += 1;
         }
         return score;
+    }
+
+    private boolean isFaqCategory(String category) {
+        String raw = QueryFilterSupport.trimToNull(category);
+        if (raw == null) {
+            return false;
+        }
+        String lower = raw.toLowerCase(Locale.ROOT);
+        return lower.contains("faq") || raw.contains("问答") || raw.contains("FAQ管理") || raw.contains("faq管理");
     }
 
     private KnowledgeSearchResponse toSafeSearchResponse(edu.ruc.platform.knowledge.domain.KnowledgeDocument doc) {
