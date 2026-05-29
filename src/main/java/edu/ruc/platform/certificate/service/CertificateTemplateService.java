@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@Profile("!mock")
+@Profile("!mock & !kingbase")
 @RequiredArgsConstructor
 public class CertificateTemplateService implements CertificateTemplateApplicationService {
 

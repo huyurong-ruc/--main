@@ -1151,6 +1151,7 @@ public class AdminService implements AdminApplicationService {
         if (request.fileId() == null) {
             throw new BusinessException("请先上传/绑定模板文件");
         }
+        requireLatestFileObject(request.fileId());
         AuthenticatedUser user = currentUserService.requireCurrentUser();
         LatestCertTemplate t = new LatestCertTemplate();
         t.setTemplateCode(code);
@@ -1185,6 +1186,7 @@ public class AdminService implements AdminApplicationService {
         t.setTemplateCode(code);
         t.setTemplateName(request.templateName().trim());
         if (request.fileId() != null) {
+            requireLatestFileObject(request.fileId());
             t.setFileId(request.fileId());
         }
         t.setOutputFormat(normalizeOutputFormat(request.outputFormat()));
@@ -1234,6 +1236,12 @@ public class AdminService implements AdminApplicationService {
         t.setUpdatedAt(LocalDateTime.now());
         latestCertTemplateRepository.save(t);
         writeOperationLog("CERT_TEMPLATE", "DELETE", "template#" + id, "SUCCESS", t.getTemplateCode());
+    }
+
+    private void requireLatestFileObject(Long fileId) {
+        latestFileObjectRepository.findById(fileId)
+                .filter(item -> item.getIsDeleted() != null && item.getIsDeleted() == 0)
+                .orElseThrow(() -> new BusinessException("模板文件不存在，请重新上传/绑定"));
     }
 
     private WorkflowNodeResponse toWorkflowNodeResponse(LatestWorkflowNode node) {
