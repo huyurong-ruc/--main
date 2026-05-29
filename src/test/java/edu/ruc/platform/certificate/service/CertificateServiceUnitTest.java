@@ -7,8 +7,10 @@ import edu.ruc.platform.auth.service.StudentDataScopeService;
 import edu.ruc.platform.certificate.domain.CertificateRequest;
 import edu.ruc.platform.certificate.dto.ApprovalActionRequest;
 import edu.ruc.platform.certificate.repository.ApprovalActionLogRepository;
+import edu.ruc.platform.certificate.repository.CertificateAttachmentRepository;
 import edu.ruc.platform.certificate.repository.CertificateRequestRepository;
 import edu.ruc.platform.common.exception.BusinessException;
+import edu.ruc.platform.platform.repository.PlatformFileUploadRecordRepository;
 import edu.ruc.platform.student.repository.AdvisorScopeBindingRepository;
 import edu.ruc.platform.student.repository.StudentProfileRepository;
 import org.junit.jupiter.api.Test;
@@ -29,19 +31,23 @@ class CertificateServiceUnitTest {
     @Test
     void counselorCannotFinalApproveCounselorApprovedRequestInNonMockMode() {
         CertificateRequestRepository certificateRequestRepository = mock(CertificateRequestRepository.class);
+        CertificateAttachmentRepository certificateAttachmentRepository = mock(CertificateAttachmentRepository.class);
         ApprovalActionLogRepository approvalActionLogRepository = mock(ApprovalActionLogRepository.class);
         AdminOperationLogRepository adminOperationLogRepository = mock(AdminOperationLogRepository.class);
         StudentProfileRepository studentProfileRepository = mock(StudentProfileRepository.class);
         AdvisorScopeBindingRepository advisorScopeBindingRepository = mock(AdvisorScopeBindingRepository.class);
+        PlatformFileUploadRecordRepository platformFileUploadRecordRepository = mock(PlatformFileUploadRecordRepository.class);
         CurrentUserService currentUserService = mock(CurrentUserService.class);
         StudentDataScopeService studentDataScopeService = mock(StudentDataScopeService.class);
 
         CertificateService service = new CertificateService(
                 certificateRequestRepository,
+                certificateAttachmentRepository,
                 approvalActionLogRepository,
                 adminOperationLogRepository,
                 studentProfileRepository,
                 advisorScopeBindingRepository,
+                platformFileUploadRecordRepository,
                 currentUserService,
                 studentDataScopeService
         );

@@ -5,13 +5,16 @@ import edu.ruc.platform.certificate.dto.ApprovalHistoryResponse;
 import edu.ruc.platform.certificate.dto.ApprovalTaskFilterRequest;
 import edu.ruc.platform.certificate.dto.ApprovalTaskResponse;
 import edu.ruc.platform.certificate.dto.ApprovalTaskStatsResponse;
+import edu.ruc.platform.certificate.dto.CertificateAttachmentResponse;
 import edu.ruc.platform.certificate.dto.CertificatePreviewResponse;
 import edu.ruc.platform.certificate.dto.CertificateRequestActionRequest;
 import edu.ruc.platform.certificate.domain.ApprovalActionLog;
+import edu.ruc.platform.certificate.domain.CertificateAttachment;
 import edu.ruc.platform.certificate.domain.CertificateRequest;
 import edu.ruc.platform.certificate.dto.CertificateRequestCreateRequest;
 import edu.ruc.platform.certificate.dto.CertificateRequestResponse;
 import edu.ruc.platform.certificate.repository.ApprovalActionLogRepository;
+import edu.ruc.platform.certificate.repository.CertificateAttachmentRepository;
 import edu.ruc.platform.certificate.repository.CertificateRequestRepository;
 import edu.ruc.platform.admin.domain.AdminOperationLog;
 import edu.ruc.platform.admin.repository.AdminOperationLogRepository;
@@ -22,6 +25,8 @@ import edu.ruc.platform.common.api.PageResponse;
 import edu.ruc.platform.common.exception.BusinessException;
 import edu.ruc.platform.common.enums.RoleType;
 import edu.ruc.platform.common.support.QueryFilterSupport;
+import edu.ruc.platform.platform.domain.PlatformFileUploadRecord;
+import edu.ruc.platform.platform.repository.PlatformFileUploadRecordRepository;
 import edu.ruc.platform.student.domain.AdvisorScopeBinding;
 import edu.ruc.platform.student.domain.StudentProfile;
 import edu.ruc.platform.student.repository.AdvisorScopeBindingRepository;
@@ -40,10 +45,12 @@ import java.util.Map;
 public class CertificateService implements CertificateApplicationService {
 
     private final CertificateRequestRepository certificateRequestRepository;
+    private final CertificateAttachmentRepository certificateAttachmentRepository;
     private final ApprovalActionLogRepository approvalActionLogRepository;
     private final AdminOperationLogRepository adminOperationLogRepository;
     private final StudentProfileRepository studentProfileRepository;
     private final AdvisorScopeBindingRepository advisorScopeBindingRepository;
+    private final PlatformFileUploadRecordRepository platformFileUploadRecordRepository;
     private final CurrentUserService currentUserService;
     private final StudentDataScopeService studentDataScopeService;
 
@@ -60,12 +67,18 @@ public class CertificateService implements CertificateApplicationService {
         entity.setCurrentApproverRole("COUNSELOR");
         entity.setWithdrawalDeadline(LocalDateTime.now().plusDays(2));
         entity = certificateRequestRepository.save(entity);
+
+        if (request.attachments() != null && !request.attachments().isEmpty()) {
+            saveAttachments(entity.getId(), request.attachments());
+        }
+
         return new CertificateRequestResponse(
                 entity.getId(),
                 entity.getStudentId(),
                 entity.getCertificateType(),
                 entity.getStatus(),
-                entity.getGeneratedPdfPath()
+                entity.getGeneratedPdfPath(),
+                getAttachments(entity.getId())
         );
     }
 
@@ -79,7 +92,8 @@ public class CertificateService implements CertificateApplicationService {
                         entity.getStudentId(),
                         entity.getCertificateType(),
                         entity.getStatus(),
-                        entity.getGeneratedPdfPath()
+                        entity.getGeneratedPdfPath(),
+                        getAttachments(entity.getId())
                 ))
                 .toList();
     }
@@ -214,7 +228,8 @@ public class CertificateService implements CertificateApplicationService {
                 updated.studentId(),
                 updated.certificateType(),
                 updated.status(),
-                buildPdfPath(entity)
+                buildPdfPath(entity),
+                getAttachments(entity.getId())
         );
     }
 
@@ -459,5 +474,35 @@ public class CertificateService implements CertificateApplicationService {
 
     private String normalizeCertificateType(String certificateType) {
         return certificateType == null ? null : certificateType.trim();
+    }
+
+    private void saveAttachments(Long requestId, List<Long> fileIds) {
+        for (Long fileId : fileIds) {
+            PlatformFileUploadRecord fileRecord = platformFileUploadRecordRepository.findById(fileId)
+                    .orElseThrow(() -> new BusinessException("附件文件不存在: " + fileId));
+
+            CertificateAttachment attachment = new CertificateAttachment();
+            attachment.setRequestId(requestId);
+            attachment.setFileId(fileId);
+            attachment.setFileName(fileRecord.getFileName());
+            attachment.setContentType(fileRecord.getContentType());
+            attachment.setFileSize(fileRecord.getFileSize());
+            attachment.setStoragePath(fileRecord.getStoragePath());
+            certificateAttachmentRepository.save(attachment);
+        }
+    }
+
+    private List<CertificateAttachmentResponse> getAttachments(Long requestId) {
+        return certificateAttachmentRepository.findByRequestId(requestId)
+                .stream()
+                .map(attachment -> new CertificateAttachmentResponse(
+                        attachment.getId(),
+                        attachment.getFileId(),
+                        attachment.getFileName(),
+                        attachment.getContentType(),
+                        attachment.getFileSize(),
+                        attachment.getStoragePath()
+                ))
+                .toList();
     }
 }

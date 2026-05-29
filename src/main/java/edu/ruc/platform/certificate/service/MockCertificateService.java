@@ -5,6 +5,7 @@ import edu.ruc.platform.certificate.dto.ApprovalHistoryResponse;
 import edu.ruc.platform.certificate.dto.ApprovalTaskFilterRequest;
 import edu.ruc.platform.certificate.dto.ApprovalTaskResponse;
 import edu.ruc.platform.certificate.dto.ApprovalTaskStatsResponse;
+import edu.ruc.platform.certificate.dto.CertificateAttachmentResponse;
 import edu.ruc.platform.certificate.dto.CertificatePreviewResponse;
 import edu.ruc.platform.certificate.dto.CertificateRequestActionRequest;
 import edu.ruc.platform.certificate.dto.CertificateRequestCreateRequest;
@@ -189,7 +190,7 @@ public class MockCertificateService implements CertificateApplicationService {
         approvalTasks.add(0, created);
         syncWorkflowInstance(created);
         persistState();
-        return new CertificateRequestResponse(id, request.studentId(), normalizeCertificateType(request.certificateType()), "PENDING", null);
+        return new CertificateRequestResponse(id, request.studentId(), normalizeCertificateType(request.certificateType()), "PENDING", null, List.of());
     }
 
     @Override
@@ -203,7 +204,8 @@ public class MockCertificateService implements CertificateApplicationService {
                         task.studentId(),
                         task.certificateType(),
                         task.status(),
-                        "/exports/certificates/" + task.requestId() + ".pdf"
+                        "/exports/certificates/" + task.requestId() + ".pdf",
+                        List.of()
                 ))
                 .toList();
     }
@@ -346,7 +348,8 @@ public class MockCertificateService implements CertificateApplicationService {
                 updated.studentId(),
                 updated.certificateType(),
                 updated.status(),
-                buildPdfPath(updated.requestId())
+                buildPdfPath(updated.requestId()),
+                List.of()
         );
     }
 
