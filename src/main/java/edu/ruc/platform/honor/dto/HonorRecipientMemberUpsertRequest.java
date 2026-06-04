@@ -1,5 +1,6 @@
 package edu.ruc.platform.honor.dto;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -11,6 +12,6 @@ public record HonorRecipientMemberUpsertRequest(
         @Size(max = 32, message = "年级不能超过 32 个字符") String grade,
         @Size(max = 32, message = "班级不能超过 32 个字符") String className,
         @Size(max = 64, message = "成员角色不能超过 64 个字符") String memberRole,
-        Integer displayOrder
+        @Min(value = 0, message = "展示顺序不能小于 0") Integer displayOrder
 ) {
 }

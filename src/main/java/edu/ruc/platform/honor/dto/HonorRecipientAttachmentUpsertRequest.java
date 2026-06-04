@@ -1,5 +1,6 @@
 package edu.ruc.platform.honor.dto;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -12,6 +13,6 @@ public record HonorRecipientAttachmentUpsertRequest(
         @Size(max = 500, message = "存储路径不能超过 500 个字符") String storagePath,
         @Size(max = 255, message = "说明不能超过 255 个字符") String caption,
         Boolean publicVisible,
-        Integer displayOrder
+        @Min(value = 0, message = "展示顺序不能小于 0") Integer displayOrder
 ) {
 }

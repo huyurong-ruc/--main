@@ -1,5 +1,6 @@
 package edu.ruc.platform.honor.dto;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -17,7 +18,7 @@ public record HonorRecipientUpsertRequest(
         String advancedDeeds,
         Long photoFileId,
         Boolean publicVisible,
-        Integer displayOrder,
+        @Min(value = 0, message = "展示顺序不能小于 0") Integer displayOrder,
         LocalDateTime displayStartAt,
         LocalDateTime displayEndAt,
         Long importTaskId

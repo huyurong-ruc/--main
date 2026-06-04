@@ -144,7 +144,7 @@ public class PlatformService implements PlatformApplicationService {
                 "PlatformFileUploadResponse",
                 "page,size",
                 "ApiResponse<PageResponse<T>>",
-                enumNames(RoleType.values()),
+                enumNames(java.util.Arrays.stream(RoleType.values()).filter(item -> item != RoleType.STUDENT).toArray(RoleType[]::new)),
                 enumNames(DataScopeType.values()),
                 enumNames(ApprovalStatus.values()),
                 enumNames(DataImportTaskStatus.values()),
@@ -243,7 +243,6 @@ public class PlatformService implements PlatformApplicationService {
                 new PlatformRoleResponse(RoleType.CLASS_ADVISOR.name(), "班主任", List.of(DataScopeType.GRADE.name(), DataScopeType.CLASS.name())),
                 new PlatformRoleResponse(RoleType.CLASS_LEADER.name(), "班长", List.of(DataScopeType.GRADE.name(), DataScopeType.SELF.name())),
                 new PlatformRoleResponse(RoleType.LEAGUE_SECRETARY.name(), "团支书", List.of(DataScopeType.GRADE.name(), DataScopeType.SELF.name())),
-                new PlatformRoleResponse(RoleType.STUDENT.name(), "普通学生", List.of(DataScopeType.SELF.name())),
                 new PlatformRoleResponse(RoleType.ASSISTANT.name(), "学生助理", List.of(DataScopeType.SELF.name()))
         );
     }
@@ -995,6 +994,9 @@ public class PlatformService implements PlatformApplicationService {
         }
         if (request.username().contains(" ")) {
             throw new BusinessException("用户名不能包含空格");
+        }
+        if (RoleType.STUDENT.name().equalsIgnoreCase(request.role())) {
+            throw new BusinessException("管理端不支持学生角色账号，请在小程序端登录");
         }
         if (creating) {
             validatePassword(resolvePassword(request.rawPassword()), "平台用户密码长度不能少于 6 位");

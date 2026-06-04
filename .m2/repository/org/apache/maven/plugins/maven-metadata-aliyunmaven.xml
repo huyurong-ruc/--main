@@ -135,7 +135,7 @@
     <plugin>
       <prefix>idea</prefix>
       <artifactId>maven-idea-plugin</artifactId>
-      <name>Maven IDEA Plugin</name>
+      <name>Apache Maven IDEA Plugin (RETIRED)</name>
     </plugin>
     <plugin>
       <prefix>install</prefix>
@@ -198,9 +198,9 @@
       <name>Maven Plugin-management Plugin</name>
     </plugin>
     <plugin>
-      <prefix>maven-one-plugin</prefix>
+      <prefix>one</prefix>
       <artifactId>maven-one-plugin</artifactId>
-      <name>Maven 1.x Plugin</name>
+      <name>Apache Maven One Plugin (RETIRED)</name>
     </plugin>
     <plugin>
       <prefix>patch</prefix>
@@ -216,6 +216,11 @@
       <prefix>plugin</prefix>
       <artifactId>maven-plugin-plugin</artifactId>
       <name>Maven Plugin Plugin</name>
+    </plugin>
+    <plugin>
+      <prefix>plugin-report</prefix>
+      <artifactId>maven-plugin-report-plugin</artifactId>
+      <name>Maven Plugin Report Plugin</name>
     </plugin>
     <plugin>
       <prefix>pmd</prefix>
@@ -251,11 +256,6 @@
       <prefix>remote-resources</prefix>
       <artifactId>maven-remote-resources-plugin</artifactId>
       <name>Apache Maven Remote Resources Plugin</name>
-    </plugin>
-    <plugin>
-      <prefix>report</prefix>
-      <artifactId>maven-plugin-report-plugin</artifactId>
-      <name>Maven Plugin Report Plugin</name>
     </plugin>
     <plugin>
       <prefix>repository</prefix>

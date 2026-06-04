@@ -7078,6 +7078,13 @@
               if (!mod) return;
               const arr = data.moduleCourses[String(mod.id)] || [];
               if (arr.some(x => String(x) === String(c.code))) return;
+              const hit = Object.keys(data.moduleCourses || {}).find(mid => String(mid) !== String(mod.id)
+                && (data.moduleCourses[String(mid)] || []).some(x => String(x) === String(c.code)));
+              if (hit) {
+                const otherMod = (data.modules || []).find(x => String(x.id) === String(hit));
+                alert("该课程已存在于模块「" + (otherMod ? otherMod.name : hit) + "」，同一课程只能属于一个模块。");
+                return;
+              }
               data.moduleCourses[String(mod.id)] = arr.concat([c.code]);
               saveLocal(data);
               renderAll();
@@ -7098,9 +7105,14 @@
         if (name == null) return;
         const creditsRaw = prompt("模块学分", "0");
         if (creditsRaw == null) return;
+        const creditsVal = Number(String(creditsRaw).trim());
+        if (!Number.isFinite(creditsVal) || creditsVal < 0) {
+          alert("模块学分必须为不小于 0 的数字");
+          return;
+        }
         const tag = confirm("是否为必修模块？（确定=必修，取消=选修）") ? "REQ" : "OPT";
         const nextId = Math.max(0, ...(data.modules || []).map(m => m.id || 0)) + 1;
-        const m = { id: nextId, name: name.trim() || ("模块" + nextId), credits: Number(creditsRaw) || 0, tag };
+        const m = { id: nextId, name: name.trim() || ("模块" + nextId), credits: creditsVal, tag };
         data.modules = (data.modules || []).concat([m]);
         data.moduleCourses[String(nextId)] = [];
         selectedModuleId = nextId;
@@ -7227,8 +7239,8 @@
         const isEdit = !!item;
         const codeInput = el("input", { class: "cfgInput", value: item ? item.code : "" });
         const nameInput = el("input", { class: "cfgInput", value: item ? item.name : "" });
-        const creditsInput = el("input", { class: "cfgInput", value: item ? String(item.credits ?? 0) : "0" });
-        const hoursInput = el("input", { class: "cfgInput", value: item ? String(item.hours ?? 0) : "0" });
+        const creditsInput = el("input", { class: "cfgInput", value: item ? String(item.credits ?? 0) : "0", type: "number", min: 0, step: 0.5 });
+        const hoursInput = el("input", { class: "cfgInput", value: item ? String(item.hours ?? 0) : "0", type: "number", min: 0, step: 1});
         const typeSel = el("select", { class: "cfgSelect" }, [
           el("option", { value: "GENERAL", text: "通识必修课" }),
           el("option", { value: "BASIC", text: "专业基础课" }),
@@ -7258,12 +7270,30 @@
             document.getElementById("userModalMsg").textContent = "课程编码已存在";
             return;
           }
+          const creditsStr = String(creditsInput.value || "").trim();
+          const hoursStr = String(hoursInput.value || "").trim();
+          const creditsVal = creditsStr ? Number(creditsStr) : 0;
+          const hoursVal = hoursStr ? Number(hoursStr) : 0;
+          if (!Number.isFinite(creditsVal) || creditsVal < 0) {
+            document.getElementById("userModalMsg").textContent = "学分必须为不小于 0 的数字";
+            return;
+          }
+          if (!Number.isFinite(hoursVal) || !Number.isInteger(hoursVal) || hoursVal < 0) {
+            document.getElementById("userModalMsg").textContent = "学时必须为不小于 0 的整数";
+            return;
+          }
+          if (creditsVal > 10) {
+            if (!confirm("学分设置为 " + creditsVal + "，确认要这样设置吗？")) return;
+          }
+          if (hoursVal > 200) {
+            if (!confirm("学时设置为 " + hoursVal + "（通常 1 学分对应16 学时），确认要这样设置吗？")) return;
+          }
           const next = {
             id: isEdit ? item.id : (Math.max(0, ...items.map(x => x.id || 0)) + 1),
             code,
             name,
-            credits: Number(creditsInput.value) || 0,
-            hours: Number(hoursInput.value) || 0,
+            credits: creditsVal,
+            hours: hoursVal,
             type: typeSel.value,
             refCount: isEdit ? item.refCount : 0
           };
@@ -7454,8 +7484,8 @@
         const courseNameInput = el("input", { class: "cfgInput", value: item ? item.courseName : "" });
         const classCodeInput = el("input", { class: "cfgInput", value: item ? item.classCode : "" });
         const teacherNameInput = el("input", { class: "cfgInput", value: item ? item.teacher : "" });
-        const capInput = el("input", { class: "cfgInput", value: item ? String(item.capacity ?? 0) : "0" });
-        const selInput = el("input", { class: "cfgInput", value: item ? String(item.selected ?? 0) : "0" });
+        const capInput = el("input", { class: "cfgInput", value: item ? String(item.capacity ?? 0) : "0", type: "number", min: 1, step: 1, inputmode: "numeric" });
+        const selInput = el("input", { class: "cfgInput", value: item ? String(item.selected ?? 0) : "0", type: "number", min: 0, step: 1, inputmode: "numeric" });
         const form = el("div", { class: "cfgForm" }, [
           el("div", null, [el("div", { class: "cfgLabel", text: "学期" }), termInput]),
           el("div", null, [el("div", { class: "cfgLabel", text: "课程编码" }), courseCodeInput]),
@@ -7478,8 +7508,25 @@
             document.getElementById("userModalMsg").textContent = "教学班编号已存在";
             return;
           }
-          const cap = Number(capInput.value) || 0;
-          const sel = Number(selInput.value) || 0;
+          const capStr = String(capInput.value || "").trim();
+          const selStr = String(selInput.value || "").trim();
+          const cap = capStr ? Number(capStr) : 0;
+          const sel = selStr ? Number(selStr) : 0;
+          if (!Number.isFinite(cap) || !Number.isInteger(cap) || cap <= 0) {
+            document.getElementById("userModalMsg").textContent = "容量必须为正整数";
+            return;
+          }
+          if (!Number.isFinite(sel) || !Number.isInteger(sel) || sel < 0) {
+            document.getElementById("userModalMsg").textContent = "已选人数必须为非负整数";
+            return;
+          }
+          if (sel > cap) {
+            document.getElementById("userModalMsg").textContent = "已选人数不能超过容量";
+            return;
+          }
+          if (cap < 10 || cap > 200) {
+            if (!confirm("容量设置为 " + cap + " 人，确认要这样设置吗？")) return;
+          }
           const next = {
             id: isEdit ? item.id : (Math.max(0, ...items.map(x => x.id || 0)) + 1),
             term: termInput.value.trim() || "2024春",
@@ -8458,6 +8505,12 @@
               document.getElementById("userModalMsg").textContent = "展示开始时间不得晚于展示结束时间";
               return;
             }
+            const orderStr = String(order.value || "").trim();
+            const orderVal = orderStr ? Number(orderStr) : 1;
+            if (!Number.isFinite(orderVal) || !Number.isInteger(orderVal) || orderVal < 1) {
+              document.getElementById("userModalMsg").textContent = "展示顺序必须为正整数";
+              return;
+            }
             await saveShowcase(Object.assign({}, values, {
               awardYear: Number(year.value || new Date().getFullYear()),
               honorCategory: category.value.trim(),
@@ -8465,7 +8518,7 @@
               title: title.value.trim(),
               description: desc.value.trim(),
               publicVisible: publicVisible.checked,
-              displayOrder: normalizePositiveInt(order.value, 1),
+              displayOrder: orderVal,
               displayStartAt: start.value || "",
               displayEndAt: end.value || ""
             }));
@@ -8558,6 +8611,12 @@
               document.getElementById("userModalMsg").textContent = "展示开始时间不得晚于展示结束时间";
               return;
             }
+            const orderStr = String(order.value || "").trim();
+            const orderVal = orderStr ? Number(orderStr) : 1;
+            if (!Number.isFinite(orderVal) || !Number.isInteger(orderVal) || orderVal < 1) {
+              document.getElementById("userModalMsg").textContent = "展示顺序必须为正整数";
+              return;
+            }
             const payload = {
               recipientType: showcase.recipientType,
               studentId: values.studentId || null,
@@ -8570,7 +8629,7 @@
               advancedDeeds: deeds.value.trim(),
               photoFileId: values.photoFileId || null,
               publicVisible: publicVisible.checked,
-              displayOrder: normalizePositiveInt(order.value, 1),
+              displayOrder: orderVal,
               displayStartAt: start.value || null,
               displayEndAt: end.value || null,
               importTaskId: values.importTaskId || null

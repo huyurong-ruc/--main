@@ -80,7 +80,7 @@ public class PlatformController {
     @GetMapping("/contracts")
     @RequireRoles({
             RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
-            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY, RoleType.STUDENT
+            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY
     })
     public ApiResponse<PlatformContractResponse> contracts() {
         return ApiResponse.success(platformService.contract());
@@ -89,7 +89,7 @@ public class PlatformController {
     @GetMapping("/student-ui-contract")
     @RequireRoles({
             RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
-            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY, RoleType.STUDENT
+            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY
     })
     public ApiResponse<PlatformStudentUiContractResponse> studentUiContract() {
         return ApiResponse.success(platformService.studentUiContract());
@@ -98,7 +98,7 @@ public class PlatformController {
     @GetMapping("/users/me/permissions")
     @RequireRoles({
             RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
-            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY, RoleType.STUDENT
+            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY
     })
     public ApiResponse<PlatformPermissionSnapshotResponse> currentPermissions() {
         return ApiResponse.success(platformService.currentPermissions());
@@ -107,7 +107,7 @@ public class PlatformController {
     @GetMapping("/users/me/student-scope")
     @RequireRoles({
             RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
-            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY, RoleType.STUDENT
+            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY
     })
     public ApiResponse<PlatformStudentDataScopeResponse> currentStudentDataScope() {
         return ApiResponse.success(platformService.currentStudentDataScope());
@@ -116,7 +116,7 @@ public class PlatformController {
     @GetMapping("/users/me/student-scope/check-student")
     @RequireRoles({
             RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
-            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY, RoleType.STUDENT
+            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY
     })
     public ApiResponse<PlatformStudentScopeCheckResponse> checkStudentAccess(@Positive(message = "学生ID必须大于 0") @RequestParam Long studentId) {
         return ApiResponse.success(platformService.checkStudentAccess(studentId));
@@ -125,7 +125,7 @@ public class PlatformController {
     @GetMapping("/users/me/student-scope/check-range")
     @RequireRoles({
             RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
-            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY, RoleType.STUDENT
+            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY
     })
     public ApiResponse<PlatformStudentScopeCheckResponse> checkStudentScope(@RequestParam(required = false) String grade,
                                                                             @RequestParam(required = false) String className) {
@@ -135,7 +135,7 @@ public class PlatformController {
     @GetMapping("/roles")
     @RequireRoles({
             RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
-            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY, RoleType.STUDENT
+            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY
     })
     public ApiResponse<List<PlatformRoleResponse>> roles() {
         return ApiResponse.success(platformService.listRoles());
@@ -287,7 +287,7 @@ public class PlatformController {
     @GetMapping("/students/{studentId}")
     @RequireRoles({
             RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
-            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY, RoleType.STUDENT
+            RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY
     })
     public ApiResponse<PlatformStudentDetailResponse> getStudent(@Positive(message = "学生ID必须大于 0") @PathVariable Long studentId) {
         return ApiResponse.success(platformService.getStudentDetail(studentId));

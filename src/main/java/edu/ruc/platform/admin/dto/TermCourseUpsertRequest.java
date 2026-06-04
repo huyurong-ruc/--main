@@ -17,7 +17,7 @@ public record TermCourseUpsertRequest(
         Double credits,
         @Min(value = 0, message = "学时不能小于0")
         Double totalHours,
-        @Min(value = 0, message = "容量不能小于0")
+        @Min(value = 1, message = "容量必须大于 0")
         Integer capacity
 ) {
 }

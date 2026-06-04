@@ -14,7 +14,7 @@ public record HonorShowcaseUpsertRequest(
         @NotBlank(message = "标题不能为空") @Size(max = 200, message = "标题不能超过 200 个字符") String title,
         String description,
         Boolean publicVisible,
-        Integer displayOrder,
+        @Min(value = 0, message = "展示顺序不能小于 0") Integer displayOrder,
         LocalDateTime displayStartAt,
         LocalDateTime displayEndAt,
         Long importTaskId

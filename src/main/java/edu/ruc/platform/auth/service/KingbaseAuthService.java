@@ -26,6 +26,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -57,6 +59,9 @@ public class KingbaseAuthService implements AuthApplicationService {
                 .findByStudentNoAndLoginMethodAndIsDeleted(latestUser.getStudentNo(), "password", 0)
                 .orElseThrow(() -> new BusinessException("当前账号未开通密码登录"));
         UserAccount overlay = ensureOverlayAccount(latestUser, latestAuth);
+        if (RoleType.STUDENT.equals(overlay.getRole()) && isWebBrowserRequest()) {
+            throw new BusinessException("学生请在小程序端登录");
+        }
 
         if (!Boolean.TRUE.equals(overlay.getEnabled()) || !"active".equalsIgnoreCase(latestUser.getStatus())) {
             writeLoginAudit(latestUser.getId(), latestUser.getStudentNo(), overlay.getRole().name(), "LOGIN", "DENIED", "账号已禁用");
@@ -153,6 +158,27 @@ public class KingbaseAuthService implements AuthApplicationService {
             created.setLockedUntil(null);
             return userAccountRepository.save(created);
         });
+    }
+
+    private boolean isWebBrowserRequest() {
+        var attrs = RequestContextHolder.getRequestAttributes();
+        if (!(attrs instanceof ServletRequestAttributes servletAttrs)) {
+            return false;
+        }
+        var req = servletAttrs.getRequest();
+        if (req == null) {
+            return false;
+        }
+        String origin = req.getHeader("Origin");
+        if (origin != null && !origin.isBlank()) {
+            return true;
+        }
+        String secFetchMode = req.getHeader("Sec-Fetch-Mode");
+        if (secFetchMode != null && !secFetchMode.isBlank()) {
+            return true;
+        }
+        String referer = req.getHeader("Referer");
+        return referer != null && !referer.isBlank();
     }
 
     private AuthenticatedUser buildAuthenticatedUser(LatestUser latestUser, RoleType role, LatestStudentExt ext) {
