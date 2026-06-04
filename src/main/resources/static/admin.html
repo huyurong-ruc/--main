@@ -1146,8 +1146,13 @@
 
     function renderDashboard(stats, faqStats, notices, operationLogsPage) {
       const now = formatDateCN(new Date());
+      const me = getUser();
+      const role = String(me && me.role ? me.role : "").toUpperCase();
+      const suppressPendingApprovals = role === "CLASS_LEADER" || role === "LEAGUE_SECRETARY";
 
-      const pendingApprovals = stats && stats.pendingApprovals != null ? stats.pendingApprovals : "-";
+      const pendingApprovals = suppressPendingApprovals
+        ? "-"
+        : (stats && stats.pendingApprovals != null ? stats.pendingApprovals : "-");
       const unpublishedKnowledge = faqStats && faqStats.unpublishedItems != null ? faqStats.unpublishedItems : "-";
       const unreadNotices = notices ? countUnreadNotices(notices) : "-";
       const logs = operationLogsPage && operationLogsPage.content ? operationLogsPage.content : [];
@@ -1167,11 +1172,18 @@
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "todoCard";
-        btn.addEventListener("click", onClick);
+        if (typeof onClick === "function") {
+          btn.addEventListener("click", onClick);
+        } else {
+          btn.disabled = true;
+          btn.style.cursor = "default";
+          btn.style.opacity = "0.78";
+        }
         const icon = el("div", { class: "todoIcon", style: iconStyle }, [iconText]);
+        const valueText = value === "-" ? "-" : (String(value) + "条");
         const meta = el("div", { class: "todoMeta" }, [
           el("div", { class: "todoLabel", text: label }),
-          el("div", { class: "todoValue", text: String(value) + "条" })
+          el("div", { class: "todoValue", text: valueText })
         ]);
         btn.appendChild(icon);
         btn.appendChild(meta);
@@ -1181,7 +1193,13 @@
       const todo = el("div", null, [
         el("div", { class: "sectionTitle" }, [el("span", { text: "📋" }), el("span", { text: "今日待办" })]),
         el("div", { class: "todoGrid" }, [
-          todoCard("background: rgba(245,158,11,.18); color: #b45309;", "!", "待审批", pendingApprovals, async () => { await switchView("approvals", { status: "PENDING" }); }),
+          todoCard(
+            "background: rgba(245,158,11,.18); color: #b45309;",
+            "!",
+            "待审批",
+            pendingApprovals,
+            suppressPendingApprovals ? null : async () => { await switchView("approvals", { status: "PENDING" }); }
+          ),
           todoCard("background: rgba(34,197,94,.14); color: #166534;", "⩍", "FAQ待处理提醒", unpublishedKnowledge, async () => { await switchView("knowledgeFaqs", { published: "false" }); }),
           todoCard("background: rgba(239,68,68,.14); color: #b91c1c;", "✉", "未读通知", unreadNotices, async () => { await switchView("notices"); })
         ])
