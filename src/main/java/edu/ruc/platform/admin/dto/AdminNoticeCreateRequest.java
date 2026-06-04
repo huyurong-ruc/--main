@@ -10,6 +10,7 @@ public record AdminNoticeCreateRequest(
         @NotBlank(message = "摘要不能为空") String summary,
         @NotEmpty(message = "标签不能为空") List<String> tags,
         @NotBlank(message = "目标人群不能为空") String targetDescription,
+        Long attachmentFileId,
         Boolean published
 ) {
 }

@@ -309,7 +309,8 @@ public class PlatformController {
 
     @PostMapping("/files/upload")
     @RequireRoles({
-            RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR, RoleType.CLASS_ADVISOR
+            RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR, RoleType.CLASS_ADVISOR,
+            RoleType.STUDENT, RoleType.CLASS_LEADER, RoleType.LEAGUE_SECRETARY
     })
     public ApiResponse<PlatformFileUploadResponse> upload(@RequestParam(required = false) String bizType,
                                                           @RequestParam(required = false) Long bizId,
@@ -348,7 +349,8 @@ public class PlatformController {
 
     @GetMapping("/files/{id}/download")
     @RequireRoles({
-            RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR, RoleType.CLASS_ADVISOR
+            RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR, RoleType.CLASS_ADVISOR,
+            RoleType.STUDENT, RoleType.CLASS_LEADER, RoleType.LEAGUE_SECRETARY
     })
     public ResponseEntity<ByteArrayResource> downloadUploadFile(@Positive(message = "上传记录ID必须大于 0") @PathVariable Long id) {
         PlatformFileDownloadPayload payload = platformService.downloadUploadFile(id);

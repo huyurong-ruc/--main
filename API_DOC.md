@@ -680,6 +680,7 @@
 - `summary`
 - `tags`
 - `targetDescription`
+- `attachmentFileId`
 - `publishTime`
 
 ## 5. 电子证明模块
@@ -698,7 +699,8 @@
 {
   "studentId": 10001,
   "certificateType": "在读证明",
-  "reason": "奖学金申请材料需要"
+  "reason": "奖学金申请材料需要",
+  "attachments": [10086, 10087]
 }
 ```
 
@@ -716,6 +718,7 @@
 - `certificateType`
 - `status`
 - `generatedPdfPath`
+- `attachments`
 
 ### 5.3 学生查看申请预览
 
@@ -1179,9 +1182,30 @@
   "title": "就业讲座报名通知",
   "summary": "面向计算机类学生开放报名",
   "tags": ["就业", "讲座"],
-  "targetDescription": "2023级计算机类学生"
+  "targetDescription": "2023级计算机类学生",
+  "attachmentFileId": 10001,
+  "published": true
 }
 ```
+
+#### 更新通知
+
+- `PUT /api/v1/admin/notices/{id}`
+
+请求体同“创建通知”。
+
+#### 发布 / 撤回通知
+
+- `POST /api/v1/admin/notices/{id}/publish?published=true`
+- `POST /api/v1/admin/notices/{id}/publish?published=false`
+
+说明：
+- `published=true` 表示立即发布
+- `published=false` 表示撤回为草稿（publishTime 会被设置为将来时间以便草稿分页筛选）
+
+#### 删除通知
+
+- `DELETE /api/v1/admin/notices/{id}`
 
 ### 7.1.1 学生信息与学生画像
 
@@ -1306,6 +1330,7 @@
 - `certificateType`
 - `status`
 - `reason`
+- `attachments`
 - `submittedAt`
 
 分页筛选参数：

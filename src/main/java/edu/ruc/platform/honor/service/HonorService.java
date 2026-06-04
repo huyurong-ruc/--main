@@ -76,6 +76,7 @@ public class HonorService implements HonorApplicationService {
         validateRecipientType(request.recipientType());
         validateImportTask(request.importTaskId());
         AuthenticatedUser user = currentUserService.requireCurrentUser();
+        shiftShowcaseDisplayOrdersIfConflict(request.displayOrder(), null);
         HonorShowcase showcase = new HonorShowcase();
         populateShowcase(showcase, request);
         showcase.setCreatedById(user.userId());
@@ -91,6 +92,11 @@ public class HonorService implements HonorApplicationService {
         validateRecipientType(request.recipientType());
         validateImportTask(request.importTaskId());
         HonorShowcase showcase = requireShowcase(id);
+        if (request.displayOrder() != null
+                && request.displayOrder() > 0
+                && (showcase.getDisplayOrder() == null || !request.displayOrder().equals(showcase.getDisplayOrder()))) {
+            shiftShowcaseDisplayOrdersIfConflict(request.displayOrder(), showcase.getId());
+        }
         populateShowcase(showcase, request);
         showcase.setUpdatedBy(currentUserService.requireCurrentUser().name());
         return toAdminShowcaseResponse(showcaseRepository.save(showcase), true);
@@ -130,6 +136,7 @@ public class HonorService implements HonorApplicationService {
         validateRecipientRequest(request);
         requireMatchingRecipientType(showcase.getRecipientType(), request.recipientType());
         AuthenticatedUser user = currentUserService.requireCurrentUser();
+        shiftRecipientDisplayOrdersIfConflict(showcase.getId(), request.displayOrder(), null);
         HonorRecipient recipient = new HonorRecipient();
         recipient.setShowcaseId(showcase.getId());
         populateRecipient(recipient, request);
@@ -145,9 +152,52 @@ public class HonorService implements HonorApplicationService {
         validateRecipientRequest(request);
         HonorRecipient recipient = requireRecipient(recipientId);
         requireMatchingRecipientType(requireShowcase(recipient.getShowcaseId()).getRecipientType(), request.recipientType());
+        if (request.displayOrder() != null
+                && request.displayOrder() > 0
+                && (recipient.getDisplayOrder() == null || !request.displayOrder().equals(recipient.getDisplayOrder()))) {
+            shiftRecipientDisplayOrdersIfConflict(recipient.getShowcaseId(), request.displayOrder(), recipient.getId());
+        }
         populateRecipient(recipient, request);
         recipient.setUpdatedBy(currentUserService.requireCurrentUser().name());
         return toAdminRecipientResponse(recipientRepository.save(recipient), true);
+    }
+
+    private void shiftShowcaseDisplayOrdersIfConflict(Integer desiredOrder, Long excludeId) {
+        if (desiredOrder == null || desiredOrder <= 0) {
+            return;
+        }
+        List<HonorShowcase> toShift = showcaseRepository.findAllByOrderByDisplayOrderAscCreatedAtDesc().stream()
+                .filter(item -> item.getDisplayOrder() != null && item.getDisplayOrder() >= desiredOrder)
+                .filter(item -> excludeId == null || !excludeId.equals(item.getId()))
+                .toList();
+        if (toShift.isEmpty()) {
+            return;
+        }
+        int nextOrder = desiredOrder + 1;
+        for (HonorShowcase item : toShift) {
+            item.setDisplayOrder(nextOrder);
+            nextOrder += 1;
+        }
+        showcaseRepository.saveAll(toShift);
+    }
+
+    private void shiftRecipientDisplayOrdersIfConflict(Long showcaseId, Integer desiredOrder, Long excludeRecipientId) {
+        if (showcaseId == null || desiredOrder == null || desiredOrder <= 0) {
+            return;
+        }
+        List<HonorRecipient> toShift = recipientRepository.findByShowcaseIdOrderByDisplayOrderAscCreatedAtDesc(showcaseId).stream()
+                .filter(item -> item.getDisplayOrder() != null && item.getDisplayOrder() >= desiredOrder)
+                .filter(item -> excludeRecipientId == null || !excludeRecipientId.equals(item.getId()))
+                .toList();
+        if (toShift.isEmpty()) {
+            return;
+        }
+        int nextOrder = desiredOrder + 1;
+        for (HonorRecipient item : toShift) {
+            item.setDisplayOrder(nextOrder);
+            nextOrder += 1;
+        }
+        recipientRepository.saveAll(toShift);
     }
 
     @Override

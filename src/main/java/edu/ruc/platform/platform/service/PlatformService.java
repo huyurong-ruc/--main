@@ -560,10 +560,15 @@ public class PlatformService implements PlatformApplicationService {
         if (id == null || id <= 0) {
             throw new BusinessException("上传记录ID必须大于 0");
         }
+        AuthenticatedUser user = currentUserService.requireCurrentUser();
+        boolean restrictToOwnUpload = isStudentLikeRole(user);
         if (isKingbaseProfile()) {
             LatestFileObject fileObject = latestFileObjectRepository.findById(id)
                     .filter(item -> "platform_upload".equals(item.getPurpose()) && item.getIsDeleted() != null && item.getIsDeleted() == 0)
                     .orElseThrow(() -> new BusinessException("上传记录不存在"));
+            if (restrictToOwnUpload && (fileObject.getUploadedBy() == null || !fileObject.getUploadedBy().equals(user.userId()))) {
+                throw new BusinessException("无权下载该文件");
+            }
             Path path = resolveUploadPath(fileObject.getStoragePath());
             if (!Files.exists(path) || !Files.isRegularFile(path)) {
                 throw new BusinessException("文件不存在或已被清理");
@@ -584,6 +589,9 @@ public class PlatformService implements PlatformApplicationService {
         PlatformFileUploadRecord record = platformFileUploadRecordRepository.findById(id)
                 .filter(item -> !Boolean.TRUE.equals(item.getDeleted()))
                 .orElseThrow(() -> new BusinessException("上传记录不存在"));
+        if (restrictToOwnUpload && (record.getUploadedById() == null || !record.getUploadedById().equals(user.userId()))) {
+            throw new BusinessException("无权下载该文件");
+        }
         Path path = resolveUploadPath(record.getStoragePath());
         if (!Files.exists(path) || !Files.isRegularFile(path)) {
             throw new BusinessException("文件不存在或已被清理");
@@ -1424,6 +1432,14 @@ public class PlatformService implements PlatformApplicationService {
             throw new BusinessException("文件路径非法");
         }
         return resolved;
+    }
+
+    private boolean isStudentLikeRole(AuthenticatedUser user) {
+        if (user == null || user.role() == null) {
+            return false;
+        }
+        String r = user.role().toUpperCase(java.util.Locale.ROOT);
+        return "STUDENT".equals(r) || "CLASS_LEADER".equals(r) || "LEAGUE_SECRETARY".equals(r);
     }
 
     private void writeLatestPlatformFileLog(Long fileId,

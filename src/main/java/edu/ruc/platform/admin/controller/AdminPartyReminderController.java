@@ -9,6 +9,13 @@ import edu.ruc.platform.common.api.ApiResponse;
 import edu.ruc.platform.common.api.PageResponse;
 import edu.ruc.platform.common.enums.RoleType;
 import edu.ruc.platform.common.exception.BusinessException;
+import edu.ruc.platform.party.domain.LatestPartyFlowNode;
+import edu.ruc.platform.party.domain.LatestPartyReminderTask;
+import edu.ruc.platform.party.domain.LatestPartyStudentProgress;
+import edu.ruc.platform.party.repository.LatestPartyFlowNodeRepository;
+import edu.ruc.platform.party.repository.LatestPartyReminderTaskRepository;
+import edu.ruc.platform.party.repository.LatestPartyStudentProgressRepository;
+import edu.ruc.platform.student.repository.StudentProfileRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
@@ -34,6 +41,10 @@ public class AdminPartyReminderController {
 
     private final AdminApplicationService adminService;
     private final CurrentUserService currentUserService;
+    private final LatestPartyReminderTaskRepository latestPartyReminderTaskRepository;
+    private final LatestPartyStudentProgressRepository latestPartyStudentProgressRepository;
+    private final LatestPartyFlowNodeRepository latestPartyFlowNodeRepository;
+    private final StudentProfileRepository studentProfileRepository;
 
     @GetMapping
     public ApiResponse<List<PartyReminderTaskResponse>> list(@RequestParam(required = false) String status,
@@ -78,7 +89,38 @@ public class AdminPartyReminderController {
         if (adminService instanceof MockAdminService mockAdminService) {
             return ApiResponse.success("已更新计划时间", mockAdminService.updatePartyReminderDueAt(id, request.dueAt()));
         }
-        throw new BusinessException("未接入：仅 mock 环境支持编辑计划时间");
+        if (request == null || request.dueAt() == null) {
+            throw new BusinessException("计划时间不能为空");
+        }
+        LatestPartyReminderTask task = latestPartyReminderTaskRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("提醒任务不存在"));
+        task.setDueAt(request.dueAt());
+        task = latestPartyReminderTaskRepository.save(task);
+
+        LatestPartyStudentProgress progress = latestPartyStudentProgressRepository.findById(task.getProgressId()).orElse(null);
+        Long studentUserId = progress == null ? null : progress.getStudentUserId();
+        String studentName = studentUserId == null
+                ? null
+                : studentProfileRepository.findById(studentUserId).map(p -> p.getName()).orElse(null);
+        String studentNo = studentUserId == null
+                ? null
+                : studentProfileRepository.findById(studentUserId).map(p -> p.getStudentNo()).orElse(null);
+        LatestPartyFlowNode node = latestPartyFlowNodeRepository.findById(task.getNodeId()).orElse(null);
+        return ApiResponse.success("已更新计划时间", new PartyReminderTaskResponse(
+                task.getId(),
+                task.getProgressId(),
+                task.getNodeId(),
+                node == null ? null : node.getNodeName(),
+                studentUserId,
+                studentName,
+                studentNo,
+                task.getDueAt(),
+                task.getChannel(),
+                task.getStatus(),
+                task.getSentAt(),
+                null,
+                task.getCreatedAt()
+        ));
     }
 
     public record UpdatePartyReminderRequest(LocalDateTime dueAt) {

@@ -286,6 +286,7 @@ public class MockAdminService implements AdminApplicationService {
                 resolvePriority(request.tags(), request.targetDescription()),
                 resolveMatchedRules(request.targetDescription(), request.tags()),
                 resolveDeliveryChannels(request.tags()),
+                request.attachmentFileId(),
                 resolveNoticePublishTime(request.published())
         );
         notices.add(0, response);
@@ -311,6 +312,7 @@ public class MockAdminService implements AdminApplicationService {
                         resolvePriority(request.tags(), request.targetDescription()),
                         resolveMatchedRules(request.targetDescription(), request.tags()),
                         resolveDeliveryChannels(request.tags()),
+                        request.attachmentFileId(),
                         request.published() == null ? item.publishTime() : resolveNoticePublishTime(request.published())
                 );
                 notices.set(i, updated);
@@ -373,6 +375,7 @@ public class MockAdminService implements AdminApplicationService {
                         item.priority(),
                         item.matchedRules(),
                         item.deliveryChannels(),
+                        item.attachmentFileId(),
                         resolveNoticePublishTime(published)
                 );
                 notices.set(i, updated);

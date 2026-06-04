@@ -151,15 +151,65 @@ Page({
       count: remaining,
       type: 'file',
       success: (res) => {
-        const files = res.tempFiles
-        // 检查大小（20MB限制）
+        const files = res.tempFiles || []
         const validFiles = files.filter(f => f.size <= 20 * 1024 * 1024)
         if (validFiles.length < files.length) {
           wx.showToast({ title: '部分文件超过20MB', icon: 'none' })
         }
-        this.setData({
-          attachments: [...this.data.attachments, ...validFiles]
-        })
+
+        const baseUrl = String(app.globalData.baseUrl || '').trim()
+        const token = app.globalData.token
+        if (!baseUrl || !token) {
+          wx.showToast({ title: '登录状态异常，无法上传', icon: 'none' })
+          return
+        }
+
+        wx.showLoading({ title: '上传中...' })
+        const uploaded = []
+        const uploadNext = (idx) => {
+          if (idx >= validFiles.length) {
+            wx.hideLoading()
+            if (uploaded.length) {
+              this.setData({ attachments: [...this.data.attachments, ...uploaded] })
+              wx.showToast({ title: '附件已上传', icon: 'success' })
+            }
+            return
+          }
+          const file = validFiles[idx]
+          wx.uploadFile({
+            url: `${baseUrl}/platform/files/upload?bizType=CERTIFICATE`,
+            filePath: file.path,
+            name: 'file',
+            header: {
+              'Authorization': `Bearer ${token}`
+            },
+            success: (resp) => {
+              let data = null
+              try {
+                data = resp && resp.data ? (JSON.parse(resp.data) || null) : null
+              } catch (e) {
+                data = null
+              }
+              if (!data || !data.success || !data.data || !data.data.id) {
+                wx.showToast({ title: (data && data.message) ? data.message : '上传失败', icon: 'none' })
+                uploadNext(idx + 1)
+                return
+              }
+              uploaded.push({
+                id: data.data.id,
+                name: data.data.fileName || file.name || ('附件#' + data.data.id),
+                fileSize: data.data.fileSize || file.size || 0,
+                contentType: data.data.contentType || ''
+              })
+              uploadNext(idx + 1)
+            },
+            fail: () => {
+              wx.showToast({ title: '上传失败', icon: 'none' })
+              uploadNext(idx + 1)
+            }
+          })
+        }
+        uploadNext(0)
       },
       fail: (err) => {
         console.error('选择文件失败', err)
@@ -252,7 +302,8 @@ Page({
       const payload = {
         studentId,
         certificateType,
-        reason: ''
+        reason: '',
+        attachments: (this.data.attachments || []).map(item => item && item.id).filter(Boolean)
       }
       const res = await applyApi.submitApply(payload)
       const statusCode = res?.data?.status || resolveApplyInitialStatus(this.data.selectedType, payload)

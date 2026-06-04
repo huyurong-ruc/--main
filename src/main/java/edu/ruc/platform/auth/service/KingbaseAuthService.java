@@ -169,8 +169,16 @@ public class KingbaseAuthService implements AuthApplicationService {
         if (req == null) {
             return false;
         }
+        String ua = req.getHeader("User-Agent");
+        if (ua != null && ua.toLowerCase(Locale.ROOT).contains("micromessenger")) {
+            return false;
+        }
         String origin = req.getHeader("Origin");
         if (origin != null && !origin.isBlank()) {
+            String lowerOrigin = origin.toLowerCase(Locale.ROOT);
+            if (lowerOrigin.contains("servicewechat.com") || lowerOrigin.contains("mp.weixin.qq.com")) {
+                return false;
+            }
             return true;
         }
         String secFetchMode = req.getHeader("Sec-Fetch-Mode");
@@ -178,7 +186,14 @@ public class KingbaseAuthService implements AuthApplicationService {
             return true;
         }
         String referer = req.getHeader("Referer");
-        return referer != null && !referer.isBlank();
+        if (referer == null || referer.isBlank()) {
+            return false;
+        }
+        String lowerRef = referer.toLowerCase(Locale.ROOT);
+        if (lowerRef.contains("servicewechat.com") || lowerRef.contains("mp.weixin.qq.com")) {
+            return false;
+        }
+        return true;
     }
 
     private AuthenticatedUser buildAuthenticatedUser(LatestUser latestUser, RoleType role, LatestStudentExt ext) {

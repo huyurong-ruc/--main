@@ -12,6 +12,7 @@ public record TargetedNoticeResponse(
         String priority,
         List<String> matchedRules,
         List<String> deliveryChannels,
+        Long attachmentFileId,
         LocalDateTime publishTime
 ) {
 }

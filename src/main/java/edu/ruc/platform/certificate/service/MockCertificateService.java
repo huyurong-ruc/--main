@@ -45,8 +45,8 @@ public class MockCertificateService implements CertificateApplicationService {
     private final AtomicLong idGenerator = new AtomicLong(2000);
     private final AtomicLong historyIdGenerator = new AtomicLong(3000);
     private final List<ApprovalTaskResponse> approvalTasks = new ArrayList<>(List.of(
-            new ApprovalTaskResponse(1001L, 10001L, "张三", "在读证明", "PENDING", "奖学金申请材料需要", LocalDateTime.of(2026, 3, 20, 10, 30)),
-            new ApprovalTaskResponse(1002L, 10002L, "李四", "党员身份证明", "COUNSELOR_APPROVED", "组织关系转接", LocalDateTime.of(2026, 3, 19, 15, 0))
+            new ApprovalTaskResponse(1001L, 10001L, "张三", "在读证明", "PENDING", "奖学金申请材料需要", List.of(), LocalDateTime.of(2026, 3, 20, 10, 30)),
+            new ApprovalTaskResponse(1002L, 10002L, "李四", "党员身份证明", "COUNSELOR_APPROVED", "组织关系转接", List.of(), LocalDateTime.of(2026, 3, 19, 15, 0))
     ));
     private final List<ApprovalHistoryResponse> approvalHistories = new ArrayList<>(List.of(
             new ApprovalHistoryResponse(3001L, 1002L, 20001L, "胡浩老师", "COUNSELOR", "approve", "PENDING", "COUNSELOR_APPROVED", "初审通过", LocalDateTime.of(2026, 3, 20, 9, 0))
@@ -79,6 +79,7 @@ public class MockCertificateService implements CertificateApplicationService {
                     certType,
                     "PENDING",
                     "演示生成的审批任务",
+                    List.of(),
                     LocalDateTime.now()
             );
             approvalTasks.add(0, created);
@@ -185,6 +186,7 @@ public class MockCertificateService implements CertificateApplicationService {
                 normalizeCertificateType(request.certificateType()),
                 "PENDING",
                 request.reason(),
+                List.of(),
                 LocalDateTime.now()
         );
         approvalTasks.add(0, created);
@@ -262,6 +264,7 @@ public class MockCertificateService implements CertificateApplicationService {
                         task.certificateType(),
                         nextStatus,
                         request.comment() == null || request.comment().isBlank() ? task.reason() : request.comment(),
+                        task.attachments(),
                         task.submittedAt()
                 );
                 approvalTasks.set(i, updated);

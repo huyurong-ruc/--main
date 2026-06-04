@@ -140,6 +140,7 @@ public class KingbaseNoticeService implements NoticeApplicationService {
                 resolvePriority(item, snapshot),
                 resolveMatchedRules(tags, snapshot),
                 resolveDeliveryChannels(tags),
+                item.getAttachmentFileId(),
                 item.getPublishAt() == null ? item.getCreatedAt() : item.getPublishAt()
         );
     }

@@ -18,6 +18,7 @@ import edu.ruc.platform.certificate.dto.ApprovalHistoryResponse;
 import edu.ruc.platform.certificate.dto.ApprovalTaskFilterRequest;
 import edu.ruc.platform.certificate.dto.ApprovalTaskResponse;
 import edu.ruc.platform.certificate.dto.ApprovalTaskStatsResponse;
+import edu.ruc.platform.certificate.dto.CertificateAttachmentResponse;
 import edu.ruc.platform.certificate.dto.CertificatePreviewResponse;
 import edu.ruc.platform.certificate.dto.CertificateRequestActionRequest;
 import edu.ruc.platform.certificate.dto.CertificateRequestCreateRequest;
@@ -38,6 +39,8 @@ import edu.ruc.platform.knowledge.domain.LatestFileObject;
 import edu.ruc.platform.knowledge.repository.LatestCertTemplateRepository;
 import edu.ruc.platform.knowledge.repository.LatestFileObjectRepository;
 import edu.ruc.platform.student.repository.StudentProfileRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
@@ -64,6 +67,7 @@ public class KingbaseCertificateService implements CertificateApplicationService
     private final LatestWorkflowTaskActionRepository latestWorkflowTaskActionRepository;
     private final LatestCertTemplateRepository latestCertTemplateRepository;
     private final LatestFileObjectRepository latestFileObjectRepository;
+    private final ObjectMapper objectMapper;
     private final StudentProfileRepository studentProfileRepository;
     private final CurrentUserService currentUserService;
     private final StudentDataScopeService studentDataScopeService;
@@ -74,6 +78,7 @@ public class KingbaseCertificateService implements CertificateApplicationService
     public CertificateRequestResponse create(CertificateRequestCreateRequest request) {
         requireCertificateOwner(request.studentId());
         validateCertificateType(request.certificateType());
+        validateAttachmentFileIds(request.attachments());
         LatestAffairRequest affairRequest = new LatestAffairRequest();
         affairRequest.setRequesterUserId(request.studentId());
         affairRequest.setRequestType("certificate");
@@ -429,6 +434,7 @@ public class KingbaseCertificateService implements CertificateApplicationService
                 resolveCertificateType(certApplication),
                 toApprovalStatus(affairRequest.getStatus()),
                 affairRequest.getPurpose(),
+                resolveAttachments(affairRequest),
                 affairRequest.getSubmittedAt() == null ? affairRequest.getCreatedAt() : affairRequest.getSubmittedAt()
         );
     }
@@ -440,12 +446,76 @@ public class KingbaseCertificateService implements CertificateApplicationService
                 resolveCertificateType(certApplication),
                 toApprovalStatus(affairRequest.getStatus()),
                 buildPreviewUrl(certApplication),
-                List.of()
+                resolveAttachments(affairRequest)
         );
     }
 
     private String buildPayloadJson(CertificateRequestCreateRequest request) {
-        return "{\"certificateType\":\"" + normalizeCertificateType(request.certificateType()) + "\"}";
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("certificateType", normalizeCertificateType(request.certificateType()));
+        payload.put("attachments", request.attachments() == null ? List.of() : request.attachments());
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (Exception ex) {
+            return "{\"certificateType\":\"" + normalizeCertificateType(request.certificateType()) + "\"}";
+        }
+    }
+
+    private void validateAttachmentFileIds(List<Long> attachments) {
+        if (attachments == null || attachments.isEmpty()) {
+            return;
+        }
+        for (Long id : attachments) {
+            if (id == null || id <= 0) {
+                throw new BusinessException("附件ID必须大于 0");
+            }
+            latestFileObjectRepository.findById(id)
+                    .filter(item -> "platform_upload".equals(item.getPurpose()) && item.getIsDeleted() != null && item.getIsDeleted() == 0)
+                    .orElseThrow(() -> new BusinessException("附件不存在或已被清理: " + id));
+        }
+    }
+
+    private List<CertificateAttachmentResponse> resolveAttachments(LatestAffairRequest affairRequest) {
+        List<Long> attachmentIds = List.of();
+        String payloadJson = affairRequest == null ? null : affairRequest.getPayloadJson();
+        if (payloadJson != null && !payloadJson.isBlank()) {
+            try {
+                Map<String, Object> payload = objectMapper.readValue(payloadJson, new TypeReference<>() {
+                });
+                Object raw = payload.get("attachments");
+                if (raw instanceof List<?> values) {
+                    attachmentIds = values.stream()
+                            .map(String::valueOf)
+                            .map(value -> {
+                                try {
+                                    return Long.valueOf(value);
+                                } catch (Exception ex) {
+                                    return null;
+                                }
+                            })
+                            .filter(java.util.Objects::nonNull)
+                            .toList();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        if (attachmentIds.isEmpty()) {
+            return List.of();
+        }
+        return attachmentIds.stream()
+                .map(id -> latestFileObjectRepository.findById(id)
+                        .filter(item -> item.getIsDeleted() != null && item.getIsDeleted() == 0)
+                        .orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .map(file -> new CertificateAttachmentResponse(
+                        file.getId(),
+                        file.getId(),
+                        file.getOriginalName(),
+                        file.getMimeType(),
+                        file.getSizeBytes(),
+                        file.getStoragePath()
+                ))
+                .toList();
     }
 
     private String buildStudentSnapshotJson(Long studentId) {

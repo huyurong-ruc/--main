@@ -146,6 +146,7 @@ public class AdminService implements AdminApplicationService {
                         resolvePriority(notice),
                         resolveMatchedRules(notice),
                         resolveDeliveryChannels(notice),
+                        null,
                         notice.getPublishTime()
                 ))
                 .toList();
@@ -206,6 +207,7 @@ public class AdminService implements AdminApplicationService {
                 resolvePriority(notice),
                 resolveMatchedRules(notice),
                 resolveDeliveryChannels(notice),
+                null,
                 notice.getPublishTime()
         );
     }
@@ -213,7 +215,7 @@ public class AdminService implements AdminApplicationService {
     @Override
     public TargetedNoticeResponse updateNotice(Long id, AdminNoticeCreateRequest request) {
         if (isKingbaseProfile()) {
-            throw new BusinessException("当前环境暂不支持更新通知");
+            return updateLatestNotice(id, request);
         }
         Notice notice = noticeRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("通知不存在"));
@@ -240,6 +242,7 @@ public class AdminService implements AdminApplicationService {
                 resolvePriority(notice),
                 resolveMatchedRules(notice),
                 resolveDeliveryChannels(notice),
+                null,
                 notice.getPublishTime()
         );
     }
@@ -247,7 +250,7 @@ public class AdminService implements AdminApplicationService {
     @Override
     public TargetedNoticeResponse toggleNoticePublish(Long id, boolean published) {
         if (isKingbaseProfile()) {
-            throw new BusinessException("当前环境暂不支持发布/撤回通知");
+            return toggleLatestNoticePublish(id, published);
         }
         Notice notice = noticeRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("通知不存在"));
@@ -266,6 +269,7 @@ public class AdminService implements AdminApplicationService {
                 resolvePriority(notice),
                 resolveMatchedRules(notice),
                 resolveDeliveryChannels(notice),
+                null,
                 notice.getPublishTime()
         );
     }
@@ -273,7 +277,8 @@ public class AdminService implements AdminApplicationService {
     @Override
     public void deleteNotice(Long id) {
         if (isKingbaseProfile()) {
-            throw new BusinessException("当前环境暂不支持删除通知");
+            deleteLatestNotice(id);
+            return;
         }
         Notice notice = noticeRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("通知不存在"));
@@ -1960,6 +1965,7 @@ public class AdminService implements AdminApplicationService {
                         resolvePriority(notice),
                         resolveMatchedRules(notice),
                         resolveDeliveryChannels(notice),
+                        null,
                         notice.getPublishTime()
                 ))
                 .toList();
@@ -2161,6 +2167,7 @@ public class AdminService implements AdminApplicationService {
                 resolveLatestPriority(scope, tags),
                 resolveLatestMatchedRules(scope, tags),
                 resolveLatestDeliveryChannels(deliveries, tags),
+                item.getAttachmentFileId(),
                 item.getPublishAt() == null ? item.getCreatedAt() : item.getPublishAt()
         );
     }
@@ -2295,6 +2302,7 @@ public class AdminService implements AdminApplicationService {
                 notice.priority(),
                 notice.matchedRules(),
                 notice.deliveryChannels(),
+                notice.attachmentFileId(),
                 notice.publishTime()
         );
     }
@@ -2305,8 +2313,12 @@ public class AdminService implements AdminApplicationService {
         item.setTitle(request.title());
         item.setContent(request.summary());
         item.setSourceName(user.name());
-        item.setPublishAt(LocalDateTime.now());
+        item.setPublishAt(resolveNoticePublishTime(request.published()));
         item.setCreatedBy(user.userId());
+        if (request.attachmentFileId() != null) {
+            requireLatestFileObject(request.attachmentFileId());
+        }
+        item.setAttachmentFileId(request.attachmentFileId());
         item.setExtJson("{}");
         item.setIsDeleted(0);
         item = latestNoticeItemRepository.save(item);
@@ -2345,6 +2357,100 @@ public class AdminService implements AdminApplicationService {
 
         writeOperationLog("NOTICE", "CREATE", item.getTitle(), "SUCCESS", request.targetDescription());
         return toLatestNoticeResponse(buildLatestNoticeView(item));
+    }
+
+    private TargetedNoticeResponse updateLatestNotice(Long id, AdminNoticeCreateRequest request) {
+        AuthenticatedUser user = currentUserService.requireCurrentUser();
+        LatestNoticeItem item = latestNoticeItemRepository.findById(id)
+                .filter(row -> row.getIsDeleted() != null && row.getIsDeleted() == 0)
+                .orElseThrow(() -> new BusinessException("通知不存在"));
+        item.setTitle(request.title());
+        item.setContent(request.summary());
+        item.setSourceName(user.name());
+        if (request.published() != null) {
+            item.setPublishAt(resolveNoticePublishTime(request.published()));
+        }
+        if (request.attachmentFileId() != null) {
+            requireLatestFileObject(request.attachmentFileId());
+        }
+        item.setAttachmentFileId(request.attachmentFileId());
+        item = latestNoticeItemRepository.save(item);
+
+        List<LatestNoticeItemTag> existingTags = latestNoticeItemTagRepository.findByNoticeId(item.getId());
+        if (!existingTags.isEmpty()) {
+            latestNoticeItemTagRepository.deleteAll(existingTags);
+        }
+        if (request.tags() != null) {
+            for (String tag : request.tags()) {
+                String normalizedTag = tag == null ? null : tag.trim();
+                if (normalizedTag == null || normalizedTag.isEmpty()) {
+                    continue;
+                }
+                String tagCode = normalizedTag.toLowerCase(java.util.Locale.ROOT).replace(" ", "_");
+                LatestNoticeTagDict dict = latestNoticeTagDictRepository.findByTagCode(tagCode)
+                        .orElseGet(() -> {
+                            LatestNoticeTagDict created = new LatestNoticeTagDict();
+                            created.setTagCode(tagCode);
+                            created.setTagName(normalizedTag);
+                            created.setIsDeleted(0);
+                            return latestNoticeTagDictRepository.save(created);
+                        });
+                LatestNoticeItemTag itemTag = new LatestNoticeItemTag();
+                itemTag.setNoticeId(item.getId());
+                itemTag.setTagId(dict.getId());
+                itemTag.setCreatedAt(LocalDateTime.now());
+                latestNoticeItemTagRepository.save(itemTag);
+            }
+        }
+
+        List<LatestNoticeDelivery> deliveries = latestNoticeDeliveryRepository.findByNoticeId(item.getId());
+        LatestNoticeDelivery delivery = deliveries.isEmpty() ? null : deliveries.get(0);
+        if (delivery == null) {
+            delivery = new LatestNoticeDelivery();
+            delivery.setNoticeId(item.getId());
+            delivery.setChannel("miniprogram");
+            delivery.setCreatedBy(user.userId());
+            delivery.setExtJson("{}");
+        }
+        delivery.setTargetRuleJson(buildLatestTargetRuleJson(request.targetDescription()));
+        delivery.setScheduledAt(item.getPublishAt());
+        boolean published = item.getPublishAt() != null && !item.getPublishAt().isAfter(LocalDateTime.now());
+        delivery.setSentAt(published ? item.getPublishAt() : null);
+        delivery.setStatus(published ? "done" : "queued");
+        latestNoticeDeliveryRepository.save(delivery);
+
+        writeOperationLog("NOTICE", "UPDATE", item.getTitle(), "SUCCESS", request.targetDescription());
+        return toLatestNoticeResponse(buildLatestNoticeView(item));
+    }
+
+    private TargetedNoticeResponse toggleLatestNoticePublish(Long id, boolean published) {
+        LatestNoticeItem item = latestNoticeItemRepository.findById(id)
+                .filter(row -> row.getIsDeleted() != null && row.getIsDeleted() == 0)
+                .orElseThrow(() -> new BusinessException("通知不存在"));
+        item.setPublishAt(resolveNoticePublishTime(published));
+        item = latestNoticeItemRepository.save(item);
+
+        List<LatestNoticeDelivery> deliveries = latestNoticeDeliveryRepository.findByNoticeId(item.getId());
+        for (LatestNoticeDelivery delivery : deliveries) {
+            delivery.setScheduledAt(item.getPublishAt());
+            delivery.setSentAt(published ? item.getPublishAt() : null);
+            delivery.setStatus(published ? "done" : "queued");
+        }
+        if (!deliveries.isEmpty()) {
+            latestNoticeDeliveryRepository.saveAll(deliveries);
+        }
+
+        writeOperationLog("NOTICE", published ? "PUBLISH" : "UNPUBLISH", item.getTitle(), "SUCCESS", null);
+        return toLatestNoticeResponse(buildLatestNoticeView(item));
+    }
+
+    private void deleteLatestNotice(Long id) {
+        LatestNoticeItem item = latestNoticeItemRepository.findById(id)
+                .filter(row -> row.getIsDeleted() != null && row.getIsDeleted() == 0)
+                .orElseThrow(() -> new BusinessException("通知不存在"));
+        item.setIsDeleted(1);
+        latestNoticeItemRepository.save(item);
+        writeOperationLog("NOTICE", "DELETE", item.getTitle(), "SUCCESS", null);
     }
 
     private String buildLatestTargetRuleJson(String targetDescription) {
@@ -2404,6 +2510,7 @@ public class AdminService implements AdminApplicationService {
                                          String priority,
                                          List<String> matchedRules,
                                          List<String> deliveryChannels,
+                                         Long attachmentFileId,
                                          LocalDateTime publishTime) {
     }
 

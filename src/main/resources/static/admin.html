@@ -708,6 +708,53 @@
         item.appendChild(s);
         profileBody.appendChild(item);
       });
+
+      const changePwd = document.createElement("div");
+      changePwd.className = "menuItem";
+      changePwd.style.cursor = "pointer";
+      const cpTitle = document.createElement("div");
+      cpTitle.className = "menuItemTitle";
+      cpTitle.textContent = "修改密码";
+      const cpSub = document.createElement("div");
+      cpSub.className = "menuItemSub";
+      cpSub.textContent = "修改当前账号登录密码（修改后需重新登录）";
+      changePwd.appendChild(cpTitle);
+      changePwd.appendChild(cpSub);
+      changePwd.addEventListener("click", async () => {
+        showUserOverlay("修改密码");
+        const oldInput = el("input", { type: "password", placeholder: "请输入旧密码" });
+        const newInput = el("input", { type: "password", placeholder: "请输入新密码（至少6位）" });
+        setUserModalContent([
+          el("div", { style: "display:grid; gap: 10px;" }, [
+            el("div", null, [el("div", { class: "cfgLabel", text: "旧密码" }), oldInput]),
+            el("div", null, [el("div", { class: "cfgLabel", text: "新密码" }), newInput])
+          ])
+        ], [
+          el("button", { class: "btn", type: "button", text: "取消", onclick: () => hideUserOverlay() }),
+          el("button", { class: "btn primary", type: "button", text: "确认修改", onclick: async () => {
+            document.getElementById("userModalMsg").textContent = "";
+            const oldPassword = oldInput.value;
+            const newPassword = newInput.value;
+            if (!oldPassword || !newPassword) {
+              document.getElementById("userModalMsg").textContent = "请填写旧密码和新密码";
+              return;
+            }
+            try {
+              await apiJson("/api/v1/auth/change-password", {
+                method: "POST",
+                body: JSON.stringify({ oldPassword, newPassword })
+              });
+              try { await apiJson("/api/v1/auth/logout", { method: "POST" }); } catch (e) {}
+              clearAuth();
+              hideUserOverlay();
+              showLoginOverlay("密码已修改，请重新登录");
+            } catch (e) {
+              document.getElementById("userModalMsg").textContent = e.message;
+            }
+          }})
+        ]);
+      });
+      profileBody.appendChild(changePwd);
     }
 
     function getUser() {
@@ -3245,6 +3292,7 @@
       const targetInput = el("input", { placeholder: "目标人群，例如：全体学生 或 2023级/计算机类" });
 
       const msg = el("div", { class: "toast" }, []);
+      let attachment = null;
 
       const formCard = el("div", { class: "noticeCard" }, [
         el("div", { class: "sectionTitle", text: "基础信息" }),
@@ -3262,9 +3310,70 @@
           el("div", { class: "field", style: "flex:1; min-width: 260px;" }, [el("label", { text: "目标人群 *" }), targetInput])
         ]),
         el("div", { class: "sectionTitle", text: "附件" }),
-        el("div", { class: "card", style: "border-style:dashed; background: #ffffff;" }, [
-          el("div", { class: "sub", text: "点击或拖拽文件到此处上传（演示版：附件上传接口暂未接入）" })
-        ])
+        (() => {
+          const hint = el("div", { class: "sub", text: "点击或拖拽文件到此处上传（支持 PDF/Word/图片等）" });
+          const fileInput = el("input", { type: "file", style: "display:none;" });
+          const list = el("div", { style: "margin-top:10px; display:grid; gap: 8px;" }, []);
+
+          function renderAttachment() {
+            list.innerHTML = "";
+            if (!attachment) {
+              return;
+            }
+            const row = el("div", { style: "display:flex; gap: 10px; align-items:center; justify-content: space-between; border: 1px solid rgba(15,23,42,.10); border-radius: 10px; padding: 10px 12px; background:#fff;" }, [
+              el("div", null, [
+                el("div", { style: "font-weight: 850;", text: attachment.fileName || ("附件#" + attachment.id) }),
+                el("div", { class: "mono", style: "color:#64748b; font-size:12px;", text: "fileId=" + attachment.id })
+              ]),
+              el("div", { style: "display:flex; gap: 10px; align-items:center;" }, [
+                el("a", { href: "/api/v1/platform/files/" + attachment.id + "/download", target: "_blank", class: "instViewLink", text: "预览/下载", onclick: (e) => { e.stopPropagation(); } }),
+                el("div", { class: "instViewLink", text: "移除", onclick: (e) => { e.stopPropagation(); attachment = null; renderAttachment(); } })
+              ])
+            ]);
+            list.appendChild(row);
+          }
+
+          async function uploadFile(file) {
+            msg.textContent = "";
+            if (!file) return;
+            const fd = new FormData();
+            fd.append("bizType", "NOTICE");
+            fd.append("file", file);
+            try {
+              const data = await apiJson("/api/v1/platform/files/upload", { method: "POST", body: fd });
+              attachment = { id: data.id, fileName: data.fileName, contentType: data.contentType, fileSize: data.fileSize };
+              renderAttachment();
+              msg.textContent = "附件已上传";
+            } catch (e) {
+              msg.textContent = e.message;
+            }
+          }
+
+          fileInput.addEventListener("change", async (e) => {
+            const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+            if (!f) return;
+            await uploadFile(f);
+            fileInput.value = "";
+          });
+
+          const drop = el("div", { class: "card", style: "border-style:dashed; background: #ffffff; cursor:pointer;" }, [hint, list]);
+          drop.addEventListener("click", (e) => {
+            if (e && e.target && e.target.closest && e.target.closest("a,.instViewLink")) {
+              return;
+            }
+            fileInput.click();
+          });
+          drop.addEventListener("dragover", (e) => { e.preventDefault(); });
+          drop.addEventListener("drop", async (e) => {
+            e.preventDefault();
+            const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0] ? e.dataTransfer.files[0] : null;
+            if (!f) return;
+            await uploadFile(f);
+          });
+
+          renderAttachment();
+          return el("div", null, [fileInput, drop]);
+        })()
       ]);
 
       const previewTitle = el("div", { class: "noticePreviewTitle", text: "通知标题在这里显示" });
@@ -3295,7 +3404,8 @@
                 title: titleInput.value.trim(),
                 summary: contentInput.value.trim(),
                 tags: tags,
-                targetDescription: targetInput.value.trim()
+                targetDescription: targetInput.value.trim(),
+                attachmentFileId: attachment ? attachment.id : null
               };
               if (s.noticeId && !s.copyFromId) {
                 await apiJson("/api/v1/admin/notices/" + s.noticeId, { method: "PUT", body: JSON.stringify(body) });
@@ -3345,6 +3455,7 @@
         contentInput.value = item.summary || "";
         tagsInput.value = tags.filter(t => !String(t || "").startsWith("来源:")).join(", ");
         targetInput.value = item.targetDescription || "";
+        attachment = item && item.attachmentFileId ? { id: item.attachmentFileId, fileName: "附件#" + item.attachmentFileId } : null;
         renderPreview();
       }
 
@@ -3685,6 +3796,76 @@
         }
       }
 
+      async function openAttachmentsDialog(item) {
+        toast.textContent = "";
+        const attachments = Array.isArray(item && item.attachments) ? item.attachments : [];
+        showUserOverlay("申请附件");
+        if (!attachments.length) {
+          setUserModalContent([
+            el("div", { style: "color:#94a3b8; padding: 6px 0;", text: "该申请未上传附件" })
+          ], [
+            el("button", { class: "btn", text: "关闭", type: "button", onclick: () => hideUserOverlay() })
+          ]);
+          return;
+        }
+
+        const msg = el("div", { class: "toast" }, []);
+        const list = el("div", { style: "display:grid; gap: 10px;" }, attachments.map(att => {
+          const fileId = att && (att.fileId ?? att.id);
+          const fileName = att && (att.fileName || ("附件#" + fileId));
+          const sizeText = att && att.fileSize ? (Math.round(att.fileSize / 1024) + " KB") : "";
+          const row = el("div", { style: "border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background:#fff;" }, []);
+          const left = el("div", null, [
+            el("div", { style: "font-weight: 900;", text: fileName }),
+            el("div", { class: "sub", text: "fileId: " + String(fileId ?? "-") + (sizeText ? (" · " + sizeText) : "") })
+          ]);
+          const btnPreview = el("button", { class: "btn", type: "button", text: "预览", onclick: async () => {
+            msg.textContent = "";
+            if (!fileId) {
+              msg.textContent = "附件ID缺失";
+              return;
+            }
+            try {
+              const blob = await apiBlob("/api/v1/platform/files/" + fileId + "/download", { method: "GET" });
+              const url = URL.createObjectURL(blob);
+              window.open(url, "_blank");
+              setTimeout(() => URL.revokeObjectURL(url), 60_000);
+            } catch (e) {
+              msg.textContent = e.message;
+            }
+          }});
+          const btnDownload = el("button", { class: "btn primary", type: "button", text: "下载", onclick: async () => {
+            msg.textContent = "";
+            if (!fileId) {
+              msg.textContent = "附件ID缺失";
+              return;
+            }
+            try {
+              const blob = await apiBlob("/api/v1/platform/files/" + fileId + "/download", { method: "GET" });
+              const dlUrl = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = dlUrl;
+              a.download = fileName || ("attachment-" + fileId);
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(dlUrl);
+            } catch (e) {
+              msg.textContent = e.message;
+            }
+          }});
+          row.appendChild(el("div", { class: "row", style: "justify-content: space-between; align-items: center;" }, [
+            left,
+            el("div", { class: "row", style: "gap: 8px; flex-wrap: wrap;" }, [btnPreview, btnDownload])
+          ]));
+          return row;
+        }));
+
+        setUserModalContent([list, msg], [
+          el("button", { class: "btn", text: "关闭", type: "button", onclick: () => hideUserOverlay() })
+        ]);
+      }
+
       function render() {
         const filtered = tasks
           .filter(t => !s.certificateType || String(t.certificateType || "") === String(s.certificateType))
@@ -3729,7 +3910,9 @@
           ]);
           const meta = el("div", { class: "approvalMeta" }, [
             el("div", { text: "申请人：" + (item.studentName || "-") }),
-            el("div", { text: "提交时间：" + formatDateTimeText(item.submittedAt) })
+            el("div", { text: "提交时间：" + formatDateTimeText(item.submittedAt) }),
+            el("div", { text: "原因/备注：" + (item.reason || "-") }),
+            el("div", { text: "附件数：" + String((Array.isArray(item.attachments) ? item.attachments.length : 0)) })
           ]);
           left.appendChild(titleRow);
           left.appendChild(meta);
@@ -3755,6 +3938,11 @@
           const btnFlow = el("button", { class: "approvalBtn", type: "button", disabled: loading }, [
             el("span", { text: "⛓" }),
             el("span", { text: "流程" })
+          ]);
+          const hasAttachments = Array.isArray(item.attachments) && item.attachments.length > 0;
+          const btnAttach = el("button", { class: "approvalBtn", type: "button", disabled: loading || !hasAttachments }, [
+            el("span", { text: "📎" }),
+            el("span", { text: "附件" })
           ]);
 
           btnApprove.addEventListener("click", async () => {
@@ -3805,8 +3993,13 @@
           btnFlow.addEventListener("click", async () => {
             await openWorkflowDialog(item);
           });
+          btnAttach.addEventListener("click", async () => {
+            await openAttachmentsDialog(item);
+          });
 
-          const right = el("div", { class: "approvalBtns" }, s.tab === "DONE" ? [btnResubmit, btnAssign, btnFlow] : [btnApprove, btnReject, btnAssign, btnFlow]);
+          const right = el("div", { class: "approvalBtns" }, s.tab === "DONE"
+            ? [btnResubmit, btnAssign, btnAttach, btnFlow]
+            : [btnApprove, btnReject, btnAssign, btnAttach, btnFlow]);
           card.appendChild(left);
           card.appendChild(right);
           listWrap.appendChild(card);
@@ -7713,7 +7906,7 @@
         (list || []).forEach(it => {
           const actions = el("div", { class: "certActions" }, []);
           const st = String(it.status || "").toLowerCase();
-          const editBtn = el("div", { class: "instViewLink" }, [el("span", { text: "改时间" })]);
+          const editBtn = el("div", { class: "instViewLink" }, [el("span", { text: "编辑" })]);
           editBtn.addEventListener("click", async () => {
             toast.textContent = "";
             const raw = prompt("请输入计划时间（例如：2026-05-26 09:00）", "");
@@ -7916,6 +8109,12 @@
             el("circle", { cx: "12", cy: "12", r: "3" })
           ]);
         }
+        if (type === "edit") {
+          return el("svg", Object.assign({ width: "16", height: "16" }, common), [
+            el("path", { d: "M12 20h9" }),
+            el("path", { d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" })
+          ]);
+        }
         if (type === "pause") {
           return el("svg", Object.assign({ width: "16", height: "16" }, common), [
             el("rect", { x: "6", y: "5", width: "4", height: "14", rx: "1" }),
@@ -7946,6 +8145,7 @@
           el("div", { class: "desc", text: "查看学生在党团流程中的进度与异常" }),
         ]),
         el("div", { class: "actions" }, [
+          el("button", { class: "flowBtn", type: "button", text: "新增记录" }),
           el("button", { class: "flowBtn green", type: "button", text: "批量推进节点" }),
           el("button", { class: "flowBtn orange", type: "button", text: "批量暂停" })
         ])
@@ -8012,6 +8212,70 @@
         setUserModalContent([body], [el("button", { class: "btn", text: "关闭", type: "button", onclick: () => hideUserOverlay() })]);
       }
 
+      function openEdit(item) {
+        const isEdit = !!item;
+        const studentNoInput = el("input", { value: item ? (item.studentNo || "") : "", placeholder: "学号，例如 2023001" });
+        const nameInput = el("input", { value: item ? (item.name || "") : "", placeholder: "姓名" });
+        const classInput = el("input", { value: item ? (item.className || "") : "", placeholder: "班级，例如 计算机1班" });
+        const flowInput = el("input", { value: item ? (item.flow || "") : "", placeholder: "流程，例如 入党流程" });
+        const nodeInput = el("input", { value: item ? (item.currentNode || "") : "", placeholder: "当前节点，例如 入党积极分子" });
+        const progressInput = el("input", { value: item ? String(item.progress ?? 0) : "0", type: "number", min: "0", max: "100", step: "1", inputmode: "numeric" });
+        const statusSelect2 = el("select", null, [
+          el("option", { value: "OK", text: "正常" }),
+          el("option", { value: "SOON", text: "即将到期" }),
+          el("option", { value: "PAUSED", text: "已暂停" })
+        ]);
+        statusSelect2.value = item ? (String(item.status || "OK").toUpperCase()) : "OK";
+
+        const body = el("div", { style: "display:grid; gap: 12px;" }, [
+          el("div", null, [el("div", { class: "cfgLabel", text: "学号 *" }), studentNoInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "姓名 *" }), nameInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "班级" }), classInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "流程 *" }), flowInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "当前节点 *" }), nodeInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "进度(0-100)" }), progressInput]),
+          el("div", null, [el("div", { class: "cfgLabel", text: "状态" }), statusSelect2])
+        ]);
+
+        showUserOverlay(isEdit ? "编辑进度记录" : "新增进度记录");
+        setUserModalContent([body], [
+          el("button", { class: "btn", type: "button", text: "取消", onclick: () => hideUserOverlay() }),
+          el("button", { class: "btn primary", type: "button", text: "保存", onclick: () => {
+            const studentNo = studentNoInput.value.trim();
+            const name = nameInput.value.trim();
+            const flow = flowInput.value.trim();
+            const node = nodeInput.value.trim();
+            if (!studentNo || !name || !flow || !node) {
+              document.getElementById("userModalMsg").textContent = "请填写学号、姓名、流程、当前节点";
+              return;
+            }
+            const p = Number(String(progressInput.value || "0").trim());
+            if (!Number.isFinite(p) || !Number.isInteger(p) || p < 0 || p > 100) {
+              document.getElementById("userModalMsg").textContent = "进度必须为 0-100 的整数";
+              return;
+            }
+            const next = Object.assign({}, item || {}, {
+              id: isEdit ? item.id : (Math.max(0, ...items.map(x => x.id || 0)) + 1),
+              studentNo,
+              name,
+              className: classInput.value.trim(),
+              flow,
+              currentNode: node,
+              progress: p,
+              status: statusSelect2.value
+            });
+            if (isEdit) {
+              items = items.map(x => x.id === item.id ? next : x);
+            } else {
+              items = [next].concat(items);
+            }
+            saveLocal(items);
+            applyFilter();
+            hideUserOverlay();
+          }})
+        ]);
+      }
+
       function render(list) {
         toast.textContent = "";
         tableCard.innerHTML = "";
@@ -8055,8 +8319,10 @@
             el("div", { class: "mono", text: p + "%" })
           ]);
           const viewBtn = el("button", { class: "certIconBtn blue", type: "button", title: "查看" }, [svgIcon("eye")]);
+          const editBtn = el("button", { class: "certIconBtn", type: "button", title: "编辑" }, [svgIcon("edit")]);
           const toggleBtn = el("button", { class: "certIconBtn " + (String(it.status).toUpperCase() === "PAUSED" ? "blue" : "orange"), type: "button", title: String(it.status).toUpperCase() === "PAUSED" ? "恢复" : "暂停" }, [svgIcon(String(it.status).toUpperCase() === "PAUSED" ? "play" : "pause")]);
           viewBtn.addEventListener("click", () => openDetail(it));
+          editBtn.addEventListener("click", () => openEdit(it));
           toggleBtn.addEventListener("click", () => {
             const nextStatus = String(it.status).toUpperCase() === "PAUSED" ? "OK" : "PAUSED";
             items = items.map(x => x.id === it.id ? Object.assign({}, x, { status: nextStatus }) : x);
@@ -8073,7 +8339,7 @@
             el("td", null, [el("div", { text: it.currentNode || "-" })]),
             el("td", null, [progress]),
             el("td", null, [statusPill(it.status)]),
-            el("td", null, [el("div", { class: "certActions" }, [viewBtn, toggleBtn])])
+            el("td", null, [el("div", { class: "certActions" }, [viewBtn, editBtn, toggleBtn])])
           ]));
         });
         table.appendChild(tbody);
@@ -8118,6 +8384,8 @@
         applyFilter();
         toast.textContent = "已批量暂停";
       });
+
+      header.querySelector(".flowBtn").addEventListener("click", () => openEdit(null));
 
       filterBtn.addEventListener("click", applyFilter);
       searchInput.addEventListener("keydown", (e) => {

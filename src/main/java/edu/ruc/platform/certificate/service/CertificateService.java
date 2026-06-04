@@ -113,6 +113,7 @@ public class CertificateService implements CertificateApplicationService {
                         entity.getCertificateType(),
                         entity.getStatus(),
                         entity.getReason(),
+                        getAttachments(entity.getId()),
                         entity.getCreatedAt() == null ? LocalDateTime.now() : entity.getCreatedAt()
                 ))
                 .toList();
@@ -343,6 +344,7 @@ public class CertificateService implements CertificateApplicationService {
                 entity.getCertificateType(),
                 entity.getStatus(),
                 entity.getReason(),
+                getAttachments(entity.getId()),
                 entity.getCreatedAt() == null ? LocalDateTime.now() : entity.getCreatedAt()
         );
     }

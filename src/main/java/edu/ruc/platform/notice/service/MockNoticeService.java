@@ -46,6 +46,7 @@ public class MockNoticeService implements NoticeApplicationService {
                         resolvePriority(notice, user),
                         matchedRules(notice, user),
                         resolveDeliveryChannels(notice),
+                        notice.attachmentFileId(),
                         notice.publishTime()))
                 .toList();
     }

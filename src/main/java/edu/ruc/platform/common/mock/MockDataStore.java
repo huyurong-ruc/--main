@@ -95,9 +95,9 @@ public class MockDataStore {
 
     public List<TargetedNoticeResponse> notices() {
         return List.of(
-                new TargetedNoticeResponse(1L, "先锋奖章与奖学金咨询入口", "统一解答先锋奖章、吴玉章奖学金、优秀毕业生等标准问题。", List.of("奖助学金", "知识库"), "全体学生", "MEDIUM", List.of("全体学生"), List.of("IN_APP"), LocalDateTime.of(2026, 3, 20, 9, 0)),
-                new TargetedNoticeResponse(2L, "入党入团流程说明更新", "已补充固定流程、时间线和常见问题入口。", List.of("党团事务", "流程"), "全体学生", "HIGH", List.of("全体学生", "党团事务标签"), List.of("IN_APP", "EMAIL"), LocalDateTime.of(2026, 3, 21, 11, 0)),
-                new TargetedNoticeResponse(3L, "2023级计算机类就业信息汇总", "面向 2023 级计算机类学生的就业与实习通知。", List.of("就业", "实习", "计算机类"), "2023级/计算机类", "HIGH", List.of("年级匹配", "专业匹配", "就业标签"), List.of("IN_APP", "EMAIL", "WECHAT"), LocalDateTime.of(2026, 3, 22, 10, 30))
+                new TargetedNoticeResponse(1L, "先锋奖章与奖学金咨询入口", "统一解答先锋奖章、吴玉章奖学金、优秀毕业生等标准问题。", List.of("奖助学金", "知识库"), "全体学生", "MEDIUM", List.of("全体学生"), List.of("IN_APP"), null, LocalDateTime.of(2026, 3, 20, 9, 0)),
+                new TargetedNoticeResponse(2L, "入党入团流程说明更新", "已补充固定流程、时间线和常见问题入口。", List.of("党团事务", "流程"), "全体学生", "HIGH", List.of("全体学生", "党团事务标签"), List.of("IN_APP", "EMAIL"), null, LocalDateTime.of(2026, 3, 21, 11, 0)),
+                new TargetedNoticeResponse(3L, "2023级计算机类就业信息汇总", "面向 2023 级计算机类学生的就业与实习通知。", List.of("就业", "实习", "计算机类"), "2023级/计算机类", "HIGH", List.of("年级匹配", "专业匹配", "就业标签"), List.of("IN_APP", "EMAIL", "WECHAT"), null, LocalDateTime.of(2026, 3, 22, 10, 30))
         );
     }
 

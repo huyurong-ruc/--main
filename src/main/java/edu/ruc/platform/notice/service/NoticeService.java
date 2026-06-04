@@ -57,6 +57,7 @@ public class NoticeService implements NoticeApplicationService {
                         resolvePriority(notice, studentProfile),
                         resolveMatchedRules(notice, studentProfile),
                         resolveDeliveryChannels(notice),
+                        null,
                         notice.getPublishTime()
                 ))
                 .toList();
