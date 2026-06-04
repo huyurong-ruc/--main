@@ -8151,6 +8151,44 @@
         return [];
       }
 
+      function parseLocalDateTime(value) {
+        if (!value) return null;
+        let s = String(value).trim();
+        if (!s) return null;
+        if (s.includes(" ") && !s.includes("T")) s = s.replace(" ", "T");
+        const parts = s.split("T");
+        if (parts.length !== 2) return null;
+        const datePart = parts[0];
+        const timePart = parts[1];
+        const dateNums = datePart.split("-").map(x => Number(x));
+        const timeNums = timePart.split(":").map(x => Number(x));
+        if (dateNums.length !== 3 || timeNums.length < 2) return null;
+        const y = dateNums[0];
+        const m = dateNums[1];
+        const d = dateNums[2];
+        const hh = timeNums[0];
+        const mm = timeNums[1];
+        if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d) || !Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+        if (m < 1 || m > 12 || d < 1 || d > 31 || hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+        return new Date(y, m - 1, d, hh, mm, 0, 0);
+      }
+
+      function normalizePositiveInt(value, fallback) {
+        const fb = Number.isFinite(Number(fallback)) ? Math.floor(Number(fallback)) : 1;
+        const n = Number(value);
+        if (!Number.isFinite(n)) return fb >= 1 ? fb : 1;
+        const i = Math.floor(n);
+        return i >= 1 ? i : (fb >= 1 ? fb : 1);
+      }
+
+      function isStartAfterEnd(startValue, endValue) {
+        if (!startValue || !endValue) return false;
+        const sd = parseLocalDateTime(startValue);
+        const ed = parseLocalDateTime(endValue);
+        if (!sd || !ed) return false;
+        return sd.getTime() > ed.getTime();
+      }
+
       async function fetchShowcases() {
         try {
           const pageData = await apiJson("/api/v1/admin/honors/page?" + buildQuery({
@@ -8202,7 +8240,7 @@
           .filter(x => !s.awardYear || String(x.awardYear || "") === String(s.awardYear))
           .filter(x => !s.recipientType || String(x.recipientType || "") === String(s.recipientType))
           .filter(x => s.publicVisible === "" || String(!!x.publicVisible) === String(s.publicVisible))
-          .sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0));
+          .sort((a, b) => normalizePositiveInt(a.displayOrder, 1) - normalizePositiveInt(b.displayOrder, 1));
       }
 
       function recipientTypeText(type) {
@@ -8220,8 +8258,13 @@
       }
 
       function validText(item) {
-        const start = item.displayStartAt ? String(item.displayStartAt).replace("T", " ").slice(0, 16) : "立即";
-        const end = item.displayEndAt ? String(item.displayEndAt).replace("T", " ").slice(0, 16) : "长期";
+        const startRaw = item.displayStartAt ? String(item.displayStartAt).slice(0, 16) : "";
+        const endRaw = item.displayEndAt ? String(item.displayEndAt).slice(0, 16) : "";
+        const swapped = startRaw && endRaw && isStartAfterEnd(startRaw, endRaw);
+        const sv = swapped ? endRaw : startRaw;
+        const ev = swapped ? startRaw : endRaw;
+        const start = sv ? sv.replace("T", " ").slice(0, 16) : "立即";
+        const end = ev ? ev.replace("T", " ").slice(0, 16) : "长期";
         return start + " 至 " + end;
       }
 
@@ -8242,7 +8285,7 @@
           title: item.title,
           description: item.description || "",
           publicVisible: !!item.publicVisible,
-          displayOrder: Number(item.displayOrder || 0),
+          displayOrder: normalizePositiveInt(item.displayOrder, 1),
           displayStartAt: item.displayStartAt || null,
           displayEndAt: item.displayEndAt || null,
           importTaskId: item.importTaskId || null
@@ -8297,7 +8340,7 @@
           advancedDeeds: recipient.advancedDeeds || "",
           photoFileId: recipient.photoFileId || null,
           publicVisible: !!recipient.publicVisible,
-          displayOrder: Number(recipient.displayOrder || 0),
+          displayOrder: normalizePositiveInt(recipient.displayOrder, 1),
           displayStartAt: recipient.displayStartAt || null,
           displayEndAt: recipient.displayEndAt || null,
           importTaskId: recipient.importTaskId || null
@@ -8367,9 +8410,10 @@
         desc.value = values.description || "";
         const publicVisible = el("input", { type: "checkbox" });
         publicVisible.checked = values.publicVisible !== false;
-        const order = el("input", { value: values.displayOrder || 0, type: "number" });
+        const order = el("input", { value: normalizePositiveInt(values.displayOrder, 1), type: "number", min: 1, step: 1 });
         const start = el("input", { value: values.displayStartAt ? String(values.displayStartAt).slice(0, 16) : "", type: "datetime-local" });
         const end = el("input", { value: values.displayEndAt ? String(values.displayEndAt).slice(0, 16) : "", type: "datetime-local" });
+        order.addEventListener("blur", () => { order.value = String(normalizePositiveInt(order.value, 1)); });
         showUserOverlay(item ? "编辑奖助信息模块" : "新建奖助信息模块");
         setUserModalContent([
           modalYearList,
@@ -8392,6 +8436,10 @@
               document.getElementById("userModalMsg").textContent = "请填写标题和展示类别";
               return;
             }
+            if (isStartAfterEnd(start.value, end.value)) {
+              document.getElementById("userModalMsg").textContent = "展示开始时间不得晚于展示结束时间";
+              return;
+            }
             await saveShowcase(Object.assign({}, values, {
               awardYear: Number(year.value || new Date().getFullYear()),
               honorCategory: category.value.trim(),
@@ -8399,7 +8447,7 @@
               title: title.value.trim(),
               description: desc.value.trim(),
               publicVisible: publicVisible.checked,
-              displayOrder: Number(order.value || 0),
+              displayOrder: normalizePositiveInt(order.value, 1),
               displayStartAt: start.value || "",
               displayEndAt: end.value || ""
             }));
@@ -8422,9 +8470,10 @@
         deeds.value = values.advancedDeeds || "";
         const publicVisible = el("input", { type: "checkbox" });
         publicVisible.checked = values.publicVisible !== false;
-        const order = el("input", { value: values.displayOrder || 0, type: "number" });
+        const order = el("input", { value: normalizePositiveInt(values.displayOrder, 1), type: "number", min: 1, step: 1 });
         const start = el("input", { value: values.displayStartAt ? String(values.displayStartAt).slice(0, 16) : "", type: "datetime-local" });
         const end = el("input", { value: values.displayEndAt ? String(values.displayEndAt).slice(0, 16) : "", type: "datetime-local" });
+        order.addEventListener("blur", () => { order.value = String(normalizePositiveInt(order.value, 1)); });
         const preview = el("div", { class: "honorEmpty", text: "暂无照片预览" });
         let localPreviewUrl = null;
         function renderPhoto(url) {
@@ -8487,6 +8536,10 @@
               document.getElementById("userModalMsg").textContent = "请填写获得者名称";
               return;
             }
+            if (isStartAfterEnd(start.value, end.value)) {
+              document.getElementById("userModalMsg").textContent = "展示开始时间不得晚于展示结束时间";
+              return;
+            }
             const payload = {
               recipientType: showcase.recipientType,
               studentId: values.studentId || null,
@@ -8499,7 +8552,7 @@
               advancedDeeds: deeds.value.trim(),
               photoFileId: values.photoFileId || null,
               publicVisible: publicVisible.checked,
-              displayOrder: Number(order.value || 0),
+              displayOrder: normalizePositiveInt(order.value, 1),
               displayStartAt: start.value || null,
               displayEndAt: end.value || null,
               importTaskId: values.importTaskId || null
@@ -8664,7 +8717,7 @@
               el("span", { text: (item.awardYear || "-") + "年" }),
               el("span", { text: item.honorCategory || "-" }),
               el("span", { text: recipientTypeText(item.recipientType) }),
-              el("span", { text: "排序 " + (item.displayOrder || 0) }),
+              el("span", { text: "排序 " + normalizePositiveInt(item.displayOrder, 1) }),
               visiblePill(item.publicVisible !== false)
             ]),
             el("div", { class: "honorExcerpt", text: item.description || "暂无整体简介" })
@@ -8677,7 +8730,7 @@
       if (!selected) {
         detailChildren.push(el("div", { class: "honorEmpty", text: "请选择或新建一个展示模块。" }));
       } else {
-        const recipients = (selected.recipients || []).slice().sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0));
+        const recipients = (selected.recipients || []).slice().sort((a, b) => normalizePositiveInt(a.displayOrder, 1) - normalizePositiveInt(b.displayOrder, 1));
         detailChildren.push(el("div", { class: "honorDetailTitle" }, [
           el("div", null, [
             el("h3", { text: selected.title || "-" }),
@@ -8721,7 +8774,7 @@
                 el("div", { class: "honorRecipientSub", text: [r.studentNo, r.grade, r.major, r.className].filter(Boolean).join(" · ") || recipientTypeText(r.recipientType) })
               ])
             ]),
-            el("div", { class: "honorMeta" }, [visiblePill(r.publicVisible !== false), el("span", { text: "排序 " + (r.displayOrder || 0) }), el("span", { text: validText(r) })]),
+            el("div", { class: "honorMeta" }, [visiblePill(r.publicVisible !== false), el("span", { text: "排序 " + normalizePositiveInt(r.displayOrder, 1) }), el("span", { text: validText(r) })]),
             el("div", { class: "honorExcerpt", text: r.awardIntro || "暂无获奖简介" }),
             el("div", { class: "iconActions", style: "margin-top:10px;" }, [
               el("button", { class: "linkAction", type: "button", text: "查看/编辑", onclick: (e) => { e.stopPropagation(); openRecipientForm(selected, r); } }),
