@@ -24,7 +24,7 @@ exports.main = async (event, context) => {
   // ========== 配置区域：替换为你的真实后端地址 ==========
   // 注意：云函数内访问的外部域名需要在小程序后台配置为 request 合法域名
   // 并且该域名必须支持 HTTPS
-  const BASE_URL = 'https://camping-penny-concert.ngrok-free.dev/api/v1'
+  const BASE_URL = 'https://repaint-doorman-nutrient.ngrok-free.dev/api/v1'
   // ======================================================
 
   if (!path) {
