@@ -1,5 +1,22 @@
 <!-- sub-pages/faq/ticket.wxml -->
 <view class="container">
+  <view class="filter-bar">
+    <view
+      wx:for="{{statusTabs}}"
+      wx:key="value"
+      class="filter-chip {{activeStatus === item.value ? 'active' : ''}}"
+      bindtap="onStatusChange"
+      data-status="{{item.value}}"
+    >
+      {{item.label}}
+    </view>
+  </view>
+
+  <view wx:if="{{errorMessage}}" class="error-card">
+    <text class="error-text">{{errorMessage}}</text>
+    <text class="error-action" bindtap="retryLoad">重新加载</text>
+  </view>
+
   <view class="list">
     <view 
       wx:for="{{tickets}}"
@@ -10,7 +27,7 @@
     >
       <view class="ticket-header">
         <text class="ticket-title">工单 #{{item.id}}</text>
-        <text class="ticket-status status-{{item.status}}">{{item.statusText}}</text>
+        <text class="ticket-status status-{{item.statusClass}}">{{item.statusText}}</text>
       </view>
       <view class="ticket-content">
         <text>{{item.content}}</text>
@@ -22,11 +39,15 @@
     </view>
   </view>
   
-  <view wx:if="{{!loading && tickets.length === 0}}" class="empty-state">
+  <view wx:if="{{!loading && !errorMessage && tickets.length === 0}}" class="empty-state">
     <text>暂无工单记录</text>
   </view>
   
   <view wx:if="{{loading}}" class="loading-more">
     <text>加载中...</text>
+  </view>
+
+  <view wx:if="{{!loading && tickets.length > 0 && !hasMore}}" class="loading-more">
+    <text>没有更多工单了</text>
   </view>
 </view>

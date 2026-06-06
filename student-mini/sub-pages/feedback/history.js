@@ -20,27 +20,16 @@ Page({
   },
   
   async loadList() {
-    if (this.loading || !this.hasMore) return
-    
-    this.setData({ loading: true })
-    
-    try {
-      const res = await get('/feedback', {
-        page: this.data.page,
-        pageSize: this.data.pageSize
-      })
-      
-      const list = res.data.list || []
-      this.setData({
-        history: this.data.page === 1 ? list : [...this.data.history, ...list],
-        hasMore: list.length >= this.data.pageSize,
-        page: this.data.page + 1
-      })
-    } catch (e) {
-      console.error('加载历史失败', e)
-    } finally {
-      this.setData({ loading: false })
-    }
+    if (this.data.loading || !this.data.hasMore) return
+
+    // 管理端反馈处理模块尚未建设，暂时拦截并友好提示
+    wx.showModal({
+      title: '提示',
+      content: '意见反馈功能正在持续开发中，预计后续版本上线',
+      showCancel: false
+    })
+    this.setData({ loading: false, hasMore: false })
+    return
   },
   
   onPullDownRefresh() {

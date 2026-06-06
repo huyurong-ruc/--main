@@ -29,9 +29,10 @@
 
   <!-- 列表 -->
   <view class="list">
-    <view 
+    <view
       wx:for="{{faqList}}"
       wx:key="id"
+      id="faq-{{item.id}}"
       class="faq-card {{item.expanded ? 'expanded' : ''}}"
       bindtap="toggleItem"
       data-index="{{index}}"

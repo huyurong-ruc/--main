@@ -1,6 +1,8 @@
 // sub-pages/faq/submit.js
-const app = getApp()
-const { post } = require('../../api/request')
+const {
+  getTicketErrorMessage,
+  submitTicket
+} = require('../../api/faq')
 
 let submitTimer = null
 
@@ -37,18 +39,24 @@ Page({
   },
   
   async submitTicket() {
-    wx.showLoading({ title: '提交中...' })
     try {
-      await post('/student/qa-tickets', {
+      const res = await submitTicket({
         questionText: this.data.content.trim(),
         contact: this.data.contact.trim()
       })
+      const createdId = res?.data?.id ? String(res.data.id) : ''
       wx.showToast({ title: '提交成功', icon: 'success' })
-      setTimeout(() => wx.navigateBack(), 1000)
+      setTimeout(() => {
+        wx.redirectTo({
+          url: `/sub-pages/faq/ticket${createdId ? `?createdId=${createdId}` : ''}`
+        })
+      }, 300)
     } catch (e) {
-      wx.showToast({ title: '提交失败', icon: 'none' })
+      wx.showToast({
+        title: getTicketErrorMessage(e, '提交失败，请稍后重试'),
+        icon: 'none'
+      })
     } finally {
-      wx.hideLoading()
       this.setData({ submitting: false })
     }
   }

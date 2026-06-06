@@ -41,13 +41,17 @@ Page({
     pageSize: 10,
     hasMore: false,
     total: 0,
-    errorMessage: ''
+    errorMessage: '',
+    focusId: ''
   },
 
-  onLoad() {
+  onLoad(options) {
     if (!app.isLoggedIn()) {
       wx.redirectTo({ url: '/sub-pages/login/index' })
       return
+    }
+    if (options?.focusId) {
+      this.setData({ focusId: String(options.focusId) })
     }
     this.loadList(true)
   },
@@ -91,6 +95,19 @@ Page({
         hasMore: false,
         errorMessage: ''
       })
+
+      // 若从工单跳转而来，定位并展开目标 FAQ
+      const focusId = this.data.focusId
+      if (focusId) {
+        const idx = list.findIndex((item) => String(item.id) === String(focusId))
+        if (idx >= 0) {
+          this.setData({ [`faqList[${idx}].expanded`]: true })
+          setTimeout(() => {
+            wx.pageScrollTo({ selector: `#faq-${focusId}`, duration: 300 })
+          }, 300)
+        }
+        this.setData({ focusId: '' })
+      }
     } catch (e) {
       console.error('加载FAQ失败', e)
       const message = getFaqErrorMessage(e)

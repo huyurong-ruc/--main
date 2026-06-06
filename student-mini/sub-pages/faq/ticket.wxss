@@ -5,6 +5,54 @@
   padding: 24rpx;
 }
 
+/* 筛选栏 */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.filter-chip {
+  font-size: 26rpx;
+  color: #666;
+  background: #fff;
+  padding: 12rpx 24rpx;
+  border-radius: 8rpx;
+  border: 1rpx solid #e8e8e8;
+}
+
+.filter-chip.active {
+  color: #1677ff;
+  background: #e6f4ff;
+  border-color: #1677ff;
+}
+
+/* 错误卡片 */
+.error-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 48rpx 32rpx;
+  text-align: center;
+  margin-bottom: 24rpx;
+}
+
+.error-text {
+  display: block;
+  font-size: 28rpx;
+  color: #666;
+  margin-bottom: 24rpx;
+}
+
+.error-action {
+  display: inline-block;
+  font-size: 28rpx;
+  color: #1677ff;
+  padding: 12rpx 32rpx;
+  border: 1rpx solid #1677ff;
+  border-radius: 8rpx;
+}
+
 .list {
   display: flex;
   flex-direction: column;
@@ -36,17 +84,22 @@
   border-radius: 4rpx;
 }
 
-.status-pending {
+.status-open {
   background: #fff7e6;
   color: #fa8c16;
 }
 
-.status-replied {
-  background: #f6ffed;
-  color: #52c41a;
+.status-progress {
+  background: #e6f4ff;
+  color: #1677ff;
 }
 
 .status-closed {
+  background: #f5f5f5;
+  color: #999;
+}
+
+.status-unknown {
   background: #f5f5f5;
   color: #999;
 }
@@ -56,6 +109,7 @@
   color: #666;
   line-height: 1.6;
   margin-bottom: 16rpx;
+  word-break: break-all;
 }
 
 .ticket-footer {

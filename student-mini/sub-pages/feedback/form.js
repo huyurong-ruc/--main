@@ -78,8 +78,13 @@ Page({
       return
     }
 
-    this.setData({ submitting: true })
-    this.submitFeedback()
+    // 管理端反馈处理模块尚未建设，暂时拦截提交并友好提示
+    wx.showModal({
+      title: '提示',
+      content: '意见反馈功能正在持续开发中，预计后续版本上线',
+      showCancel: false
+    })
+    return
   },
 
   async submitFeedback() {
