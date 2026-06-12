@@ -4928,9 +4928,7 @@
             el("div", { class: "field", style: "min-width: 220px;" }, [el("label", { text: "角色 role" }), roleSelect])
           ]),
           el("div", { class: "row" }, [
-            el("div", { class: "field", style: "min-width: 160px;" }, [el("label", { text: "状态 enabled" }), enabledSelect]),
-            el("div", { class: "field", style: "flex:1; min-width: 260px;" }, [el("label", { text: "新密码 rawPassword" }), pwdInput]),
-            el("div", { class: "field", style: "min-width: 180px;" }, [el("label", { text: "首次登录改密 passwordResetRequired" }), resetSelect])
+            el("div", { class: "field", style: "min-width: 160px;" }, [el("label", { text: "状态 enabled" }), enabledSelect])
           ]),
           el("div", { class: "sub", text: "微信绑定：" + (detail.wechatBound ? "是" : "否") + " · 登录失败次数：" + String(detail.failedLoginAttempts ?? 0) + " · 锁定：" + String(detail.locked) })
         ], [
