@@ -2250,6 +2250,8 @@ public class MockAdminService implements AdminApplicationService {
                 PartyReminderTaskResponse updated = new PartyReminderTaskResponse(
                         item.id(),
                         item.progressId(),
+                        item.flowId(),
+                        item.flowName(),
                         item.nodeId(),
                         item.nodeName(),
                         item.studentUserId(),
@@ -2282,6 +2284,8 @@ public class MockAdminService implements AdminApplicationService {
                 PartyReminderTaskResponse updated = new PartyReminderTaskResponse(
                         item.id(),
                         item.progressId(),
+                        item.flowId(),
+                        item.flowName(),
                         item.nodeId(),
                         item.nodeName(),
                         item.studentUserId(),
@@ -2314,6 +2318,8 @@ public class MockAdminService implements AdminApplicationService {
                 PartyReminderTaskResponse updated = new PartyReminderTaskResponse(
                         item.id(),
                         item.progressId(),
+                        item.flowId(),
+                        item.flowName(),
                         item.nodeId(),
                         item.nodeName(),
                         item.studentUserId(),
@@ -2345,6 +2351,8 @@ public class MockAdminService implements AdminApplicationService {
                 PartyReminderTaskResponse updated = new PartyReminderTaskResponse(
                         item.id(),
                         item.progressId(),
+                        item.flowId(),
+                        item.flowName(),
                         item.nodeId(),
                         item.nodeName(),
                         item.studentUserId(),
@@ -2371,10 +2379,10 @@ public class MockAdminService implements AdminApplicationService {
         }
         LocalDateTime now = LocalDateTime.now();
         partyReminderTasks.addAll(List.of(
-                new PartyReminderTaskResponse(1L, 101L, 11L, "提交入党申请书", 20001L, "张三", "2026010001", now.plusDays(7).withHour(9).withMinute(0).withSecond(0).withNano(0), "miniprogram", "pending", null, null, now),
-                new PartyReminderTaskResponse(2L, 102L, 12L, "党课学习", 20002L, "李四", "2026010002", now.plusDays(10).withHour(9).withMinute(0).withSecond(0).withNano(0), "miniprogram", "sent", now.minusDays(2), null, now.minusDays(2)),
-                new PartyReminderTaskResponse(3L, 103L, 13L, "思想汇报", 20003L, "王五", "2026010003", now.plusDays(3).withHour(9).withMinute(0).withSecond(0).withNano(0), "sms", "failed", now.minusDays(1), "用户未绑定手机号", now.minusDays(1)),
-                new PartyReminderTaskResponse(4L, 104L, 14L, "预备党员转正", 20004L, "赵六", "2026010004", now.plusDays(21).withHour(9).withMinute(0).withSecond(0).withNano(0), "email", "pending", null, null, now.minusDays(3))
+                new PartyReminderTaskResponse(1L, 101L, 1L, "入党流程", 11L, "提交入党申请书", 20001L, "张三", "2026010001", now.plusDays(7).withHour(9).withMinute(0).withSecond(0).withNano(0), "miniprogram", "pending", null, null, now),
+                new PartyReminderTaskResponse(2L, 102L, 1L, "入党流程", 12L, "党课学习", 20002L, "李四", "2026010002", now.plusDays(10).withHour(9).withMinute(0).withSecond(0).withNano(0), "miniprogram", "sent", now.minusDays(2), null, now.minusDays(2)),
+                new PartyReminderTaskResponse(3L, 103L, 1L, "入党流程", 13L, "思想汇报", 20003L, "王五", "2026010003", now.plusDays(3).withHour(9).withMinute(0).withSecond(0).withNano(0), "sms", "failed", now.minusDays(1), "用户未绑定手机号", now.minusDays(1)),
+                new PartyReminderTaskResponse(4L, 104L, 2L, "党员发展流程", 14L, "预备党员转正", 20004L, "赵六", "2026010004", now.plusDays(21).withHour(9).withMinute(0).withSecond(0).withNano(0), "email", "pending", null, null, now.minusDays(3))
         ));
     }
 

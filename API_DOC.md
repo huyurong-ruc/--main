@@ -668,6 +668,142 @@
 - `remindDate`
 - `level`
 
+### 3.4 管理端：学生进度总览
+
+- `GET /api/v1/admin/party-progress/page`
+
+请求参数（均可选）：
+- `status`：`not_started` / `in_progress` / `paused` / `completed`
+- `studentKeyword`：学生姓名或学号关键词
+- `grade`：年级
+- `className`：班级
+- `flowId`：流程ID
+- `page`、`size`
+
+返回字段：
+- `id`
+- `studentUserId`
+- `studentNo`
+- `studentName`
+- `studentGrade`
+- `studentClassName`
+- `flowId`
+- `flowName`
+- `currentNodeId`
+- `currentNodeName`
+- `status`
+- `startedAt`
+- `updatedNodeAt`
+- `nextDeadlineAt`
+- `updatedAt`
+
+#### 新增/编辑学生进度记录
+
+- `POST /api/v1/admin/party-progress`
+- `PUT /api/v1/admin/party-progress/{id}`
+
+请求体：
+
+```json
+{
+  "studentNo": "2023001",
+  "flowId": 1,
+  "currentNodeId": 3,
+  "status": "in_progress",
+  "startedAt": "2026-06-01T09:00:00",
+  "updatedNodeAt": "2026-06-01T09:00:00",
+  "nextDeadlineAt": "2026-06-30T23:59:59"
+}
+```
+
+#### 批量导入/导出（学生进度）
+
+- `POST /api/v1/admin/party-progress/import`（multipart/form-data，字段名 `file`）
+- `GET /api/v1/admin/party-progress/export`
+
+导入Excel列（从第1行开始为表头，第2行开始为数据）：
+- A: `studentNo`（学号）
+- B: `flowId`（流程ID）
+- C: `currentNodeId`（当前节点ID，可空）
+- D: `status`（可空，默认 `in_progress`）
+- E: `startedAt`（可空）
+- F: `updatedNodeAt`（可空）
+- G: `nextDeadlineAt`（可空）
+
+### 3.5 管理端：提醒任务
+
+- `GET /api/v1/admin/party-reminders/page`
+- `GET /api/v1/admin/party-reminders`
+
+请求参数（均可选）：
+- `status`：`pending` / `sent` / `canceled` / `failed`
+- `channel`：`miniprogram` / `sms` / `email`
+- `studentKeyword`：学生姓名或学号关键词
+- `page`、`size`
+
+#### 新增/编辑提醒任务
+
+- `POST /api/v1/admin/party-reminders`
+- `PUT /api/v1/admin/party-reminders/{id}`
+
+请求体（新增时 `progressId` 与 `studentNo+flowId` 二选一）：
+
+```json
+{
+  "progressId": 10,
+  "studentNo": "2023001",
+  "flowId": 1,
+  "nodeId": 3,
+  "dueAt": "2026-06-10T09:00:00",
+  "channel": "miniprogram",
+  "status": "pending"
+}
+```
+
+#### 前端下拉所需元数据接口
+
+- `GET /api/v1/admin/party-reminders/meta/students?keyword=`
+
+返回字段：
+- `studentUserId`
+- `studentNo`
+- `studentName`
+- `grade`
+- `className`
+
+- `GET /api/v1/admin/party-reminders/meta/students/{studentUserId}/flows`
+
+返回字段：
+- `progressId`
+- `flowId`
+- `flowName`
+
+- `GET /api/v1/admin/party-reminders/meta/flows`
+
+返回字段：
+- `flowId`
+- `flowName`
+
+- `GET /api/v1/admin/party-reminders/meta/flows/{flowId}/nodes`
+
+返回字段：
+- `nodeId`
+- `seqNo`
+- `nodeName`
+
+#### 批量导入/导出（提醒任务）
+
+- `POST /api/v1/admin/party-reminders/import`（multipart/form-data，字段名 `file`）
+- `GET /api/v1/admin/party-reminders/export`
+
+导入Excel列（从第1行开始为表头，第2行开始为数据）：
+- A: `studentNo`（学号）
+- B: `flowId`（流程ID）
+- C: `nodeId`（节点ID）
+- D: `dueAt`（计划时间）
+- E: `channel`（可空，默认 `miniprogram`）
+- F: `status`（可空，默认 `pending`）
+
 ## 4. 通知模块
 
 ### 4.1 学生端精准通知列表

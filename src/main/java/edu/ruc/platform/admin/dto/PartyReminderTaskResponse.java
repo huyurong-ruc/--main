@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 public record PartyReminderTaskResponse(
         Long id,
         Long progressId,
+        Long flowId,
+        String flowName,
         Long nodeId,
         String nodeName,
         Long studentUserId,

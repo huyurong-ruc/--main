@@ -7858,6 +7858,9 @@
           el("div", { class: "desc", text: "管理待发送、已发送、失败的流程提醒任务" })
         ]),
         el("div", { class: "actions" }, [
+          el("button", { class: "flowBtn green", type: "button" }, [el("span", { text: "新增提醒任务" })]),
+          el("button", { class: "flowBtn", type: "button" }, [el("span", { text: "批量导入" })]),
+          el("button", { class: "flowBtn", type: "button" }, [el("span", { text: "导出" })]),
           el("button", { class: "flowBtn", type: "button" }, [svgIcon("send"), el("span", { text: "批量发送到期提醒" })])
         ])
       ]);
@@ -7889,6 +7892,221 @@
       content.appendChild(tableCard);
       content.appendChild(toast);
 
+      const importInput = el("input", { type: "file", accept: ".xlsx,.xls", style: "display:none" });
+      content.appendChild(importInput);
+
+      function openUpsertModal(item) {
+        toast.textContent = "";
+        const isEdit = !!(item && item.id);
+        showUserOverlay(isEdit ? "编辑提醒任务" : "新增提醒任务");
+
+        function toDatetimeLocalValue(v) {
+          const s = v == null ? "" : String(v);
+          if (!s) return "";
+          const iso = s.includes("T") ? s : s.replace(" ", "T");
+          return iso.length >= 16 ? iso.slice(0, 16) : iso;
+        }
+
+        async function loadStudents(keyword) {
+          const params = buildQuery({ keyword: normalizeText(keyword) });
+          return await apiJson("/api/v1/admin/party-reminders/meta/students" + (params ? ("?" + params) : ""), { method: "GET" });
+        }
+        async function loadFlows(studentUserId) {
+          return await apiJson("/api/v1/admin/party-reminders/meta/students/" + studentUserId + "/flows", { method: "GET" });
+        }
+        async function loadNodes(flowId) {
+          return await apiJson("/api/v1/admin/party-reminders/meta/flows/" + flowId + "/nodes", { method: "GET" });
+        }
+
+        const studentKwInput = el("input", { placeholder: "搜索学生姓名/学号（回车）" });
+        const studentSelect = el("select", { class: "instSelect" }, [el("option", { value: "", text: "请选择学生" })]);
+        const flowSelect2 = el("select", { class: "instSelect" }, [el("option", { value: "", text: "请选择流程" })]);
+        const nodeSelect2 = el("select", { class: "instSelect" }, [el("option", { value: "", text: "请选择节点" })]);
+
+        const dueAtInput = el("input", { type: "datetime-local" });
+        const channelSelect2 = el("select", { class: "instSelect" }, [
+          el("option", { value: "miniprogram", text: "小程序" }),
+          el("option", { value: "sms", text: "短信" }),
+          el("option", { value: "email", text: "邮件" })
+        ]);
+        channelSelect2.value = String((item && item.channel) ? item.channel : "miniprogram");
+        const statusSelect2 = el("select", { class: "instSelect" }, [
+          el("option", { value: "pending", text: "待发送" }),
+          el("option", { value: "sent", text: "已发送" }),
+          el("option", { value: "failed", text: "发送失败" }),
+          el("option", { value: "canceled", text: "已取消" })
+        ]);
+        statusSelect2.value = String((item && item.status) ? item.status : "pending");
+
+        const msg = el("div", { class: "toast" }, []);
+        let flowsCache = [];
+        let nodesCache = [];
+
+        async function refreshStudents(keyword) {
+          studentSelect.innerHTML = "";
+          studentSelect.appendChild(el("option", { value: "", text: "请选择学生" }));
+          const students = await loadStudents(keyword);
+          (students || []).forEach(s => {
+            const label = (s.studentName || "-") + (s.studentNo ? ("（" + s.studentNo + "）") : "");
+            studentSelect.appendChild(el("option", { value: String(s.studentUserId || ""), text: label }));
+          });
+        }
+
+        async function refreshFlows(studentUserId) {
+          flowSelect2.innerHTML = "";
+          flowSelect2.appendChild(el("option", { value: "", text: "请选择流程" }));
+          nodeSelect2.innerHTML = "";
+          nodeSelect2.appendChild(el("option", { value: "", text: "请选择节点" }));
+          flowsCache = [];
+          nodesCache = [];
+          if (!studentUserId) return;
+          const flows = await loadFlows(studentUserId);
+          flowsCache = Array.isArray(flows) ? flows : [];
+          flowsCache.forEach(f => {
+            const label = (f.flowName || "-") + (f.flowId ? ("（" + f.flowId + "）") : "");
+            flowSelect2.appendChild(el("option", { value: String(f.progressId || ""), text: label }));
+          });
+        }
+
+        async function refreshNodesByProgressId(progressId) {
+          nodeSelect2.innerHTML = "";
+          nodeSelect2.appendChild(el("option", { value: "", text: "请选择节点" }));
+          nodesCache = [];
+          if (!progressId) return;
+          const found = flowsCache.find(x => String(x.progressId) === String(progressId));
+          const flowId = found ? found.flowId : null;
+          if (!flowId) return;
+          const nodes = await loadNodes(flowId);
+          nodesCache = Array.isArray(nodes) ? nodes : [];
+          nodesCache.forEach(n => {
+            const label = (n.nodeName || "-") + (n.seqNo != null ? ("（" + n.seqNo + "）") : "");
+            nodeSelect2.appendChild(el("option", { value: String(n.nodeId || ""), text: label }));
+          });
+        }
+
+        const form = el("div", { style: "display:grid; gap: 10px;" }, [
+          el("div", { class: "sub", text: "第1步：选择学生" }),
+          el("div", { class: "row", style: "gap: 10px; align-items:center; flex-wrap: wrap;" }, [studentKwInput, studentSelect]),
+          el("div", { class: "sub", text: "第2步：选择流程" }),
+          flowSelect2,
+          el("div", { class: "sub", text: "第3步：选择节点" }),
+          nodeSelect2,
+          el("div", { class: "sub", text: "第4步：选择计划时间" }),
+          dueAtInput,
+          el("div", { class: "row", style: "gap: 10px; align-items:center;" }, [channelSelect2, statusSelect2]),
+          msg
+        ].filter(Boolean));
+
+        const saveBtn = el("button", { class: "btn primary", type: "button", text: "保存" });
+        const cancelBtn = el("button", { class: "btn", type: "button", text: "取消", onclick: () => hideUserOverlay() });
+        saveBtn.addEventListener("click", async () => {
+          msg.textContent = "";
+          const selectedStudentId = normalizeText(studentSelect.value);
+          const selectedProgressId = normalizeText(flowSelect2.value);
+          const selectedNodeId = normalizeText(nodeSelect2.value);
+          if (!selectedStudentId) {
+            msg.textContent = "请选择学生";
+            return;
+          }
+          if (!selectedProgressId) {
+            msg.textContent = "请选择流程";
+            return;
+          }
+          if (!selectedNodeId) {
+            msg.textContent = "请选择节点";
+            return;
+          }
+          const rawDue = normalizeText(dueAtInput.value);
+          if (!rawDue) {
+            msg.textContent = "请选择计划时间";
+            return;
+          }
+          let iso = rawDue;
+          if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(iso)) iso = iso + ":00";
+
+          try {
+            if (!isEdit) {
+              const payload = {
+                progressId: Number(selectedProgressId),
+                nodeId: Number(selectedNodeId),
+                dueAt: iso,
+                channel: normalizeText(channelSelect2.value),
+                status: normalizeText(statusSelect2.value)
+              };
+              await apiJson("/api/v1/admin/party-reminders", { method: "POST", body: JSON.stringify(payload) });
+              toast.textContent = "提醒任务已创建";
+            } else {
+              const payload = {
+                nodeId: Number(selectedNodeId),
+                dueAt: iso,
+                channel: normalizeText(channelSelect2.value),
+                status: normalizeText(statusSelect2.value)
+              };
+              await apiJson("/api/v1/admin/party-reminders/" + item.id, { method: "PUT", body: JSON.stringify(payload) });
+              toast.textContent = "提醒任务已更新";
+            }
+            hideUserOverlay();
+            await reload();
+          } catch (e) {
+            msg.textContent = e.message;
+          }
+        });
+
+        setUserModalContent([form], [cancelBtn, saveBtn]);
+
+        (async () => {
+          try {
+            if (isEdit) {
+              studentKwInput.disabled = true;
+              studentSelect.innerHTML = "";
+              studentSelect.appendChild(el("option", { value: String(item.studentUserId || ""), text: (item.studentName || "-") + (item.studentNo ? ("（" + item.studentNo + "）") : "") }));
+              studentSelect.value = String(item.studentUserId || "");
+              studentSelect.disabled = true;
+
+              flowSelect2.innerHTML = "";
+              flowSelect2.appendChild(el("option", { value: String(item.progressId || ""), text: (item.flowName || "-") + (item.flowId ? ("（" + item.flowId + "）") : "") }));
+              flowSelect2.value = String(item.progressId || "");
+              flowSelect2.disabled = true;
+
+              flowsCache = [{ progressId: item.progressId, flowId: item.flowId, flowName: item.flowName }];
+              await refreshNodesByProgressId(item.progressId);
+              nodeSelect2.value = String(item.nodeId || "");
+              dueAtInput.value = toDatetimeLocalValue(item.dueAt);
+            } else {
+              await refreshStudents("");
+              studentSelect.addEventListener("change", async () => {
+                msg.textContent = "";
+                try {
+                  await refreshFlows(studentSelect.value);
+                } catch (e) {
+                  msg.textContent = e.message;
+                }
+              });
+              flowSelect2.addEventListener("change", async () => {
+                msg.textContent = "";
+                try {
+                  await refreshNodesByProgressId(flowSelect2.value);
+                } catch (e) {
+                  msg.textContent = e.message;
+                }
+              });
+              studentKwInput.addEventListener("keydown", async (e) => {
+                if (e.key !== "Enter") return;
+                msg.textContent = "";
+                try {
+                  await refreshStudents(studentKwInput.value);
+                } catch (err) {
+                  msg.textContent = err.message;
+                }
+              });
+              dueAtInput.value = "";
+            }
+          } catch (e) {
+            msg.textContent = e.message;
+          }
+        })();
+      }
+
       function render(list) {
         toast.textContent = "";
         tableCard.innerHTML = "";
@@ -7908,28 +8126,7 @@
           const st = String(it.status || "").toLowerCase();
           const editBtn = el("div", { class: "instViewLink" }, [el("span", { text: "编辑" })]);
           editBtn.addEventListener("click", async () => {
-            toast.textContent = "";
-            const raw = prompt("请输入计划时间（例如：2026-05-26 09:00）", "");
-            if (raw == null) return;
-            const trimmed = String(raw).trim();
-            if (!trimmed) {
-              toast.textContent = "未填写计划时间";
-              return;
-            }
-            let iso = trimmed.replace(" ", "T");
-            if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(iso)) {
-              iso = iso + ":00";
-            }
-            try {
-              await apiJson("/api/v1/admin/party-reminders/" + it.id, {
-                method: "PUT",
-                body: JSON.stringify({ dueAt: iso })
-              });
-              toast.textContent = "已更新计划时间";
-              await reload();
-            } catch (e) {
-              toast.textContent = e.message;
-            }
+            openUpsertModal(it);
           });
           if (st === "pending") {
             const sendBtn = el("button", { class: "certIconBtn green", type: "button", title: "发送" }, [svgIcon("send")]);
@@ -8024,7 +8221,39 @@
         }
       }
 
-      header.querySelector("button").addEventListener("click", async () => {
+      const headerButtons = header.querySelectorAll("button");
+      const btnCreate = headerButtons[0];
+      const btnImport = headerButtons[1];
+      const btnExport = headerButtons[2];
+      const btnBatchSend = headerButtons[3];
+
+      btnCreate.addEventListener("click", () => openUpsertModal(null));
+      btnImport.addEventListener("click", () => importInput.click());
+      importInput.addEventListener("change", async () => {
+        toast.textContent = "";
+        const f = importInput.files && importInput.files[0] ? importInput.files[0] : null;
+        importInput.value = "";
+        if (!f) return;
+        try {
+          const fd = new FormData();
+          fd.append("file", f);
+          const result = await apiJson("/api/v1/admin/party-reminders/import", { method: "POST", body: fd });
+          toast.textContent = "导入完成：总行数 " + result.totalRows + "，成功 " + result.successRows + "，失败 " + result.failedRows;
+          await reload();
+        } catch (e) {
+          toast.textContent = e.message;
+        }
+      });
+      btnExport.addEventListener("click", async () => {
+        const params = {
+          studentKeyword: normalizeText(studentInput.value),
+          channel: normalizeText(channelSelect.value),
+          status: normalizeText(statusSelect.value)
+        };
+        window.open("/api/v1/admin/party-reminders/export?" + buildQuery(params), "_blank");
+      });
+
+      btnBatchSend.addEventListener("click", async () => {
         toast.textContent = "";
         if (!confirm("确认批量发送当前筛选条件下的待发送任务？")) return;
         try {
@@ -8063,33 +8292,6 @@
       const content = document.getElementById("content");
       content.innerHTML = "";
 
-      const STORAGE_KEY = "ssp_party_progress_overview_demo";
-
-      function tryParseJson(raw, fallback) {
-        try {
-          const obj = JSON.parse(raw);
-          return obj == null ? fallback : obj;
-        } catch (e) {
-          return fallback;
-        }
-      }
-
-      function loadLocal() {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        const list = tryParseJson(raw, null);
-        if (Array.isArray(list) && list.length) return list;
-        return [
-          { id: 1, studentNo: "2023001", name: "张三", className: "计算机1班", flow: "入党流程", currentNode: "入党积极分子", progress: 40, status: "OK" },
-          { id: 2, studentNo: "2023002", name: "李四", className: "软件工程2班", flow: "入党流程", currentNode: "党校培训", progress: 60, status: "OK" },
-          { id: 3, studentNo: "2022015", name: "王五", className: "人工智能1班", flow: "党员转正流程", currentNode: "预备党员", progress: 80, status: "SOON" },
-          { id: 4, studentNo: "2023045", name: "赵六", className: "大数据1班", flow: "入党流程", currentNode: "入党积极分子", progress: 40, status: "PAUSED" }
-        ];
-      }
-
-      function saveLocal(list) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(list || []));
-      }
-
       function svgIcon(type) {
         const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" };
         if (type === "search") {
@@ -8115,65 +8317,65 @@
             el("path", { d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" })
           ]);
         }
-        if (type === "pause") {
-          return el("svg", Object.assign({ width: "16", height: "16" }, common), [
-            el("rect", { x: "6", y: "5", width: "4", height: "14", rx: "1" }),
-            el("rect", { x: "14", y: "5", width: "4", height: "14", rx: "1" })
-          ]);
-        }
-        if (type === "play") {
-          return el("svg", Object.assign({}, common, { "stroke-width": "0", fill: "currentColor" }), [
-            el("path", { d: "M8 5v14l11-7z" })
-          ]);
-        }
         return el("svg", common, []);
       }
 
-      function statusPill(st) {
-        const v = String(st || "").toUpperCase();
-        if (v === "PAUSED") return el("span", { class: "partyStatusPill paused", text: "已暂停" });
-        if (v === "SOON") return el("span", { class: "partyStatusPill soon", text: "即将到期" });
-        return el("span", { class: "partyStatusPill ok", text: "正常" });
+      function statusText(v) {
+        const s = String(v || "").toLowerCase();
+        if (s === "not_started") return "未开始";
+        if (s === "in_progress") return "进行中";
+        if (s === "paused") return "已暂停";
+        if (s === "completed") return "已完成";
+        return v || "-";
       }
 
-      let items = loadLocal();
-      saveLocal(items);
+      function toDatetimeLocalValue(v) {
+        const s = v == null ? "" : String(v);
+        if (!s) return "";
+        const iso = s.includes("T") ? s : s.replace(" ", "T");
+        return iso.length >= 16 ? iso.slice(0, 16) : iso;
+      }
+
+      async function loadStudents(keyword) {
+        const params = buildQuery({ keyword: normalizeText(keyword) });
+        return await apiJson("/api/v1/admin/party-reminders/meta/students" + (params ? ("?" + params) : ""), { method: "GET" });
+      }
+      async function loadFlows() {
+        return await apiJson("/api/v1/admin/party-reminders/meta/flows", { method: "GET" });
+      }
+      async function loadNodes(flowId) {
+        return await apiJson("/api/v1/admin/party-reminders/meta/flows/" + flowId + "/nodes", { method: "GET" });
+      }
 
       const header = el("div", { class: "pageHeader" }, [
         el("div", null, [
           el("h2", { text: "学生进度总览" }),
-          el("div", { class: "desc", text: "查看学生在党团流程中的进度与异常" }),
+          el("div", { class: "desc", text: "查看与维护学生在党团流程中的进度（来自数据库）" }),
         ]),
         el("div", { class: "actions" }, [
-          el("button", { class: "flowBtn", type: "button", text: "新增记录" }),
-          el("button", { class: "flowBtn green", type: "button", text: "批量推进节点" }),
-          el("button", { class: "flowBtn orange", type: "button", text: "批量暂停" })
+          el("button", { class: "flowBtn green", type: "button" }, [el("span", { text: "新增记录" })]),
+          el("button", { class: "flowBtn", type: "button" }, [el("span", { text: "批量导入" })]),
+          el("button", { class: "flowBtn", type: "button" }, [el("span", { text: "导出" })])
         ])
       ]);
-
       content.appendChild(header);
 
       const searchInput = el("input", { placeholder: "搜索学生姓名/学号" });
       const searchWrap = el("div", { class: "instSearch" }, [svgIcon("search"), searchInput]);
+      const gradeInput = el("input", { placeholder: "年级（例如 2023）" });
+      const classInput = el("input", { placeholder: "班级（例如 计算机1班）" });
       const flowSelect = el("select", { class: "instSelect" }, [el("option", { value: "", text: "全部流程" })]);
       const statusSelect = el("select", { class: "instSelect" }, [
         el("option", { value: "", text: "全部状态" }),
-        el("option", { value: "OK", text: "正常" }),
-        el("option", { value: "SOON", text: "即将到期" }),
-        el("option", { value: "PAUSED", text: "已暂停" })
-      ]);
-      const gradeSelect = el("select", { class: "instSelect" }, [
-        el("option", { value: "", text: "全部年级" }),
-        el("option", { value: "2022", text: "2022级" }),
-        el("option", { value: "2023", text: "2023级" }),
-        el("option", { value: "2024", text: "2024级" }),
-        el("option", { value: "2025", text: "2025级" }),
-        el("option", { value: "2026", text: "2026级" })
+        el("option", { value: "not_started", text: "未开始" }),
+        el("option", { value: "in_progress", text: "进行中" }),
+        el("option", { value: "paused", text: "已暂停" }),
+        el("option", { value: "completed", text: "已完成" })
       ]);
       const filterBtn = el("button", { class: "instFilterBtn", type: "button" }, [svgIcon("filter"), el("span", { text: "筛选" })]);
 
       const filterCard = el("div", { class: "card" }, [
-        el("div", { class: "instFilterBar" }, [searchWrap, flowSelect, statusSelect, gradeSelect, filterBtn])
+        el("div", { class: "instFilterBar" }, [searchWrap, gradeInput, classInput, flowSelect, statusSelect, filterBtn])
       ]);
       const tableCard = el("div", { class: "card certTableCard", style: "margin-top: 12px;" }, []);
       const toast = el("div", { class: "toast" }, []);
@@ -8181,221 +8383,314 @@
       content.appendChild(tableCard);
       content.appendChild(toast);
 
-      let selected = new Set();
+      const importInput = el("input", { type: "file", accept: ".xlsx,.xls", style: "display:none" });
+      content.appendChild(importInput);
 
-      function rebuildFlowOptions(source) {
-        const old = flowSelect.value;
-        const opts = Array.from(new Set((source || []).map(x => x.flow).filter(Boolean))).sort();
-        flowSelect.innerHTML = "";
-        flowSelect.appendChild(el("option", { value: "", text: "全部流程" }));
-        opts.forEach(v => flowSelect.appendChild(el("option", { value: v, text: v })));
-        flowSelect.value = old;
-      }
+      let items = [];
+      let flowsCache = [];
 
       function openDetail(item) {
         const rows = [
           ["学号", item.studentNo || "-"],
-          ["姓名", item.name || "-"],
-          ["班级", item.className || "-"],
-          ["流程", item.flow || "-"],
-          ["当前节点", item.currentNode || "-"],
-          ["进度", (item.progress == null ? 0 : item.progress) + "%"],
-          ["状态", String(item.status || "").toUpperCase() === "PAUSED" ? "已暂停" : String(item.status || "").toUpperCase() === "SOON" ? "即将到期" : "正常"]
+          ["姓名", item.studentName || "-"],
+          ["年级", item.studentGrade || "-"],
+          ["班级", item.studentClassName || "-"],
+          ["流程", item.flowName || (item.flowId == null ? "-" : String(item.flowId))],
+          ["当前节点", item.currentNodeName || (item.currentNodeId == null ? "-" : String(item.currentNodeId))],
+          ["状态", statusText(item.status)],
+          ["开始时间", formatDateTimeText(item.startedAt)],
+          ["节点更新时间", formatDateTimeText(item.updatedNodeAt)],
+          ["下次截止时间", formatDateTimeText(item.nextDeadlineAt)]
         ];
         const body = el("div", { style: "display:grid; gap: 10px;" }, rows.map(([k, v]) => {
           return el("div", { style: "display:flex; gap: 10px; align-items:flex-start;" }, [
-            el("div", { style: "min-width: 86px; color:#64748b; font-size: 12px; font-weight: 800;", text: k }),
-            el("div", { style: "flex:1; font-weight: 750;", text: v })
+            el("div", { style: "min-width: 96px; color:#64748b; font-size: 12px; font-weight: 800;", text: k }),
+            el("div", { style: "flex:1; font-weight: 750;", text: v || "-" })
           ]);
         }));
         showUserOverlay("学生流程详情");
         setUserModalContent([body], [el("button", { class: "btn", text: "关闭", type: "button", onclick: () => hideUserOverlay() })]);
       }
 
-      function openEdit(item) {
-        const isEdit = !!item;
-        const studentNoInput = el("input", { value: item ? (item.studentNo || "") : "", placeholder: "学号，例如 2023001" });
-        const nameInput = el("input", { value: item ? (item.name || "") : "", placeholder: "姓名" });
-        const classInput = el("input", { value: item ? (item.className || "") : "", placeholder: "班级，例如 计算机1班" });
-        const flowInput = el("input", { value: item ? (item.flow || "") : "", placeholder: "流程，例如 入党流程" });
-        const nodeInput = el("input", { value: item ? (item.currentNode || "") : "", placeholder: "当前节点，例如 入党积极分子" });
-        const progressInput = el("input", { value: item ? String(item.progress ?? 0) : "0", type: "number", min: "0", max: "100", step: "1", inputmode: "numeric" });
-        const statusSelect2 = el("select", null, [
-          el("option", { value: "OK", text: "正常" }),
-          el("option", { value: "SOON", text: "即将到期" }),
-          el("option", { value: "PAUSED", text: "已暂停" })
-        ]);
-        statusSelect2.value = item ? (String(item.status || "OK").toUpperCase()) : "OK";
-
-        const body = el("div", { style: "display:grid; gap: 12px;" }, [
-          el("div", null, [el("div", { class: "cfgLabel", text: "学号 *" }), studentNoInput]),
-          el("div", null, [el("div", { class: "cfgLabel", text: "姓名 *" }), nameInput]),
-          el("div", null, [el("div", { class: "cfgLabel", text: "班级" }), classInput]),
-          el("div", null, [el("div", { class: "cfgLabel", text: "流程 *" }), flowInput]),
-          el("div", null, [el("div", { class: "cfgLabel", text: "当前节点 *" }), nodeInput]),
-          el("div", null, [el("div", { class: "cfgLabel", text: "进度(0-100)" }), progressInput]),
-          el("div", null, [el("div", { class: "cfgLabel", text: "状态" }), statusSelect2])
-        ]);
-
+      function openUpsertModal(item) {
+        toast.textContent = "";
+        const isEdit = !!(item && item.id);
         showUserOverlay(isEdit ? "编辑进度记录" : "新增进度记录");
-        setUserModalContent([body], [
-          el("button", { class: "btn", type: "button", text: "取消", onclick: () => hideUserOverlay() }),
-          el("button", { class: "btn primary", type: "button", text: "保存", onclick: () => {
-            const studentNo = studentNoInput.value.trim();
-            const name = nameInput.value.trim();
-            const flow = flowInput.value.trim();
-            const node = nodeInput.value.trim();
-            if (!studentNo || !name || !flow || !node) {
-              document.getElementById("userModalMsg").textContent = "请填写学号、姓名、流程、当前节点";
-              return;
-            }
-            const p = Number(String(progressInput.value || "0").trim());
-            if (!Number.isFinite(p) || !Number.isInteger(p) || p < 0 || p > 100) {
-              document.getElementById("userModalMsg").textContent = "进度必须为 0-100 的整数";
-              return;
-            }
-            const next = Object.assign({}, item || {}, {
-              id: isEdit ? item.id : (Math.max(0, ...items.map(x => x.id || 0)) + 1),
-              studentNo,
-              name,
-              className: classInput.value.trim(),
-              flow,
-              currentNode: node,
-              progress: p,
-              status: statusSelect2.value
-            });
-            if (isEdit) {
-              items = items.map(x => x.id === item.id ? next : x);
-            } else {
-              items = [next].concat(items);
-            }
-            saveLocal(items);
-            applyFilter();
-            hideUserOverlay();
-          }})
+
+        const studentKwInput = el("input", { placeholder: "搜索学生姓名/学号（回车）" });
+        const studentSelect = el("select", { class: "instSelect" }, [el("option", { value: "", text: "请选择学生" })]);
+        const flowSelect2 = el("select", { class: "instSelect" }, [el("option", { value: "", text: "请选择流程" })]);
+        const nodeSelect2 = el("select", { class: "instSelect" }, [el("option", { value: "", text: "请选择节点（可空）" })]);
+        const statusSelect2 = el("select", { class: "instSelect" }, [
+          el("option", { value: "in_progress", text: "进行中" }),
+          el("option", { value: "not_started", text: "未开始" }),
+          el("option", { value: "paused", text: "已暂停" }),
+          el("option", { value: "completed", text: "已完成" })
         ]);
+        statusSelect2.value = isEdit ? (item.status || "in_progress") : "in_progress";
+        const startedAtInput = el("input", { type: "datetime-local" });
+        const updatedNodeAtInput = el("input", { type: "datetime-local" });
+        const nextDeadlineAtInput = el("input", { type: "datetime-local" });
+
+        const msg = el("div", { class: "toast" }, []);
+        let nodesCache = [];
+
+        async function refreshStudents(keyword) {
+          studentSelect.innerHTML = "";
+          studentSelect.appendChild(el("option", { value: "", text: "请选择学生" }));
+          const students = await loadStudents(keyword);
+          (students || []).forEach(s => {
+            const label = (s.studentName || "-") + (s.studentNo ? ("（" + s.studentNo + "）") : "");
+            studentSelect.appendChild(el("option", { value: String(s.studentNo || ""), text: label }));
+          });
+        }
+
+        function refreshFlowsOptions() {
+          flowSelect2.innerHTML = "";
+          flowSelect2.appendChild(el("option", { value: "", text: "请选择流程" }));
+          (flowsCache || []).forEach(f => {
+            const label = (f.flowName || "-") + (f.flowId ? ("（" + f.flowId + "）") : "");
+            flowSelect2.appendChild(el("option", { value: String(f.flowId || ""), text: label }));
+          });
+        }
+
+        async function refreshNodes(flowId) {
+          nodeSelect2.innerHTML = "";
+          nodeSelect2.appendChild(el("option", { value: "", text: "请选择节点（可空）" }));
+          nodesCache = [];
+          if (!flowId) return;
+          const nodes = await loadNodes(flowId);
+          nodesCache = Array.isArray(nodes) ? nodes : [];
+          nodesCache.forEach(n => {
+            const label = (n.nodeName || "-") + (n.seqNo != null ? ("（" + n.seqNo + "）") : "");
+            nodeSelect2.appendChild(el("option", { value: String(n.nodeId || ""), text: label }));
+          });
+        }
+
+        const body = el("div", { style: "display:grid; gap: 10px;" }, [
+          el("div", { class: "sub", text: "第1步：选择学生" }),
+          el("div", { class: "row", style: "gap: 10px; align-items:center; flex-wrap: wrap;" }, [studentKwInput, studentSelect]),
+          el("div", { class: "sub", text: "第2步：选择流程" }),
+          flowSelect2,
+          el("div", { class: "sub", text: "第3步：选择节点（可空）" }),
+          nodeSelect2,
+          el("div", { class: "sub", text: "状态" }),
+          statusSelect2,
+          el("div", { class: "sub", text: "开始时间（可空）" }),
+          startedAtInput,
+          el("div", { class: "sub", text: "节点更新时间（可空）" }),
+          updatedNodeAtInput,
+          el("div", { class: "sub", text: "下次截止时间（可空）" }),
+          nextDeadlineAtInput,
+          msg
+        ]);
+
+        const cancelBtn = el("button", { class: "btn", type: "button", text: "取消", onclick: () => hideUserOverlay() });
+        const saveBtn = el("button", { class: "btn primary", type: "button", text: "保存" });
+        saveBtn.addEventListener("click", async () => {
+          msg.textContent = "";
+          const studentNo = normalizeText(studentSelect.value);
+          const flowId = Number(String(flowSelect2.value || "").trim());
+          const nodeIdRaw = normalizeText(nodeSelect2.value);
+          const nodeId = nodeIdRaw ? Number(nodeIdRaw) : null;
+          if (!studentNo) {
+            msg.textContent = "请选择学生";
+            return;
+          }
+          if (!flowId || flowId <= 0) {
+            msg.textContent = "请选择流程";
+            return;
+          }
+          if (nodeIdRaw && (!nodeId || nodeId <= 0)) {
+            msg.textContent = "节点ID不合法";
+            return;
+          }
+
+          const toIso = (v) => {
+            const raw = normalizeText(v);
+            if (!raw) return null;
+            return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw) ? (raw + ":00") : raw;
+          };
+
+          const payload = {
+            studentNo: studentNo,
+            flowId: flowId,
+            currentNodeId: nodeId,
+            status: normalizeText(statusSelect2.value) || "in_progress",
+            startedAt: toIso(startedAtInput.value),
+            updatedNodeAt: toIso(updatedNodeAtInput.value),
+            nextDeadlineAt: toIso(nextDeadlineAtInput.value)
+          };
+
+          try {
+            if (isEdit) {
+              await apiJson("/api/v1/admin/party-progress/" + item.id, { method: "PUT", body: JSON.stringify(payload) });
+              toast.textContent = "已更新";
+            } else {
+              await apiJson("/api/v1/admin/party-progress", { method: "POST", body: JSON.stringify(payload) });
+              toast.textContent = "已创建";
+            }
+            hideUserOverlay();
+            await reload();
+          } catch (e) {
+            msg.textContent = e.message;
+          }
+        });
+
+        setUserModalContent([body], [cancelBtn, saveBtn]);
+
+        (async () => {
+          try {
+            flowsCache = await loadFlows();
+            refreshFlowsOptions();
+            await refreshStudents("");
+            flowSelect2.addEventListener("change", async () => {
+              msg.textContent = "";
+              try {
+                await refreshNodes(flowSelect2.value);
+              } catch (e) {
+                msg.textContent = e.message;
+              }
+            });
+            studentKwInput.addEventListener("keydown", async (e) => {
+              if (e.key !== "Enter") return;
+              msg.textContent = "";
+              try {
+                await refreshStudents(studentKwInput.value);
+              } catch (err) {
+                msg.textContent = err.message;
+              }
+            });
+
+            if (isEdit) {
+              studentSelect.value = String(item.studentNo || "");
+              flowSelect2.value = String(item.flowId || "");
+              await refreshNodes(item.flowId);
+              nodeSelect2.value = item.currentNodeId == null ? "" : String(item.currentNodeId);
+              startedAtInput.value = toDatetimeLocalValue(item.startedAt);
+              updatedNodeAtInput.value = toDatetimeLocalValue(item.updatedNodeAt);
+              nextDeadlineAtInput.value = toDatetimeLocalValue(item.nextDeadlineAt);
+            }
+          } catch (e) {
+            msg.textContent = e.message;
+          }
+        })();
       }
 
       function render(list) {
         toast.textContent = "";
         tableCard.innerHTML = "";
         const table = el("table", { class: "certTable" }, []);
-        const headCheckbox = el("input", { type: "checkbox" });
-        headCheckbox.addEventListener("change", () => {
-          const all = (list || []).map(x => x.id);
-          if (headCheckbox.checked) {
-            selected = new Set(all);
-          } else {
-            selected = new Set();
-          }
-          render(list);
-        });
-
         table.appendChild(el("thead", null, [el("tr", null, [
-          el("th", null, [headCheckbox]),
           el("th", { text: "学号" }),
           el("th", { text: "姓名" }),
+          el("th", { text: "年级" }),
           el("th", { text: "班级" }),
           el("th", { text: "流程" }),
           el("th", { text: "当前节点" }),
-          el("th", { text: "进度" }),
           el("th", { text: "状态" }),
+          el("th", { text: "下次截止" }),
           el("th", { text: "操作", style: "text-align:right;" })
         ])]));
-
         const tbody = el("tbody", null, []);
         (list || []).forEach(it => {
-          const cb = el("input", { type: "checkbox" });
-          cb.checked = selected.has(it.id);
-          cb.addEventListener("change", () => {
-            if (cb.checked) selected.add(it.id);
-            else selected.delete(it.id);
-          });
           const noLink = el("span", { class: "instNodeLink", text: it.studentNo || "-" });
           noLink.addEventListener("click", () => openDetail(it));
-          const p = Math.max(0, Math.min(100, Number(it.progress || 0)));
-          const progress = el("div", { class: "progressWrap" }, [
-            el("div", { class: "progressBar" }, [el("div", { class: "progressFill", style: "width:" + p + "%;" })]),
-            el("div", { class: "mono", text: p + "%" })
-          ]);
           const viewBtn = el("button", { class: "certIconBtn blue", type: "button", title: "查看" }, [svgIcon("eye")]);
           const editBtn = el("button", { class: "certIconBtn", type: "button", title: "编辑" }, [svgIcon("edit")]);
-          const toggleBtn = el("button", { class: "certIconBtn " + (String(it.status).toUpperCase() === "PAUSED" ? "blue" : "orange"), type: "button", title: String(it.status).toUpperCase() === "PAUSED" ? "恢复" : "暂停" }, [svgIcon(String(it.status).toUpperCase() === "PAUSED" ? "play" : "pause")]);
           viewBtn.addEventListener("click", () => openDetail(it));
-          editBtn.addEventListener("click", () => openEdit(it));
-          toggleBtn.addEventListener("click", () => {
-            const nextStatus = String(it.status).toUpperCase() === "PAUSED" ? "OK" : "PAUSED";
-            items = items.map(x => x.id === it.id ? Object.assign({}, x, { status: nextStatus }) : x);
-            saveLocal(items);
-            applyFilter();
-          });
-
+          editBtn.addEventListener("click", () => openUpsertModal(it));
           tbody.appendChild(el("tr", null, [
-            el("td", null, [cb]),
             el("td", null, [noLink]),
-            el("td", null, [el("div", { text: it.name || "-" })]),
-            el("td", null, [el("div", { text: it.className || "-" })]),
-            el("td", null, [el("span", { class: "partyTag", text: it.flow || "-" })]),
-            el("td", null, [el("div", { text: it.currentNode || "-" })]),
-            el("td", null, [progress]),
-            el("td", null, [statusPill(it.status)]),
-            el("td", null, [el("div", { class: "certActions" }, [viewBtn, editBtn, toggleBtn])])
+            el("td", null, [el("div", { text: it.studentName || "-" })]),
+            el("td", null, [el("div", { text: it.studentGrade || "-" })]),
+            el("td", null, [el("div", { text: it.studentClassName || "-" })]),
+            el("td", null, [el("span", { class: "partyTag", text: it.flowName || (it.flowId == null ? "-" : String(it.flowId)) })]),
+            el("td", null, [el("div", { text: it.currentNodeName || "-" })]),
+            el("td", null, [el("div", { text: statusText(it.status) })]),
+            el("td", null, [el("div", { class: "mono", text: formatDateTimeText(it.nextDeadlineAt) })]),
+            el("td", null, [el("div", { class: "certActions" }, [viewBtn, editBtn])])
           ]));
         });
         table.appendChild(tbody);
         tableCard.appendChild(table);
       }
 
-      function applyFilter() {
-        const kw = searchInput.value.trim();
-        const flow = flowSelect.value;
-        const st = statusSelect.value;
-        const grade = gradeSelect.value;
-        const filtered = items
-          .filter(x => !kw || String(x.name || "").includes(kw) || String(x.studentNo || "").includes(kw))
-          .filter(x => !flow || String(x.flow || "") === String(flow))
-          .filter(x => !st || String(x.status || "").toUpperCase() === String(st).toUpperCase())
-          .filter(x => {
-            if (!grade) return true;
-            const n = String(x.studentNo || "");
-            return n.startsWith(String(grade));
-          });
-        rebuildFlowOptions(items);
-        render(filtered);
+      async function reload() {
+        toast.textContent = "";
+        tableCard.innerHTML = "";
+        tableCard.appendChild(el("div", { text: "加载中..." }));
+        try {
+          const params = {
+            status: normalizeText(statusSelect.value),
+            studentKeyword: normalizeText(searchInput.value),
+            grade: normalizeText(gradeInput.value),
+            className: normalizeText(classInput.value),
+            flowId: normalizeText(flowSelect.value),
+            page: 0,
+            size: 100
+          };
+          const pageData = await apiJson("/api/v1/admin/party-progress/page?" + buildQuery(params));
+          items = pageData && pageData.content ? pageData.content : [];
+          render(items);
+        } catch (e) {
+          toast.textContent = e.message;
+          items = [];
+          render([]);
+        }
       }
 
-      header.querySelector(".flowBtn.green").addEventListener("click", () => {
-        if (!selected.size) {
-          toast.textContent = "请先选择学生";
-          return;
+      const headerButtons = header.querySelectorAll("button");
+      const btnCreate = headerButtons[0];
+      const btnImport = headerButtons[1];
+      const btnExport = headerButtons[2];
+      btnCreate.addEventListener("click", () => openUpsertModal(null));
+      btnImport.addEventListener("click", () => importInput.click());
+      importInput.addEventListener("change", async () => {
+        toast.textContent = "";
+        const f = importInput.files && importInput.files[0] ? importInput.files[0] : null;
+        importInput.value = "";
+        if (!f) return;
+        try {
+          const fd = new FormData();
+          fd.append("file", f);
+          const result = await apiJson("/api/v1/admin/party-progress/import", { method: "POST", body: fd });
+          toast.textContent = "导入完成：总行数 " + result.totalRows + "，成功 " + result.successRows + "，失败 " + result.failedRows;
+          await reload();
+        } catch (e) {
+          toast.textContent = e.message;
         }
-        items = items.map(x => selected.has(x.id) ? Object.assign({}, x, { progress: Math.min(100, Number(x.progress || 0) + 10) }) : x);
-        saveLocal(items);
-        applyFilter();
-        toast.textContent = "已批量推进";
       });
-      header.querySelector(".flowBtn.orange").addEventListener("click", () => {
-        if (!selected.size) {
-          toast.textContent = "请先选择学生";
-          return;
-        }
-        items = items.map(x => selected.has(x.id) ? Object.assign({}, x, { status: "PAUSED" }) : x);
-        saveLocal(items);
-        applyFilter();
-        toast.textContent = "已批量暂停";
+      btnExport.addEventListener("click", () => {
+        const params = {
+          status: normalizeText(statusSelect.value),
+          studentKeyword: normalizeText(searchInput.value),
+          grade: normalizeText(gradeInput.value),
+          className: normalizeText(classInput.value),
+          flowId: normalizeText(flowSelect.value)
+        };
+        window.open("/api/v1/admin/party-progress/export?" + buildQuery(params), "_blank");
       });
 
-      header.querySelector(".flowBtn").addEventListener("click", () => openEdit(null));
+      filterBtn.addEventListener("click", reload);
+      searchInput.addEventListener("keydown", (e) => { if (e.key === "Enter") reload(); });
+      gradeInput.addEventListener("keydown", (e) => { if (e.key === "Enter") reload(); });
+      classInput.addEventListener("keydown", (e) => { if (e.key === "Enter") reload(); });
+      flowSelect.addEventListener("change", reload);
+      statusSelect.addEventListener("change", reload);
 
-      filterBtn.addEventListener("click", applyFilter);
-      searchInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") applyFilter();
-      });
-      flowSelect.addEventListener("change", applyFilter);
-      statusSelect.addEventListener("change", applyFilter);
-      gradeSelect.addEventListener("change", applyFilter);
-      rebuildFlowOptions(items);
-      applyFilter();
+      try {
+        flowsCache = await loadFlows();
+        flowSelect.innerHTML = "";
+        flowSelect.appendChild(el("option", { value: "", text: "全部流程" }));
+        (flowsCache || []).forEach(f => {
+          flowSelect.appendChild(el("option", { value: String(f.flowId || ""), text: (f.flowName || "-") + (f.flowId ? ("（" + f.flowId + "）") : "") }));
+        });
+      } catch (e) {
+        toast.textContent = e.message;
+      }
+
+      await reload();
     }
 
     function renderPlaceholder(title, hint) {
