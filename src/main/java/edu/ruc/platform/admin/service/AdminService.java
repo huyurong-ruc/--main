@@ -34,6 +34,8 @@ import edu.ruc.platform.admin.dto.WorkflowNodeResponse;
 import edu.ruc.platform.admin.dto.WorkflowNodeUpsertRequest;
 import edu.ruc.platform.admin.dto.AdminOperationLogModuleStatsResponse;
 import edu.ruc.platform.admin.dto.AdminOperationLogRoleStatsResponse;
+import edu.ruc.platform.admin.dto.PartyReminderTaskFilterRequest;
+import edu.ruc.platform.admin.dto.PartyReminderTaskResponse;
 import edu.ruc.platform.admin.domain.DataImportTask;
 import edu.ruc.platform.admin.domain.DataImportErrorItem;
 import edu.ruc.platform.admin.domain.KnowledgeAttachment;
@@ -53,6 +55,10 @@ import edu.ruc.platform.common.api.PageResponse;
 import edu.ruc.platform.common.enums.DataImportTaskStatus;
 import edu.ruc.platform.common.exception.BusinessException;
 import edu.ruc.platform.common.support.QueryFilterSupport;
+import edu.ruc.platform.party.domain.LatestPartyFlow;
+import edu.ruc.platform.party.domain.LatestPartyFlowNode;
+import edu.ruc.platform.party.domain.LatestPartyReminderTask;
+import edu.ruc.platform.party.domain.LatestPartyStudentProgress;
 import edu.ruc.platform.knowledge.domain.KnowledgeDocument;
 import edu.ruc.platform.knowledge.domain.LatestCertTemplate;
 import edu.ruc.platform.knowledge.domain.LatestFileObject;
@@ -80,12 +86,17 @@ import edu.ruc.platform.notice.repository.NoticeRepository;
 import edu.ruc.platform.student.domain.AdvisorScopeBinding;
 import edu.ruc.platform.student.repository.AdvisorScopeBindingRepository;
 import edu.ruc.platform.student.repository.StudentProfileRepository;
+import edu.ruc.platform.party.repository.LatestPartyFlowNodeRepository;
+import edu.ruc.platform.party.repository.LatestPartyFlowRepository;
+import edu.ruc.platform.party.repository.LatestPartyReminderTaskRepository;
+import edu.ruc.platform.party.repository.LatestPartyStudentProgressRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.context.annotation.Profile;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -113,6 +124,10 @@ public class AdminService implements AdminApplicationService {
     private final DataImportTaskRepository dataImportTaskRepository;
     private final DataImportErrorItemRepository dataImportErrorItemRepository;
     private final CurrentUserService currentUserService;
+    private final LatestPartyReminderTaskRepository latestPartyReminderTaskRepository;
+    private final LatestPartyStudentProgressRepository latestPartyStudentProgressRepository;
+    private final LatestPartyFlowRepository latestPartyFlowRepository;
+    private final LatestPartyFlowNodeRepository latestPartyFlowNodeRepository;
     private final LatestNoticeItemRepository latestNoticeItemRepository;
     private final LatestNoticeItemTagRepository latestNoticeItemTagRepository;
     private final LatestNoticeTagDictRepository latestNoticeTagDictRepository;
@@ -2810,17 +2825,21 @@ public class AdminService implements AdminApplicationService {
     }
 
     @Override
-    public List<edu.ruc.platform.admin.dto.PartyReminderTaskResponse> listPartyReminderTasks(edu.ruc.platform.admin.dto.PartyReminderTaskFilterRequest request) {
-        return List.of();
+    public List<PartyReminderTaskResponse> listPartyReminderTasks(PartyReminderTaskFilterRequest request) {
+        return loadPartyReminderTasks(request);
     }
 
     @Override
-    public PageResponse<edu.ruc.platform.admin.dto.PartyReminderTaskResponse> pagePartyReminderTasks(edu.ruc.platform.admin.dto.PartyReminderTaskFilterRequest request,
-                                                                                                    int page,
-                                                                                                    int size) {
+    public PageResponse<PartyReminderTaskResponse> pagePartyReminderTasks(PartyReminderTaskFilterRequest request,
+                                                                          int page,
+                                                                          int size) {
+        List<PartyReminderTaskResponse> filtered = loadPartyReminderTasks(request);
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = Math.max(size, 1);
-        return new PageResponse<>(List.of(), 0, 0, normalizedPage, normalizedSize);
+        int fromIndex = Math.min(normalizedPage * normalizedSize, filtered.size());
+        int toIndex = Math.min(fromIndex + normalizedSize, filtered.size());
+        int totalPages = (int) Math.ceil(filtered.size() / (double) normalizedSize);
+        return new PageResponse<>(filtered.subList(fromIndex, toIndex), filtered.size(), totalPages, normalizedPage, normalizedSize);
     }
 
     @Override
@@ -2836,6 +2855,49 @@ public class AdminService implements AdminApplicationService {
     @Override
     public edu.ruc.platform.admin.dto.PartyReminderTaskResponse cancelPartyReminder(Long id) {
         throw new BusinessException("未实现：取消党团提醒");
+    }
+
+    private List<PartyReminderTaskResponse> loadPartyReminderTasks(PartyReminderTaskFilterRequest request) {
+        String normalizedStatus = QueryFilterSupport.trimToNull(request == null ? null : request.status());
+        String normalizedChannel = QueryFilterSupport.trimToNull(request == null ? null : request.channel());
+        String normalizedStudentKeyword = QueryFilterSupport.trimToNull(request == null ? null : request.studentKeyword());
+
+        return latestPartyReminderTaskRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
+                .stream()
+                .map(this::toPartyReminderTaskResponse)
+                .filter(item -> normalizedStatus == null || normalizedStatus.equalsIgnoreCase(item.status()))
+                .filter(item -> normalizedChannel == null || normalizedChannel.equalsIgnoreCase(item.channel()))
+                .filter(item -> normalizedStudentKeyword == null
+                        || QueryFilterSupport.containsIgnoreCase(item.studentName(), normalizedStudentKeyword)
+                        || QueryFilterSupport.containsIgnoreCase(item.studentNo(), normalizedStudentKeyword))
+                .toList();
+    }
+
+    private PartyReminderTaskResponse toPartyReminderTaskResponse(LatestPartyReminderTask task) {
+        LatestPartyStudentProgress progress = latestPartyStudentProgressRepository.findById(task.getProgressId()).orElse(null);
+        Long studentUserId = progress == null ? null : progress.getStudentUserId();
+        Long flowId = progress == null ? null : progress.getFlowId();
+        String flowName = flowId == null ? null : latestPartyFlowRepository.findById(flowId).map(LatestPartyFlow::getFlowName).orElse(null);
+        String studentName = studentUserId == null ? null : studentProfileRepository.findById(studentUserId).map(item -> item.getName()).orElse(null);
+        String studentNo = studentUserId == null ? null : studentProfileRepository.findById(studentUserId).map(item -> item.getStudentNo()).orElse(null);
+        LatestPartyFlowNode node = latestPartyFlowNodeRepository.findById(task.getNodeId()).orElse(null);
+        return new PartyReminderTaskResponse(
+                task.getId(),
+                task.getProgressId(),
+                flowId,
+                flowName,
+                task.getNodeId(),
+                node == null ? null : node.getNodeName(),
+                studentUserId,
+                studentName,
+                studentNo,
+                task.getDueAt(),
+                task.getChannel(),
+                task.getStatus(),
+                task.getSentAt(),
+                null,
+                task.getCreatedAt()
+        );
     }
 
     private Long parseLong(Object value) {
