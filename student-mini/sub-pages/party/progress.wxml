@@ -1,13 +1,10 @@
-<!-- sub-pages/party/progress.wxml -->
 <view class="container">
   <view wx:if="{{detail && !loading && canView}}">
-    <!-- 标题 -->
     <view class="header-card">
       <text class="header-title">{{detail.title}}</text>
       <text class="header-subtitle">{{detail.subtitle}}</text>
     </view>
-    
-    <!-- 当前阶段 -->
+
     <view class="stage-card">
       <view class="stage-header">
         <text class="stage-label">当前阶段</text>
@@ -20,19 +17,23 @@
         <text class="progress-text">{{detail.progressPercent}}%</text>
       </view>
     </view>
-    
-    <!-- 流程时间线 -->
+
     <view class="timeline-card">
       <view class="timeline-title">{{type === 'party' ? '入党流程时间轴' : '入团流程时间轴'}}</view>
-      
+
       <view class="timeline">
-        <view 
+        <view
           wx:for="{{detail.stages}}"
           wx:key="id"
           class="timeline-item {{item.statusVariant}}"
         >
-          <view class="timeline-dot"></view>
-          <view class="timeline-line"></view>
+          <view class="timeline-marker">
+            <view class="marker-dot">
+              <text wx:if="{{item.status === 'completed'}}">✓</text>
+              <text wx:else>{{index + 1}}</text>
+            </view>
+            <view class="marker-line"></view>
+          </view>
           <view class="timeline-content">
             <view class="timeline-header">
               <text class="timeline-name">{{item.name}}</text>
@@ -44,13 +45,13 @@
         </view>
       </view>
     </view>
-    
+
     <view class="readonly-card">
       <text class="readonly-title">状态更新说明</text>
       <text class="readonly-desc">{{teacherAuditTip}}</text>
     </view>
   </view>
-  
+
   <view wx:elif="{{!loading}}" class="empty-state">
     <image src="/static/illustrations/party.svg" class="empty-illustration" mode="aspectFit" />
     <text class="empty-title">{{emptyState.title}}</text>

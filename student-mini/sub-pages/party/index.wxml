@@ -8,7 +8,6 @@
     <view class="hero-medal">党</view>
   </view>
 
-  <!-- Tab切换 -->
   <view class="search-card">
     <view class="tabs">
       <view
@@ -24,11 +23,6 @@
     </view>
   </view>
 
-  <view wx:if="{{!canShowParty && hasAnyFlow}}" class="gate-card">
-    <text class="gate-title">{{partyGateState.title}}</text>
-    <text class="gate-desc">{{partyGateState.description}}</text>
-  </view>
-
   <view wx:if="{{loading}}" class="loading-state">
     <text>加载中...</text>
   </view>
@@ -40,24 +34,20 @@
       <text class="empty-desc">{{emptyState.description}}</text>
     </view>
 
-    <block wx:elif="{{activeTab === 0 && !canShowParty}}">
-      <view class="card empty-block">
-        <image src="/static/illustrations/party.svg" class="empty-illustration" mode="aspectFit" />
-        <text class="empty-title">{{partyGateState.title}}</text>
-        <text class="empty-desc">{{partyGateState.description}}</text>
-      </view>
-    </block>
+    <view wx:elif="{{activeFlowKey === 'party' ? !(partyProgress && partyProgress.stages.length > 0) : !(leagueProgress && leagueProgress.stages.length > 0)}}" class="card empty-block">
+      <image src="/static/illustrations/party.svg" class="empty-illustration" mode="aspectFit" />
+      <text class="empty-title">暂无进度数据</text>
+      <text class="empty-desc">当前{{activeFlowLabel || '流程'}}尚未关联进度记录</text>
+    </view>
 
-    <block wx:else>
-    <!-- 进度卡片 -->
-    <view class="card progress-section" bindtap="goToProgress" data-type="{{activeTab === 0 ? 'party' : 'league'}}">
+    <view wx:else class="card progress-section" bindtap="goToProgress" data-type="{{activeFlowKey}}">
       <view class="section-header">
-        <text class="section-title">我的{{activeTab === 0 ? '入党' : '入团'}}进度</text>
-        <text class="detail-link">进度详情 ›</text>
+        <text class="section-title">我的{{activeFlowLabel || '流程'}}进度</text>
+        <text class="detail-link">进度详情 →</text>
       </view>
 
-      <view class="timeline" wx:if="{{activeTab === 0 ? (partyProgress && partyProgress.stages.length > 0) : (leagueProgress && leagueProgress.stages.length > 0)}}">
-        <view wx:for="{{activeTab === 0 ? partyProgress.stages : leagueProgress.stages}}" wx:key="id" class="timeline-item">
+      <view class="timeline" wx:if="{{activeFlowKey === 'party' ? (partyProgress && partyProgress.stages.length > 0) : (leagueProgress && leagueProgress.stages.length > 0)}}">
+        <view wx:for="{{activeFlowKey === 'party' ? partyProgress.stages : leagueProgress.stages}}" wx:key="id" class="timeline-item">
           <view class="timeline-dot {{item.statusVariant}}"></view>
           <view class="timeline-content">
             <view class="node-main">
@@ -66,14 +56,8 @@
             </view>
             <text class="node-status {{item.statusVariant}}">{{item.statusText}}</text>
           </view>
-          <view class="timeline-line" wx:if="{{activeTab === 0 ? index < partyProgress.stages.length - 1 : index < leagueProgress.stages.length - 1}}"></view>
+          <view class="timeline-line" wx:if="{{activeFlowKey === 'party' ? index < partyProgress.stages.length - 1 : index < leagueProgress.stages.length - 1}}"></view>
         </view>
-      </view>
-      
-      <view wx:else class="empty-block">
-        <image src="/static/illustrations/party.svg" class="empty-illustration" mode="aspectFit" />
-        <text class="empty-title">暂无进度数据</text>
-        <text class="empty-desc">尚未开启{{activeTab === 0 ? '入党' : '入团'}}流程</text>
       </view>
     </view>
 
@@ -82,13 +66,12 @@
       <text class="readonly-desc">{{teacherAuditTip}}</text>
     </view>
 
-    <!-- 流程说明 -->
-    <view class="card flow-section" wx:if="{{activeTab === 0 ? partyFlow.length > 0 : leagueFlow.length > 0}}">
+    <view class="card flow-section" wx:if="{{activeFlowKey === 'party' ? partyFlow.length > 0 : leagueFlow.length > 0}}">
       <view class="section-header">
         <text class="section-title">办理流程说明</text>
       </view>
       <view class="flow-nodes">
-        <view wx:for="{{activeTab === 0 ? partyFlow : leagueFlow}}" wx:key="id" class="flow-node">
+        <view wx:for="{{activeFlowKey === 'party' ? partyFlow : leagueFlow}}" wx:key="id" class="flow-node">
           <view class="node-index">{{item.index}}</view>
           <view class="node-info">
             <text class="node-title">{{item.name}}</text>
@@ -97,6 +80,5 @@
         </view>
       </view>
     </view>
-    </block>
   </block>
 </view>
