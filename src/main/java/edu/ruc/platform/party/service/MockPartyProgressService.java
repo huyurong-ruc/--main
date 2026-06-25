@@ -50,7 +50,10 @@ public class MockPartyProgressService implements PartyProgressApplicationService
                         item.stageName(),
                         item.triggerRule(),
                         (int) ChronoUnit.DAYS.between(today, item.remindDate()),
-                        item.remindDate().isBefore(today)))
+                        item.remindDate().isBefore(today),
+                        null,
+                        "miniprogram",
+                        "sent"))
                 .toList();
     }
 }

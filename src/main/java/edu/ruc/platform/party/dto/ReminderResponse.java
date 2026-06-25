@@ -10,6 +10,9 @@ public record ReminderResponse(
         String stageName,
         String triggerRule,
         Integer daysRemaining,
-        boolean overdue
+        boolean overdue,
+        Long taskId,
+        String channel,
+        String status
 ) {
 }

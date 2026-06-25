@@ -53,7 +53,8 @@ public class CertificateTemplateController {
 
     @GetMapping("/active")
     @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
-            RoleType.CLASS_ADVISOR, RoleType.STUDENT})
+            RoleType.CLASS_ADVISOR, RoleType.STUDENT, RoleType.LEAGUE_SECRETARY,
+            RoleType.CLASS_LEADER, RoleType.ASSISTANT})
     public ApiResponse<List<CertificateTemplateResponse>> listActive() {
         return ApiResponse.success(templateService.listActive());
     }
@@ -72,7 +73,8 @@ public class CertificateTemplateController {
 
     @GetMapping("/{id}/download")
     @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
-            RoleType.CLASS_ADVISOR, RoleType.STUDENT})
+            RoleType.CLASS_ADVISOR, RoleType.STUDENT, RoleType.LEAGUE_SECRETARY,
+            RoleType.CLASS_LEADER, RoleType.ASSISTANT})
     public ResponseEntity<ByteArrayResource> download(@Positive(message = "模板ID必须大于0") @PathVariable Long id) {
         CertificateTemplateResponse template = templateService.getById(id);
         boolean isKingbase = isKingbaseProfile();

@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -30,21 +31,7 @@ public class KingbasePartyProgressService implements PartyProgressApplicationSer
 
     @Override
     public PartyProgressResponse getProgress(Long studentId) {
-        LatestPartyStudentProgress progress = latestPartyStudentProgressRepository.findByStudentUserIdAndIsDeleted(studentId, 0)
-                .orElseThrow(() -> new BusinessException("未找到党团流程记录"));
-        LatestPartyFlowNode node = progress.getCurrentNodeId() == null ? null
-                : latestPartyFlowNodeRepository.findById(progress.getCurrentNodeId()).orElse(null);
-        LocalDate stageStartDate = resolveStageStartDate(progress);
-        LocalDate nextDeadline = resolveNextDeadline(progress);
-        return new PartyProgressResponse(
-                node == null ? resolveFallbackStage(progress) : node.getNodeName(),
-                stageStartDate,
-                (int) ChronoUnit.DAYS.between(stageStartDate, LocalDate.now()),
-                nextDeadline,
-                buildCompletedActions(progress, node),
-                buildNextAction(progress, node),
-                buildNextActionRule(progress, node)
-        );
+        return buildProgressResponse(resolveCurrentProgress(studentId));
     }
 
     @Override
@@ -66,12 +53,44 @@ public class KingbasePartyProgressService implements PartyProgressApplicationSer
 
     @Override
     public List<ReminderResponse> listReminders(Long studentId) {
-        LatestPartyStudentProgress progress = latestPartyStudentProgressRepository.findByStudentUserIdAndIsDeleted(studentId, 0)
+        LocalDate today = LocalDate.now();
+        List<LatestPartyStudentProgress> progresses = latestPartyStudentProgressRepository.findAllByStudentUserIdAndIsDeleted(studentId, 0);
+        if (progresses.isEmpty()) {
+            throw new BusinessException("未找到党团流程记录");
+        }
+        return progresses.stream()
+                .sorted(this::compareProgress)
+                .flatMap(progress -> buildReminderResponses(progress, today).stream())
+                .sorted(Comparator.comparing(ReminderResponse::remindDate, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+    }
+
+    private LatestPartyStudentProgress resolveCurrentProgress(Long studentId) {
+        return latestPartyStudentProgressRepository.findAllByStudentUserIdAndIsDeleted(studentId, 0).stream()
+                .min(this::compareProgress)
                 .orElseThrow(() -> new BusinessException("未找到党团流程记录"));
+    }
+
+    private PartyProgressResponse buildProgressResponse(LatestPartyStudentProgress progress) {
+        LatestPartyFlowNode node = progress.getCurrentNodeId() == null ? null
+                : latestPartyFlowNodeRepository.findById(progress.getCurrentNodeId()).orElse(null);
+        LocalDate stageStartDate = resolveStageStartDate(progress);
+        LocalDate nextDeadline = resolveNextDeadline(progress);
+        return new PartyProgressResponse(
+                node == null ? resolveFallbackStage(progress) : node.getNodeName(),
+                stageStartDate,
+                (int) ChronoUnit.DAYS.between(stageStartDate, LocalDate.now()),
+                nextDeadline,
+                buildCompletedActions(progress, node),
+                buildNextAction(progress, node),
+                buildNextActionRule(progress, node)
+        );
+    }
+
+    private List<ReminderResponse> buildReminderResponses(LatestPartyStudentProgress progress, LocalDate today) {
         List<LatestPartyReminderTask> tasks = latestPartyReminderTaskRepository.findByProgressIdOrderByDueAtAsc(progress.getId());
         if (tasks.isEmpty()) {
-            PartyProgressResponse current = getProgress(studentId);
-            LocalDate today = LocalDate.now();
+            PartyProgressResponse current = buildProgressResponse(progress);
             return List.of(new ReminderResponse(
                     "后续动作提醒",
                     current.nextAction(),
@@ -80,26 +99,54 @@ public class KingbasePartyProgressService implements PartyProgressApplicationSer
                     current.currentStage(),
                     current.nextActionRule(),
                     (int) ChronoUnit.DAYS.between(today, current.nextDeadline()),
-                    current.nextDeadline().isBefore(today)
+                    current.nextDeadline().isBefore(today),
+                    null,
+                    "miniprogram",
+                    "generated"
             ));
         }
-        LocalDate today = LocalDate.now();
         return tasks.stream()
-                .map(task -> {
-                    LatestPartyFlowNode node = latestPartyFlowNodeRepository.findById(task.getNodeId()).orElse(null);
-                    LocalDate remindDate = task.getDueAt().toLocalDate();
-                    return new ReminderResponse(
-                            "流程提醒",
-                            node == null ? "请按节点要求推进党团流程" : node.getNodeName(),
-                            remindDate,
-                            resolveLevel(task),
-                            node == null ? resolveFallbackStage(progress) : node.getNodeName(),
-                            task.getStatus(),
-                            (int) ChronoUnit.DAYS.between(today, remindDate),
-                            remindDate.isBefore(today)
-                    );
-                })
+                .map(task -> buildTaskReminderResponse(progress, task, today))
                 .toList();
+    }
+
+    private ReminderResponse buildTaskReminderResponse(LatestPartyStudentProgress progress,
+                                                       LatestPartyReminderTask task,
+                                                       LocalDate today) {
+        LatestPartyFlowNode node = latestPartyFlowNodeRepository.findById(task.getNodeId()).orElse(null);
+        LocalDate remindDate = task.getDueAt().toLocalDate();
+        return new ReminderResponse(
+                "流程提醒",
+                node == null ? "请按节点要求推进党团流程" : node.getNodeName(),
+                remindDate,
+                resolveLevel(task),
+                node == null ? resolveFallbackStage(progress) : node.getNodeName(),
+                task.getStatus(),
+                (int) ChronoUnit.DAYS.between(today, remindDate),
+                remindDate.isBefore(today),
+                task.getId(),
+                task.getChannel(),
+                task.getStatus()
+        );
+    }
+
+    private int compareProgress(LatestPartyStudentProgress left, LatestPartyStudentProgress right) {
+        return Comparator
+                .comparingInt(this::statusPriority)
+                .thenComparing(LatestPartyStudentProgress::getUpdatedNodeAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(LatestPartyStudentProgress::getNextDeadlineAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(LatestPartyStudentProgress::getId, Comparator.nullsLast(Comparator.reverseOrder()))
+                .compare(left, right);
+    }
+
+    private int statusPriority(LatestPartyStudentProgress progress) {
+        return switch (normalizeStatus(progress.getStatus())) {
+            case "in_progress" -> 0;
+            case "paused" -> 1;
+            case "not_started" -> 2;
+            case "completed" -> 3;
+            default -> 4;
+        };
     }
 
     private LocalDate resolveStageStartDate(LatestPartyStudentProgress progress) {
@@ -141,11 +188,15 @@ public class KingbasePartyProgressService implements PartyProgressApplicationSer
     }
 
     private String resolveFallbackStage(LatestPartyStudentProgress progress) {
-        return switch (progress.getStatus()) {
+        return switch (normalizeStatus(progress.getStatus())) {
             case "completed" -> "正式党员";
             case "paused" -> "流程暂停";
             default -> "积极分子";
         };
+    }
+
+    private String normalizeStatus(String status) {
+        return status == null ? "" : status.toLowerCase();
     }
 
     private String resolveLevel(LatestPartyReminderTask task) {

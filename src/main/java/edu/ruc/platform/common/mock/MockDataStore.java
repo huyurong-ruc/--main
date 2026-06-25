@@ -88,8 +88,8 @@ public class MockDataStore {
     public List<ReminderResponse> reminders() {
         PartyProgressResponse progress = partyProgress();
         return List.of(
-                new ReminderResponse("思想汇报提醒", "积极分子培养期内按要求提交思想汇报，具体时间以学院通知为准。", progress.nextDeadline(), "HIGH", "积极分子", "培养期满 3 个月提交思想汇报", 0, false),
-                new ReminderResponse("发展对象准备提醒", "下学期培养期满后，关注发展对象推优和答辩安排。", progress.stageStartDate().plusMonths(6), "MEDIUM", "发展对象", "按学期节点完成推优与答辩", 0, false)
+                new ReminderResponse("思想汇报提醒", "积极分子培养期内按要求提交思想汇报，具体时间以学院通知为准。", progress.nextDeadline(), "HIGH", "积极分子", "培养期满 3 个月提交思想汇报", 0, false, null, "miniprogram", "generated"),
+                new ReminderResponse("发展对象准备提醒", "下学期培养期满后，关注发展对象推优和答辩安排。", progress.stageStartDate().plusMonths(6), "MEDIUM", "发展对象", "按学期节点完成推优与答辩", 0, false, null, "miniprogram", "generated")
         );
     }
 

@@ -24,13 +24,15 @@ public class PartyQuizController {
     private final CurrentUserService currentUserService;
 
     @GetMapping("/banks")
-    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR, RoleType.STUDENT})
+    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
+            RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT})
     public ApiResponse<List<PartyQuestionBankResponse>> listBanks() {
         return ApiResponse.success(quizService.listQuestionBanks());
     }
 
     @GetMapping("/banks/{id}")
-    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR, RoleType.STUDENT})
+    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
+            RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT})
     public ApiResponse<PartyQuestionBankResponse> getBankById(@Positive(message = "题库ID必须大于0") @PathVariable Long id) {
         return ApiResponse.success(quizService.getQuestionBankById(id));
     }
@@ -49,7 +51,7 @@ public class PartyQuizController {
     }
 
     @PostMapping("/submit")
-    @RequireRoles({RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER})
+    @RequireRoles({RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT})
     public ApiResponse<PartyQuizResultResponse> submitQuiz(@Valid @RequestBody PartyQuizSubmitRequest request) {
         Long studentId = currentUserService.requireCurrentUser().studentId();
         return ApiResponse.success("自测提交成功", quizService.submitQuiz(studentId, request));
@@ -57,7 +59,7 @@ public class PartyQuizController {
 
     @GetMapping("/records/student/{studentId}")
     @RequireRoles({RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER,
-            RoleType.COUNSELOR, RoleType.COLLEGE_ADMIN, RoleType.SUPER_ADMIN})
+            RoleType.ASSISTANT, RoleType.COUNSELOR, RoleType.COLLEGE_ADMIN, RoleType.SUPER_ADMIN})
     public ApiResponse<List<PartyQuizRecordResponse>> listRecords(@Positive(message = "学生ID必须大于0") @PathVariable Long studentId) {
         return ApiResponse.success(quizService.listQuizRecords(studentId));
     }

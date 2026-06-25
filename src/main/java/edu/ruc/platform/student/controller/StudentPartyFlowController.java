@@ -22,7 +22,7 @@ public class StudentPartyFlowController {
 
     @GetMapping("/party-flows")
     public ApiResponse<StudentPartyFlowStateResponse> getPartyFlows() {
-        currentUserService.requireAnyRole(RoleType.STUDENT);
+        currentUserService.requireAnyRole(RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT);
         return ApiResponse.success(studentPartyFlowService.getCurrentStudentFlowState());
     }
 }

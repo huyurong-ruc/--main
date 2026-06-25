@@ -76,13 +76,15 @@ public class AcademicProgramController {
     }
 
     @GetMapping("/transcripts/student/{studentId}")
-    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR, RoleType.STUDENT})
+    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
+            RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT})
     public ApiResponse<TranscriptUploadResponse> getTranscript(@Positive(message = "学生ID必须大于0") @PathVariable Long studentId) {
         return ApiResponse.success(programService.getTranscript(studentId));
     }
 
     @GetMapping("/audit-report/student/{studentId}/program/{programId}")
-    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR, RoleType.STUDENT})
+    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
+            RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT})
     public ApiResponse<AuditReportResponse> generateAuditReport(@Positive(message = "学生ID必须大于0") @PathVariable Long studentId,
                                                                @Positive(message = "培养方案ID必须大于0") @PathVariable Long programId) {
         return ApiResponse.success(programService.generateAuditReport(studentId, programId));

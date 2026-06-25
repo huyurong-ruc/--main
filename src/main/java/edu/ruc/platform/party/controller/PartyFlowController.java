@@ -22,13 +22,15 @@ public class PartyFlowController {
     private final PartyFlowApplicationService flowService;
 
     @GetMapping
-    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR, RoleType.STUDENT})
+    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
+            RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT})
     public ApiResponse<List<PartyFlowTemplateResponse>> listAll() {
         return ApiResponse.success(flowService.listAllTemplates());
     }
 
     @GetMapping("/{id}")
-    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR, RoleType.STUDENT})
+    @RequireRoles({RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
+            RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT})
     public ApiResponse<PartyFlowTemplateResponse> getById(@Positive(message = "流程ID必须大于0") @PathVariable Long id) {
         return ApiResponse.success(flowService.getTemplateById(id));
     }

@@ -25,7 +25,8 @@ import java.util.List;
 @RequestMapping("/api/v1/student/honors")
 @RequireRoles({
         RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR,
-        RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY, RoleType.STUDENT
+        RoleType.CLASS_ADVISOR, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER,
+        RoleType.ASSISTANT, RoleType.STUDENT
 })
 @RequiredArgsConstructor
 public class StudentHonorController {

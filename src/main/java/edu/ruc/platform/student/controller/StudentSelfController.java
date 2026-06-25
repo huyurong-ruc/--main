@@ -114,7 +114,7 @@ public class StudentSelfController {
     @GetMapping("/policies/page")
     public ApiResponse<PageResponse<StudentPolicyListItemResponse>> pagePolicies(@Min(value = 0, message = "page不能小于0") @RequestParam(defaultValue = "0") int page,
                                                                                 @Min(value = 1, message = "size不能小于1") @RequestParam(defaultValue = "10") int size) {
-        currentUserService.requireAnyRole(RoleType.STUDENT);
+        currentUserService.requireAnyRole(RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT);
         List<edu.ruc.platform.knowledge.domain.LatestKnowledgePolicy> all = latestKnowledgePolicyRepository.findByIsDeletedAndIsPublished(0, 1).stream()
                 .filter(item -> !isFaqPolicy(item))
                 .sorted(Comparator.comparing(edu.ruc.platform.knowledge.domain.LatestKnowledgePolicy::getUpdatedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
@@ -147,7 +147,7 @@ public class StudentSelfController {
 
     @PostMapping("/qa-tickets")
     public ApiResponse<QaTicketDetailResponse> createTicket(@Valid @RequestBody StudentQaTicketCreateRequest request) {
-        AuthenticatedUser user = currentUserService.requireAnyRole(RoleType.STUDENT);
+        AuthenticatedUser user = currentUserService.requireAnyRole(RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT);
         String actorName = (user.name() == null || user.name().isBlank()) ? user.username() : user.name();
         Long studentId = user.studentId() != null ? user.studentId() : user.userId();
 
@@ -168,7 +168,7 @@ public class StudentSelfController {
     public ApiResponse<PageResponse<QaTicketListItemResponse>> pageMyTickets(@RequestParam(required = false) String status,
                                                                             @Min(value = 0, message = "page不能小于0") @RequestParam(defaultValue = "0") int page,
                                                                             @Min(value = 1, message = "size不能小于1") @RequestParam(defaultValue = "10") int size) {
-        AuthenticatedUser user = currentUserService.requireAnyRole(RoleType.STUDENT);
+        AuthenticatedUser user = currentUserService.requireAnyRole(RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT);
         Long studentId = user.studentId() != null ? user.studentId() : user.userId();
         String normalizedStatus = (status == null || status.isBlank()) ? null : status.trim().toUpperCase();
         List<KnowledgeQaTicket> tickets = normalizedStatus == null
@@ -186,7 +186,7 @@ public class StudentSelfController {
 
     @GetMapping("/qa-tickets/{id}")
     public ApiResponse<QaTicketDetailResponse> myTicketDetail(@Positive(message = "工单ID必须大于0") @PathVariable Long id) {
-        AuthenticatedUser user = currentUserService.requireAnyRole(RoleType.STUDENT);
+        AuthenticatedUser user = currentUserService.requireAnyRole(RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT);
         Long studentId = user.studentId() != null ? user.studentId() : user.userId();
         KnowledgeQaTicket ticket = ticketRepository.findById(id).orElseThrow(() -> new edu.ruc.platform.common.exception.BusinessException("工单不存在"));
         if (ticket.getAskUserId() == null || !ticket.getAskUserId().equals(studentId)) {

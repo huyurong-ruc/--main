@@ -70,7 +70,7 @@ Page({
 
   async syncPendingProgress() {
     const studentId = Number(app.globalData.userInfo?.studentId || app.globalData.userInfo?.id || 0)
-    const flowState = getPartyFlowState(studentId)
+    const flowState = await getPartyFlowState(studentId)
     const nextList = []
 
     try {

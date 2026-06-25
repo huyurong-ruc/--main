@@ -90,6 +90,7 @@ import edu.ruc.platform.party.repository.LatestPartyFlowNodeRepository;
 import edu.ruc.platform.party.repository.LatestPartyFlowRepository;
 import edu.ruc.platform.party.repository.LatestPartyReminderTaskRepository;
 import edu.ruc.platform.party.repository.LatestPartyStudentProgressRepository;
+import edu.ruc.platform.platform.service.PlatformNotificationSendRecordService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -124,6 +125,7 @@ public class AdminService implements AdminApplicationService {
     private final DataImportTaskRepository dataImportTaskRepository;
     private final DataImportErrorItemRepository dataImportErrorItemRepository;
     private final CurrentUserService currentUserService;
+    private final PlatformNotificationSendRecordService platformNotificationSendRecordService;
     private final LatestPartyReminderTaskRepository latestPartyReminderTaskRepository;
     private final LatestPartyStudentProgressRepository latestPartyStudentProgressRepository;
     private final LatestPartyFlowRepository latestPartyFlowRepository;
@@ -2843,18 +2845,76 @@ public class AdminService implements AdminApplicationService {
     }
 
     @Override
-    public edu.ruc.platform.admin.dto.PartyReminderTaskResponse sendPartyReminder(Long id) {
-        throw new BusinessException("未实现：发送党团提醒");
+    public PartyReminderTaskResponse sendPartyReminder(Long id) {
+        LatestPartyReminderTask task = latestPartyReminderTaskRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("提醒任务不存在"));
+        if (!"pending".equalsIgnoreCase(task.getStatus())) {
+            throw new BusinessException("只有待发送的提醒任务可以发送");
+        }
+        return updatePartyReminderStatus(task, "sent", true);
     }
 
     @Override
-    public edu.ruc.platform.admin.dto.PartyReminderTaskResponse resendPartyReminder(Long id) {
-        throw new BusinessException("未实现：重新发送党团提醒");
+    public PartyReminderTaskResponse resendPartyReminder(Long id) {
+        LatestPartyReminderTask task = latestPartyReminderTaskRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("提醒任务不存在"));
+        if (!"failed".equalsIgnoreCase(task.getStatus()) && !"sent".equalsIgnoreCase(task.getStatus())) {
+            throw new BusinessException("只有失败或已发送的提醒任务可以重新发送");
+        }
+        return updatePartyReminderStatus(task, "sent", true);
     }
 
     @Override
-    public edu.ruc.platform.admin.dto.PartyReminderTaskResponse cancelPartyReminder(Long id) {
-        throw new BusinessException("未实现：取消党团提醒");
+    public PartyReminderTaskResponse cancelPartyReminder(Long id) {
+        LatestPartyReminderTask task = latestPartyReminderTaskRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("提醒任务不存在"));
+        if (!"pending".equalsIgnoreCase(task.getStatus())) {
+            throw new BusinessException("只有待发送的提醒任务可以取消");
+        }
+        return updatePartyReminderStatus(task, "canceled", false);
+    }
+
+    private PartyReminderTaskResponse updatePartyReminderStatus(LatestPartyReminderTask task,
+                                                                String status,
+                                                                boolean recordSend) {
+        task.setStatus(status);
+        task.setSentAt(recordSend ? LocalDateTime.now() : null);
+        LatestPartyReminderTask saved = latestPartyReminderTaskRepository.save(task);
+        PartyReminderTaskResponse response = toPartyReminderTaskResponse(saved);
+        if (recordSend) {
+            recordReminderSend(response);
+        }
+        return response;
+    }
+
+    private void recordReminderSend(PartyReminderTaskResponse reminder) {
+        AuthenticatedUser operator = currentUserService.requireCurrentUser();
+        String channel = switch (String.valueOf(reminder.channel()).toLowerCase(Locale.ROOT)) {
+            case "email" -> "EMAIL";
+            case "sms" -> "SMS";
+            case "miniprogram" -> "IN_APP";
+            default -> "IN_APP";
+        };
+        String student = reminder.studentName() == null || reminder.studentName().isBlank()
+                ? "student#" + reminder.studentUserId()
+                : reminder.studentName();
+        String studentNo = reminder.studentNo() == null || reminder.studentNo().isBlank()
+                ? ""
+                : "(" + reminder.studentNo() + ")";
+        String node = reminder.nodeName() == null || reminder.nodeName().isBlank()
+                ? "节点#" + reminder.nodeId()
+                : reminder.nodeName();
+        platformNotificationSendRecordService.recordSend(
+                "党团提醒任务",
+                channel,
+                "SELF",
+                student + studentNo + " / " + node,
+                "SENT",
+                1,
+                operator.name() == null || operator.name().isBlank() ? operator.username() : operator.name(),
+                reminder.sentAt(),
+                List.of(channel)
+        );
     }
 
     private List<PartyReminderTaskResponse> loadPartyReminderTasks(PartyReminderTaskFilterRequest request) {

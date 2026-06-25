@@ -65,7 +65,10 @@ public class PartyProgressService implements PartyProgressApplicationService {
                         progress.currentStage(),
                         progress.nextActionRule(),
                         (int) ChronoUnit.DAYS.between(today, progress.nextDeadline()),
-                        progress.nextDeadline().isBefore(today)),
+                        progress.nextDeadline().isBefore(today),
+                        null,
+                        "miniprogram",
+                        "generated"),
                 new ReminderResponse(
                         "流程说明提醒",
                         "具体时间以学院每学期通知为准，系统仅提供固定流程辅助。",
@@ -74,7 +77,10 @@ public class PartyProgressService implements PartyProgressApplicationService {
                         progress.currentStage(),
                         "按学院学期安排持续跟进",
                         (int) ChronoUnit.DAYS.between(today, progress.nextDeadline().plusMonths(2)),
-                        progress.nextDeadline().plusMonths(2).isBefore(today))
+                        progress.nextDeadline().plusMonths(2).isBefore(today),
+                        null,
+                        "miniprogram",
+                        "generated")
         );
     }
 

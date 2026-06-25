@@ -24,14 +24,14 @@ public class PartyMaterialController {
     private final PartyReminderNotificationService reminderNotificationService;
 
     @PostMapping
-    @RequireRoles({RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER})
+    @RequireRoles({RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT})
     public ApiResponse<PartyMaterialSubmissionResponse> submit(@Valid @RequestBody PartyMaterialSubmitRequest request) {
         return ApiResponse.success("材料提交成功", partyMaterialService.submitMaterial(request));
     }
 
     @GetMapping("/student/{studentId}")
     @RequireRoles({RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER,
-            RoleType.COUNSELOR, RoleType.CLASS_ADVISOR, RoleType.COLLEGE_ADMIN, RoleType.SUPER_ADMIN})
+            RoleType.ASSISTANT, RoleType.COUNSELOR, RoleType.CLASS_ADVISOR, RoleType.COLLEGE_ADMIN, RoleType.SUPER_ADMIN})
     public ApiResponse<List<PartyMaterialSubmissionResponse>> listByStudent(
             @Positive(message = "学生ID必须大于0") @PathVariable Long studentId) {
         return ApiResponse.success(partyMaterialService.listByStudentId(studentId));
@@ -54,14 +54,14 @@ public class PartyMaterialController {
     }
 
     @PostMapping("/{id}/withdraw")
-    @RequireRoles({RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER})
+    @RequireRoles({RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT})
     public ApiResponse<PartyMaterialSubmissionResponse> withdraw(
             @Positive(message = "提交ID必须大于0") @PathVariable Long id) {
         return ApiResponse.success("撤回成功", partyMaterialService.withdrawMaterial(id));
     }
 
     @PostMapping("/{id}/resubmit")
-    @RequireRoles({RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER})
+    @RequireRoles({RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT})
     public ApiResponse<PartyMaterialSubmissionResponse> resubmit(
             @Positive(message = "提交ID必须大于0") @PathVariable Long id,
             @Valid @RequestBody PartyMaterialSubmitRequest request) {
@@ -70,7 +70,7 @@ public class PartyMaterialController {
 
     @GetMapping("/logs/student/{studentId}")
     @RequireRoles({RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER,
-            RoleType.COUNSELOR, RoleType.CLASS_ADVISOR, RoleType.COLLEGE_ADMIN, RoleType.SUPER_ADMIN})
+            RoleType.ASSISTANT, RoleType.COUNSELOR, RoleType.CLASS_ADVISOR, RoleType.COLLEGE_ADMIN, RoleType.SUPER_ADMIN})
     public ApiResponse<List<PartyActionLogResponse>> listLogs(
             @Positive(message = "学生ID必须大于0") @PathVariable Long studentId) {
         return ApiResponse.success(partyMaterialService.listActionLogs(studentId));
@@ -86,7 +86,7 @@ public class PartyMaterialController {
 
     @GetMapping("/reminders/student/{studentId}")
     @RequireRoles({RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER,
-            RoleType.COUNSELOR, RoleType.CLASS_ADVISOR, RoleType.COLLEGE_ADMIN, RoleType.SUPER_ADMIN})
+            RoleType.ASSISTANT, RoleType.COUNSELOR, RoleType.CLASS_ADVISOR, RoleType.COLLEGE_ADMIN, RoleType.SUPER_ADMIN})
     public ApiResponse<List<PartyReminderNotificationService.ReminderRecord>> listReminders(
             @Positive(message = "学生ID必须大于0") @PathVariable Long studentId) {
         return ApiResponse.success(reminderNotificationService.getReminderHistory(studentId));
