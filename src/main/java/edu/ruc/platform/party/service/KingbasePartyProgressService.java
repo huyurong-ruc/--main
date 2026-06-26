@@ -117,11 +117,13 @@ public class KingbasePartyProgressService implements PartyProgressApplicationSer
         LocalDate remindDate = task.getDueAt().toLocalDate();
         return new ReminderResponse(
                 "流程提醒",
-                node == null ? "请按节点要求推进党团流程" : node.getNodeName(),
+                task.getContent() == null || task.getContent().isBlank()
+                        ? (node == null ? "请按节点要求推进党团流程" : node.getDescription())
+                        : task.getContent(),
                 remindDate,
                 resolveLevel(task),
                 node == null ? resolveFallbackStage(progress) : node.getNodeName(),
-                task.getStatus(),
+                node == null ? "请按节点要求推进党团流程" : node.getDescription(),
                 (int) ChronoUnit.DAYS.between(today, remindDate),
                 remindDate.isBefore(today),
                 task.getId(),

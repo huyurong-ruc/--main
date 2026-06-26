@@ -202,6 +202,7 @@ public class AdminPartyReminderController {
         task.setDueAt(dueAt);
         task.setChannel(channel);
         task.setStatus(status);
+        task.setContent(request.content());
         task.setSentAt("sent".equals(status) ? LocalDateTime.now() : null);
         task = latestPartyReminderTaskRepository.save(task);
         return ApiResponse.success("提醒任务已创建", toResponse(task));
@@ -238,6 +239,10 @@ public class AdminPartyReminderController {
             if ("sent".equalsIgnoreCase(nextStatus) && task.getSentAt() == null) {
                 task.setSentAt(LocalDateTime.now());
             }
+            changed = true;
+        }
+        if (request.content() != null) {
+            task.setContent(request.content());
             changed = true;
         }
         if (request.nodeId() != null) {
@@ -333,6 +338,7 @@ public class AdminPartyReminderController {
                     task.setDueAt(dueAt);
                     task.setChannel(finalChannel);
                     task.setStatus(finalStatus);
+                    task.setContent(null);
                     task.setSentAt("sent".equals(finalStatus) ? LocalDateTime.now() : null);
                     latestPartyReminderTaskRepository.save(task);
                     successRows += 1;
@@ -426,6 +432,7 @@ public class AdminPartyReminderController {
                 task.getDueAt(),
                 task.getChannel(),
                 task.getStatus(),
+                task.getContent(),
                 task.getSentAt(),
                 null,
                 task.getCreatedAt()
@@ -522,7 +529,8 @@ public class AdminPartyReminderController {
             Long nodeId,
             LocalDateTime dueAt,
             String channel,
-            String status
+            String status,
+            String content
     ) {
     }
 
@@ -530,7 +538,8 @@ public class AdminPartyReminderController {
             Long nodeId,
             LocalDateTime dueAt,
             String channel,
-            String status
+            String status,
+            String content
     ) {
     }
 

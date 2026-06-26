@@ -2260,6 +2260,7 @@ public class MockAdminService implements AdminApplicationService {
                         item.dueAt(),
                         item.channel(),
                         "sent",
+                        item.content(),
                         LocalDateTime.now(),
                         null,
                         item.createdAt()
@@ -2294,6 +2295,7 @@ public class MockAdminService implements AdminApplicationService {
                         item.dueAt(),
                         item.channel(),
                         "sent",
+                        item.content(),
                         LocalDateTime.now(),
                         null,
                         item.createdAt()

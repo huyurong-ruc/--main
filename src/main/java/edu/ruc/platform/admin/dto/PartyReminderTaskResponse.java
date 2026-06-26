@@ -15,6 +15,7 @@ public record PartyReminderTaskResponse(
         LocalDateTime dueAt,
         String channel,
         String status,
+        String content,
         LocalDateTime sentAt,
         String errorMessage,
         LocalDateTime createdAt

@@ -22,7 +22,7 @@
     <view class="section">
       <text class="section-title">正文</text>
       <view class="body-card">
-        <text class="body-text">{{detail.content}}</text>
+        <text class="body-text">{{detail.content || detail.triggerRule || '暂无正文'}}</text>
       </view>
     </view>
 

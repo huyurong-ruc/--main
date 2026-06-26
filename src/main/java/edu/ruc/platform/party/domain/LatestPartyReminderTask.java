@@ -30,6 +30,9 @@ public class LatestPartyReminderTask extends BaseEntity {
     @Column(nullable = false, length = 32)
     private String status;
 
+    @Column(columnDefinition = "text")
+    private String content;
+
     @Column
     private LocalDateTime sentAt;
 }

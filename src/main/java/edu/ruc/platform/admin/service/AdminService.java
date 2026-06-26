@@ -2954,6 +2954,7 @@ public class AdminService implements AdminApplicationService {
                 task.getDueAt(),
                 task.getChannel(),
                 task.getStatus(),
+                task.getContent(),
                 task.getSentAt(),
                 null,
                 task.getCreatedAt()

@@ -7934,6 +7934,7 @@
         const nodeSelect2 = el("select", { class: "instSelect" }, [el("option", { value: "", text: "请选择节点" })]);
 
         const dueAtInput = el("input", { type: "datetime-local" });
+        const contentInput = el("textarea", { class: "cfgInput", placeholder: "请输入提醒正文" });
         const channelSelect2 = el("select", { class: "instSelect" }, [
           el("option", { value: "miniprogram", text: "小程序" }),
           el("option", { value: "sms", text: "短信" }),
@@ -8003,6 +8004,8 @@
           nodeSelect2,
           el("div", { class: "sub", text: "第4步：选择计划时间" }),
           dueAtInput,
+          el("div", { class: "sub", text: "第5步：编辑正文" }),
+          contentInput,
           el("div", { class: "row", style: "gap: 10px; align-items:center;" }, [channelSelect2, statusSelect2]),
           msg
         ].filter(Boolean));
@@ -8031,6 +8034,7 @@
             msg.textContent = "请选择计划时间";
             return;
           }
+          const content = normalizeText(contentInput.value);
           let iso = rawDue;
           if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(iso)) iso = iso + ":00";
 
@@ -8041,7 +8045,8 @@
                 nodeId: Number(selectedNodeId),
                 dueAt: iso,
                 channel: normalizeText(channelSelect2.value),
-                status: normalizeText(statusSelect2.value)
+                status: normalizeText(statusSelect2.value),
+                content
               };
               await apiJson("/api/v1/admin/party-reminders", { method: "POST", body: JSON.stringify(payload) });
               toast.textContent = "提醒任务已创建";
@@ -8050,7 +8055,8 @@
                 nodeId: Number(selectedNodeId),
                 dueAt: iso,
                 channel: normalizeText(channelSelect2.value),
-                status: normalizeText(statusSelect2.value)
+                status: normalizeText(statusSelect2.value),
+                content
               };
               await apiJson("/api/v1/admin/party-reminders/" + item.id, { method: "PUT", body: JSON.stringify(payload) });
               toast.textContent = "提醒任务已更新";
@@ -8082,6 +8088,7 @@
               await refreshNodesByProgressId(item.progressId);
               nodeSelect2.value = String(item.nodeId || "");
               dueAtInput.value = toDatetimeLocalValue(item.dueAt);
+              contentInput.value = item.content || "";
             } else {
               await refreshStudents("");
               studentSelect.addEventListener("change", async () => {
@@ -8110,6 +8117,7 @@
                 }
               });
               dueAtInput.value = "";
+              contentInput.value = "";
             }
           } catch (e) {
             msg.textContent = e.message;

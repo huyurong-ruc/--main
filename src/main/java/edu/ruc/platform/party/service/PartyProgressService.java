@@ -68,7 +68,7 @@ public class PartyProgressService implements PartyProgressApplicationService {
                         progress.nextDeadline().isBefore(today),
                         null,
                         "miniprogram",
-                        "generated"),
+                        progress.nextAction()),
                 new ReminderResponse(
                         "流程说明提醒",
                         "具体时间以学院每学期通知为准，系统仅提供固定流程辅助。",
@@ -80,7 +80,7 @@ public class PartyProgressService implements PartyProgressApplicationService {
                         progress.nextDeadline().plusMonths(2).isBefore(today),
                         null,
                         "miniprogram",
-                        "generated")
+                        "具体时间以学院每学期通知为准，系统仅提供固定流程辅助。")
         );
     }
 
