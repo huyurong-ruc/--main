@@ -2373,6 +2373,15 @@ public class MockAdminService implements AdminApplicationService {
         throw new BusinessException("提醒任务不存在: " + id);
     }
 
+    public void deletePartyReminder(Long id) {
+        initializePartyReminderTasks();
+        boolean removed = partyReminderTasks.removeIf(item -> item.id().equals(id));
+        if (!removed) {
+            throw new BusinessException("提醒任务不存在: " + id);
+        }
+        writeOperationLog("PARTY_REMINDER", "DELETE", "reminder#" + id, "SUCCESS", null);
+    }
+
     private void initializePartyReminderTasks() {
         if (!partyReminderTasks.isEmpty()) {
             return;

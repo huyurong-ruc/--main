@@ -61,13 +61,14 @@ public class KingbaseStudentPartyFlowService implements StudentPartyFlowApplicat
 
         int currentIndex = resolveCurrentIndex(progress, nodes);
         boolean hasProgress = progress != null;
-        boolean completedFlow = progress != null && isCompleted(progress, nodes);
-        List<StudentPartyFlowStageResponse> stages = buildStages(nodes, currentIndex, completedFlow);
+        boolean completedNode = progress != null && isCompleted(progress);
+        boolean completedFlow = isCompletedFlow(progress, nodes, currentIndex);
+        List<StudentPartyFlowStageResponse> stages = buildStages(nodes, currentIndex, completedNode, completedFlow);
         int progressPercent = calcProgressPercent(stages, hasProgress, completedFlow);
         LocalDate stageStartDate = resolveStageStartDate(progress);
         LocalDate nextDeadline = resolveNextDeadline(progress, nodes, currentIndex, stageStartDate);
         String currentStage = resolveCurrentStage(nodes, currentIndex, hasProgress, completedFlow);
-        String completedActions = resolveCompletedActions(nodes, currentIndex, hasProgress, completedFlow);
+        String completedActions = resolveCompletedActions(nodes, currentIndex, hasProgress, completedNode, completedFlow);
         String nextAction = resolveNextAction(nodes, currentIndex, hasProgress, completedFlow);
         String nextActionRule = resolveNextActionRule(nodes, currentIndex, hasProgress, completedFlow);
 
@@ -89,13 +90,18 @@ public class KingbaseStudentPartyFlowService implements StudentPartyFlowApplicat
         );
     }
 
-    private List<StudentPartyFlowStageResponse> buildStages(List<LatestPartyFlowNode> nodes, int currentIndex, boolean completedFlow) {
+    private List<StudentPartyFlowStageResponse> buildStages(List<LatestPartyFlowNode> nodes,
+                                                            int currentIndex,
+                                                            boolean completedNode,
+                                                            boolean completedFlow) {
         return nodes.stream()
                 .sorted(Comparator.comparing(LatestPartyFlowNode::getSeqNo, Comparator.nullsLast(Comparator.naturalOrder())))
                 .map(node -> {
                     int index = nodes.indexOf(node);
-                    boolean completed = completedFlow || (currentIndex >= 0 && index < currentIndex);
-                    boolean current = !completedFlow && currentIndex >= 0 && index == currentIndex;
+                    boolean completed = completedFlow
+                            || (currentIndex >= 0 && index < currentIndex)
+                            || (completedNode && currentIndex >= 0 && index == currentIndex);
+                    boolean current = !completedFlow && !completedNode && currentIndex >= 0 && index == currentIndex;
                     String status = completed ? "completed" : current ? "in_progress" : "pending";
                     return new StudentPartyFlowStageResponse(
                             node.getId(),
@@ -142,8 +148,12 @@ public class KingbaseStudentPartyFlowService implements StudentPartyFlowApplicat
         return 0;
     }
 
-    private boolean isCompleted(LatestPartyStudentProgress progress, List<LatestPartyFlowNode> nodes) {
+    private boolean isCompleted(LatestPartyStudentProgress progress) {
         return progress != null && "completed".equals(normalizeStatus(progress.getStatus()));
+    }
+
+    private boolean isCompletedFlow(LatestPartyStudentProgress progress, List<LatestPartyFlowNode> nodes, int currentIndex) {
+        return isCompleted(progress) && (progress.getCurrentNodeId() == null || currentIndex == nodes.size() - 1);
     }
 
     private LocalDate resolveStageStartDate(LatestPartyStudentProgress progress) {
@@ -190,6 +200,7 @@ public class KingbaseStudentPartyFlowService implements StudentPartyFlowApplicat
     private String resolveCompletedActions(List<LatestPartyFlowNode> nodes,
                                            int currentIndex,
                                            boolean hasProgress,
+                                           boolean completedNode,
                                            boolean completedFlow) {
         if (!hasProgress) {
             return "当前账号尚未关联该流程";
@@ -198,9 +209,10 @@ public class KingbaseStudentPartyFlowService implements StudentPartyFlowApplicat
             return "当前流程已完成";
         }
         if (nodes.isEmpty() || currentIndex <= 0) {
-            return "已进入当前流程阶段";
+            return completedNode ? "已完成当前流程阶段" : "已进入当前流程阶段";
         }
-        return "已完成 " + nodes.subList(0, currentIndex).stream()
+        int completedEndExclusive = completedNode ? currentIndex + 1 : currentIndex;
+        return "已完成 " + nodes.subList(0, completedEndExclusive).stream()
                 .map(LatestPartyFlowNode::getNodeName)
                 .filter(name -> name != null && !name.isBlank())
                 .reduce((left, right) -> left + "；" + right)

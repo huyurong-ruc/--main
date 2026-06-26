@@ -32,6 +32,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -155,6 +156,19 @@ public class AdminPartyReminderController {
     public ApiResponse<PartyReminderTaskResponse> cancel(@Positive(message = "提醒任务ID必须大于0") @PathVariable Long id) {
         currentUserService.requireAnyRole(RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR);
         return ApiResponse.success("提醒已取消", adminService.cancelPartyReminder(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@Positive(message = "提醒任务ID必须大于0") @PathVariable Long id) {
+        currentUserService.requireAnyRole(RoleType.SUPER_ADMIN, RoleType.COLLEGE_ADMIN, RoleType.COUNSELOR);
+        if (adminService instanceof MockAdminService mockAdminService) {
+            mockAdminService.deletePartyReminder(id);
+        } else {
+            LatestPartyReminderTask task = latestPartyReminderTaskRepository.findById(id)
+                    .orElseThrow(() -> new BusinessException("提醒任务不存在"));
+            latestPartyReminderTaskRepository.delete(task);
+        }
+        return ApiResponse.success("提醒任务已删除", null);
     }
 
     @PostMapping
