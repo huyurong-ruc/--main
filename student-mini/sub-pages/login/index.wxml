@@ -1,0 +1,45 @@
+<!-- sub-pages/login/index.wxml -->
+<view class="container">
+  <view class="login-content">
+    <view class="top">
+      <view class="header">
+        <text class="title">请绑定微人大账号</text>
+        <text class="subtitle">基于微信账号实名制</text>
+      </view>
+      <image class="illustration" src="/static/illustrations/academic.svg" mode="aspectFit" />
+    </view>
+
+    <view class="form">
+      <view class="input-group">
+        <input 
+          class="input" 
+          placeholder="请输入学号/工号" 
+          placeholder-class="placeholder"
+          value="{{studentNo}}"
+          bindinput="onStudentNoInput"
+        />
+      </view>
+      <view class="input-group {{passwordTouched && passwordError ? 'error' : ''}}">
+        <input 
+          class="input" 
+          placeholder="请输入密码" 
+          placeholder-class="placeholder"
+          value="{{password}}"
+          password="true"
+          bindinput="onPasswordInput"
+          bindblur="onPasswordBlur"
+        />
+        <text class="error-text" wx:if="{{passwordTouched && passwordError}}">{{passwordError}}</text>
+      </view>
+
+      <button class="login-btn {{canSubmit ? '' : 'disabled'}}" disabled="{{!canSubmit}}" bindtap="handleLogin" loading="{{loading}}">登录</button>
+    </view>
+
+    <view class="agreement">
+      <text>点击登录，即表示您同意</text>
+      <text class="link">《隐私政策》</text>
+      <text>和</text>
+      <text class="link">《服务条款》</text>
+    </view>
+  </view>
+</view>

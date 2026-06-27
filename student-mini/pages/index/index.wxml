@@ -1,0 +1,83 @@
+<!-- pages/index/index.wxml -->
+<view class="container">
+  <!-- 顶部背景与搜索 -->
+  <view class="header-section">
+    <view class="page-title">综合管理平台</view>
+    <view class="search-bar" bindtap="goToSearch">
+      <icon type="search" size="16" color="#cbd5e1" />
+      <text class="search-placeholder">搜索政策/通知/模板</text>
+    </view>
+  </view>
+
+  <!-- Banner -->
+  <view class="banner-box">
+    <swiper class="banner" indicator-dots autoplay circular indicator-active-color="#ffffff">
+      <swiper-item wx:for="{{banners}}" wx:key="id">
+        <view class="banner-item">
+          <image src="{{item.image}}" mode="aspectFill" class="banner-image" />
+          <view wx:if="{{item.showOverlay}}" class="banner-content">
+            <text class="banner-title">{{item.title}}</text>
+            <text class="banner-subtitle">{{item.subtitle}}</text>
+            <view wx:if="{{item.actionText}}" class="banner-action">{{item.actionText}}</view>
+          </view>
+        </view>
+      </swiper-item>
+    </swiper>
+  </view>
+
+  <!-- 功能网格 -->
+  <view class="grid-section">
+    <view class="grid-item" wx:for="{{navs}}" wx:key="name" bindtap="{{item.handler}}">
+      <view class="icon-box {{item.class}}">
+        <image
+          wx:if="{{item.class === 'faq'}}"
+          src="/static/images/icon-faq-question.svg"
+          class="icon-image"
+          mode="aspectFit"
+        />
+        <text wx:else class="icon-text">{{item.iconText}}</text>
+      </view>
+      <text class="grid-name">{{item.name}}</text>
+    </view>
+  </view>
+
+  <!-- 待办进度 -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">待办进度</text>
+      <text class="section-more" bindtap="goToProgressMore">更多 ›</text>
+    </view>
+    <view class="progress-list">
+      <view class="progress-card" wx:for="{{pendingProgress}}" wx:key="id" bindtap="goToProgressDetail" data-item="{{item}}">
+        <view class="progress-icon {{item.typeClass}}">{{item.typeText}}</view>
+        <view class="progress-info">
+          <view class="progress-top">
+            <text class="progress-name">{{item.title}}</text>
+            <text wx:if="{{item.showRightStatus && item.status}}" class="progress-status {{item.statusClass}}">{{item.status}}</text>
+          </view>
+          <view class="progress-bottom">
+            <text class="progress-desc">{{item.desc}}</text>
+            <text class="progress-time">{{item.time}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 精选通知 -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">精选通知</text>
+      <text class="section-more" bindtap="goToMessage">更多 ›</text>
+    </view>
+    <view class="notice-list">
+      <view class="notice-item" wx:for="{{news}}" wx:key="id" bindtap="goToNewsDetail" data-id="{{item.id}}">
+        <text class="notice-title">{{item.title}}</text>
+        <view class="notice-meta">
+          <text class="notice-source">来源：{{item.source}}</text>
+          <text class="notice-time">发布时间：{{item.time}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,64 @@
+<view class="container">
+  <view wx:if="{{detail && !loading && canView}}">
+    <view class="header-card">
+      <text class="header-title">{{detail.title}}</text>
+      <text class="header-subtitle">{{detail.subtitle}}</text>
+    </view>
+
+    <view class="stage-card">
+      <view class="stage-header">
+        <text class="stage-label">当前阶段</text>
+        <text class="stage-status">{{detail.currentStage}}</text>
+      </view>
+      <view class="stage-progress">
+        <view class="progress-bar">
+          <view class="progress-fill" style="width: {{detail.progressPercent}}%"></view>
+        </view>
+        <text class="progress-text">{{detail.progressPercent}}%</text>
+      </view>
+    </view>
+
+    <view class="timeline-card">
+      <view class="timeline-title">{{type === 'party' ? '入党流程时间轴' : '入团流程时间轴'}}</view>
+
+      <view class="timeline">
+        <view
+          wx:for="{{detail.stages}}"
+          wx:key="id"
+          class="timeline-item {{item.statusVariant}}"
+        >
+          <view class="timeline-marker">
+            <view class="marker-dot">
+              <text wx:if="{{item.status === 'completed'}}">✓</text>
+              <text wx:else>{{index + 1}}</text>
+            </view>
+            <view class="marker-line"></view>
+          </view>
+          <view class="timeline-content">
+            <view class="timeline-header">
+              <text class="timeline-name">{{item.name}}</text>
+              <text class="timeline-time">预计：{{item.expectedTime || item.time || '-'}}</text>
+            </view>
+            <text class="timeline-desc">{{item.description}}</text>
+            <text class="timeline-status {{item.statusVariant}}">{{item.statusText}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="readonly-card">
+      <text class="readonly-title">状态更新说明</text>
+      <text class="readonly-desc">{{teacherAuditTip}}</text>
+    </view>
+  </view>
+
+  <view wx:elif="{{!loading}}" class="empty-state">
+    <image src="/static/illustrations/party.svg" class="empty-illustration" mode="aspectFit" />
+    <text class="empty-title">{{emptyState.title}}</text>
+    <text class="empty-desc">{{emptyState.description}}</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-state">
+    <text>加载中...</text>
+  </view>
+</view>

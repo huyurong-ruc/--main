@@ -1,0 +1,35 @@
+<!-- pages/message/index.wxml -->
+<view class="page">
+  <view class="message-list">
+    <view class="message-item" wx:for="{{messages}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+      <view class="message-main">
+        <view class="icon-box {{item.typeClass}}">
+          <text class="icon-text">{{item.icon}}</text>
+          <view class="dot" wx:if="{{item.unread}}"></view>
+        </view>
+        <view class="message-info">
+          <view class="info-top">
+            <text class="message-title">{{item.title}}</text>
+            <text class="message-time">{{item.time}}</text>
+          </view>
+          <view class="tag-row" wx:if="{{item.tag}}">
+            <text class="tag-pill {{item.typeClass}}">{{item.tag}}</text>
+          </view>
+          <text class="message-content">{{item.content}}</text>
+        </view>
+      </view>
+      <view class="message-footer">
+        <text class="detail-link">查看详情</text>
+        <view class="footer-right">
+          <text
+            class="action-link"
+            wx:if="{{item.actionRoute}}"
+            catchtap="goToAction"
+            data-route="{{item.actionRoute}}"
+          >{{item.actionText || '前往办理'}}</text>
+          <text class="arrow">›</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,108 @@
+<!-- sub-pages/apply/new.wxml -->
+<view class="container">
+  <!-- 申请表单 -->
+  <view class="form-card">
+    <!-- 申请类型 -->
+    <view class="form-item">
+      <view class="form-label">申请类型 <text class="required">*</text></view>
+      <picker 
+        mode="selector" 
+        range="{{types}}" 
+        range-key="displayTitle"
+        bindchange="onTypeChange"
+      >
+        <view class="picker-value {{selectedType ? '' : 'placeholder'}}">
+          {{selectedType ? selectedType.displayTitle : '请选择申请类型'}}
+        </view>
+      </picker>
+    </view>
+
+    <view wx:if="{{selectedType}}" class="type-intro">
+      <text class="type-title">{{selectedType.displayTitle}}</text>
+      <text class="type-desc">{{selectedType.description}}</text>
+      <text wx:for="{{selectedType.tips}}" wx:key="*this" class="type-tip">• {{item}}</text>
+    </view>
+
+    <block wx:if="{{selectedType && enableExtraFields}}">
+      <view
+        wx:for="{{renderedFields}}"
+        wx:key="key"
+        class="form-item"
+      >
+        <view class="form-label">{{item.label}} <text wx:if="{{item.required}}" class="required">*</text></view>
+
+        <input
+          wx:if="{{item.type === 'text' || item.type === 'number'}}"
+          class="form-input"
+          type="{{item.type === 'number' ? 'number' : 'text'}}"
+          placeholder="{{item.placeholder}}"
+          value="{{item.value}}"
+          bindinput="onFieldInput"
+          data-key="{{item.key}}"
+        />
+
+        <picker
+          wx:elif="{{item.type === 'selector'}}"
+          mode="selector"
+          range="{{item.options}}"
+          bindchange="onFieldSelect"
+          data-index="{{index}}"
+        >
+          <view class="picker-value {{item.value ? '' : 'placeholder'}}">
+            {{item.value || item.placeholder}}
+          </view>
+        </picker>
+
+        <textarea
+          wx:else
+          class="form-textarea"
+          placeholder="{{item.placeholder}}"
+          value="{{item.value}}"
+          bindinput="onFieldInput"
+          data-key="{{item.key}}"
+        />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">附件材料 <text class="optional">(≤20MB)</text></view>
+        <view class="material-guide" wx:if="{{selectedType.attachmentGuide && selectedType.attachmentGuide.length > 0}}">
+          <text wx:for="{{selectedType.attachmentGuide}}" wx:key="*this" class="material-guide-item">• {{item}}</text>
+        </view>
+        <view class="attachment-list">
+          <view
+            wx:for="{{attachments}}"
+            wx:key="index"
+            class="attachment-item"
+          >
+            <text class="attachment-name">{{item.name}}</text>
+            <text class="attachment-remove" bindtap="removeAttachment" data-index="{{index}}">×</text>
+          </view>
+          <view class="add-attachment" bindtap="chooseFile">
+            <text class="add-icon">+</text>
+            <text class="add-text">添加附件</text>
+          </view>
+        </view>
+      </view>
+    </block>
+  </view>
+  
+  <!-- 提示信息 -->
+  <view class="tips-card" wx:if="{{selectedType}}">
+    <view class="tips-title">温馨提示</view>
+    <view class="tips-item" wx:if="{{enableExtraFields}}">• 请根据所选证明类型完整填写业务字段，系统会按真实申请流程流转。</view>
+    <view class="tips-item">• 附件支持 PDF、Word、Excel、PNG、JPG 格式。</view>
+    <view class="tips-item">• 请先将文件发送到微信聊天（如文件传输助手），再点击添加选择。</view>
+    <view class="tips-item">• 单个文件大小不超过 20MB，教师资格证场景建议至少上传2份核心材料。</view>
+  </view>
+  
+  <!-- 底部按钮 -->
+  <view class="bottom-bar">
+    <button wx:if="{{enableDraft}}" class="draft-btn" bindtap="saveDraft">保存草稿</button>
+    <button 
+      class="submit-btn" 
+      bindtap="handleSubmit"
+      loading="{{submitting}}"
+      disabled="{{submitting}}"
+    >提交申请</button>
+  </view>
+</view>

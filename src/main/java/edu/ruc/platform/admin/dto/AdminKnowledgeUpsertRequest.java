@@ -1,0 +1,19 @@
+package edu.ruc.platform.admin.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public record AdminKnowledgeUpsertRequest(
+        @NotBlank(message = "标题不能为空") String title,
+        String category,
+        String tags,
+        String summary,
+        @NotBlank(message = "内容不能为空") String content,
+        String officialUrl,
+        Long sourceFileId,
+        String sourceFileName,
+        String audienceScope,
+        @NotBlank(message = "更新人不能为空") String updatedBy,
+        @NotNull(message = "发布状态不能为空") Boolean published
+) {
+}

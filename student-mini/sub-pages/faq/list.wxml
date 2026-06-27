@@ -1,0 +1,67 @@
+<view class="page">
+  <view class="hero">
+    <view>
+      <text class="hero-kicker">HELP CENTER</text>
+      <text class="hero-title">常见问题</text>
+      <text class="hero-subtitle">查找常见学工问题的官方解答，或提交个人咨询</text>
+    </view>
+    <view class="hero-medal">问</view>
+  </view>
+
+  <!-- 搜索与操作 -->
+  <view class="search-card">
+    <view class="search-box">
+      <text class="search-icon">⌕</text>
+      <input
+        value="{{keyword}}"
+        confirm-type="search"
+        placeholder="搜索问题关键词"
+        bindinput="onSearchInput"
+        bindconfirm="onSearchConfirm"
+      />
+      <text wx:if="{{keyword}}" class="clear-btn" bindtap="clearSearch">×</text>
+    </view>
+  </view>
+
+  <view class="result-meta" wx:if="{{faqList.length > 0}}">
+    <text>共 {{total || faqList.length}} 个常见问题</text>
+  </view>
+
+  <!-- 列表 -->
+  <view class="list">
+    <view
+      wx:for="{{faqList}}"
+      wx:key="id"
+      id="faq-{{item.id}}"
+      class="faq-card {{item.expanded ? 'expanded' : ''}}"
+      bindtap="toggleItem"
+      data-index="{{index}}"
+    >
+      <view class="card-header">
+        <view class="question-block">
+          <text class="question-text">{{item.question}}</text>
+          <text class="question-meta">{{item.statusText}}{{item.createdAt ? ' · ' + item.createdAt : ''}}</text>
+        </view>
+        <text class="toggle-icon">{{item.expanded ? '▾' : '▸'}}</text>
+      </view>
+      <view class="card-content" wx:if="{{item.expanded}}">
+        <text class="answer-text">{{item.answer}}</text>
+      </view>
+    </view>
+    
+    <view wx:if="{{faqList.length === 0 && !loading}}" class="empty-state">
+      <image src="/static/illustrations/faq.svg" class="empty-illustration" mode="aspectFit" />
+      <text class="empty-title">{{errorMessage ? 'FAQ加载失败' : '未找到相关问题'}}</text>
+      <text class="empty-desc">{{errorMessage || '您可以尝试更换关键词，或点击下方提交咨询'}}</text>
+      <button wx:if="{{errorMessage}}" class="retry-btn" bindtap="retryLoad">重新加载</button>
+    </view>
+  </view>
+  
+  <!-- 操作按钮 -->
+  <view class="bottom-action">
+    <button class="primary-btn" bindtap="goToSubmit">我要咨询</button>
+  </view>
+  
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="loading-state">加载中...</view>
+</view>

@@ -1,0 +1,84 @@
+<view class="page">
+  <view class="hero">
+    <view>
+      <text class="hero-kicker">TEMPLATE CENTER</text>
+      <text class="hero-title">模板下载</text>
+      <text class="hero-subtitle">集中查看常用业务模板，支持按模板项进入详情并发起下载</text>
+    </view>
+    <view class="hero-medal">模</view>
+  </view>
+
+  <swiper
+    wx:if="{{templates.length > 0}}"
+    class="detail-swiper"
+    current="{{selectedIndex}}"
+    indicator-dots
+    circular
+    previous-margin="0rpx"
+    next-margin="0rpx"
+    bindchange="onTemplateSwiperChange"
+  >
+    <swiper-item wx:for="{{templates}}" wx:key="id" class="detail-swiper-item">
+      <view class="detail-card">
+        <view class="detail-content">
+          <view class="detail-head">
+            <view class="detail-head-main">
+              <text class="detail-title">{{item.title}}</text>
+              <text class="detail-desc">{{item.description}}</text>
+            </view>
+            <text class="detail-tag">{{item.fileType}}</text>
+          </view>
+          <view class="detail-meta">
+            <text class="detail-meta-item">来源：{{item.department}}</text>
+            <text class="detail-meta-item">大小：{{item.fileSize}}</text>
+            <text class="detail-meta-item">更新：{{item.updatedAt || '-'}}</text>
+            <text wx:if="{{item.templateCode}}" class="detail-meta-item">编码：{{item.templateCode}}</text>
+          </view>
+          <text class="swipe-tip">左右滑动可切换模板，点击下方按钮即可下载当前模板</text>
+        </view>
+        <view class="detail-actions">
+          <button
+            class="download-btn"
+            bindtap="handleDownload"
+            data-id="{{item.id}}"
+            loading="{{downloading && selectedTemplate && selectedTemplate.id === item.id}}"
+            disabled="{{downloading}}"
+          >下载当前模板</button>
+        </view>
+      </view>
+    </swiper-item>
+  </swiper>
+
+  <view class="section-title">模板列表</view>
+
+  <view wx:if="{{templates.length > 0}}" class="template-list">
+    <view
+      wx:for="{{templates}}"
+      wx:key="id"
+      class="template-card {{selectedTemplate && selectedTemplate.id === item.id ? 'active' : ''}}"
+      bindtap="openTemplateDetail"
+      data-id="{{item.id}}"
+    >
+      <view class="template-main">
+        <view class="template-icon">📄</view>
+        <view class="template-content">
+          <text class="template-title">{{item.title}}</text>
+          <text class="template-desc">{{item.description}}</text>
+          <view class="template-meta">
+            <text class="template-meta-item">{{item.department}}</text>
+            <text class="template-meta-item">{{item.fileSize}}</text>
+          </view>
+        </view>
+      </view>
+      <text class="template-arrow">›</text>
+    </view>
+  </view>
+
+  <view wx:elif="{{!loading}}" class="empty-state">
+    <image src="/static/illustrations/policy.svg" class="empty-illustration" mode="aspectFit" />
+    <text class="empty-title">暂无可用模板</text>
+    <text class="empty-desc">当前暂无可下载的业务模板，请稍后再试</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-state">加载中...</view>
+</view>

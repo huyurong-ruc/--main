@@ -1,0 +1,1 @@
+-- Seed data moved to a dedicated mock-to-flyway migration.

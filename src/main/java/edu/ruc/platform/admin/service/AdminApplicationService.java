@@ -1,0 +1,214 @@
+package edu.ruc.platform.admin.service;
+
+import edu.ruc.platform.admin.dto.AdminKnowledgeItemResponse;
+import edu.ruc.platform.admin.dto.AdminKnowledgeFilterRequest;
+import edu.ruc.platform.admin.dto.AdminNoticeCreateRequest;
+import edu.ruc.platform.admin.dto.AdminNoticeFilterRequest;
+import edu.ruc.platform.admin.dto.AdminNoticeStatsResponse;
+import edu.ruc.platform.admin.dto.AdminKnowledgeUpsertRequest;
+import edu.ruc.platform.admin.dto.AdminOperationLogFilterRequest;
+import edu.ruc.platform.admin.dto.AdminOperationLogResponse;
+import edu.ruc.platform.admin.dto.AdminOperationLogStatsResponse;
+import edu.ruc.platform.admin.dto.AdminKnowledgeStatsResponse;
+import edu.ruc.platform.admin.dto.AdminStatsResponse;
+import edu.ruc.platform.admin.dto.AdminCertTemplateResponse;
+import edu.ruc.platform.admin.dto.AdminCertTemplateUpsertRequest;
+import edu.ruc.platform.admin.dto.AdvisorScopeFilterRequest;
+import edu.ruc.platform.admin.dto.AdvisorScopeBindingResponse;
+import edu.ruc.platform.admin.dto.AdvisorScopeBindingUpsertRequest;
+import edu.ruc.platform.admin.dto.AdvisorScopeStatsResponse;
+import edu.ruc.platform.admin.dto.CourseResponse;
+import edu.ruc.platform.admin.dto.CourseUpsertRequest;
+import edu.ruc.platform.admin.dto.DataImportErrorFilterRequest;
+import edu.ruc.platform.admin.dto.DataImportErrorItemCreateRequest;
+import edu.ruc.platform.admin.dto.DataImportErrorItemResponse;
+import edu.ruc.platform.admin.dto.DataImportTaskFilterRequest;
+import edu.ruc.platform.admin.dto.DataImportTaskStatsResponse;
+import edu.ruc.platform.admin.dto.DataImportTaskCreateRequest;
+import edu.ruc.platform.admin.dto.DataImportTaskResponse;
+import edu.ruc.platform.admin.dto.DataImportTaskUpdateRequest;
+import edu.ruc.platform.admin.dto.KnowledgeAttachmentResponse;
+import edu.ruc.platform.admin.dto.PartyReminderTaskFilterRequest;
+import edu.ruc.platform.admin.dto.PartyReminderTaskResponse;
+import edu.ruc.platform.admin.dto.RoleResponse;
+import edu.ruc.platform.admin.dto.RoleUpsertRequest;
+import edu.ruc.platform.admin.dto.TermCourseResponse;
+import edu.ruc.platform.admin.dto.TermCourseUpsertRequest;
+import edu.ruc.platform.admin.dto.WorkflowDefinitionResponse;
+import edu.ruc.platform.admin.dto.WorkflowDefinitionUpsertRequest;
+import edu.ruc.platform.admin.dto.WorkflowInstanceFilterRequest;
+import edu.ruc.platform.admin.dto.WorkflowInstanceResponse;
+import edu.ruc.platform.admin.dto.WorkflowNodeResponse;
+import edu.ruc.platform.admin.dto.WorkflowNodeUpsertRequest;
+import edu.ruc.platform.auth.dto.AuthenticatedUser;
+import edu.ruc.platform.common.api.PageResponse;
+import edu.ruc.platform.notice.dto.TargetedNoticeResponse;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+
+public interface AdminApplicationService {
+
+    record ImportExecutionContext(String executionBatchNo, String callbackSource, java.time.LocalDateTime recordedAt) {
+    }
+
+    List<TargetedNoticeResponse> listNotices();
+
+    PageResponse<TargetedNoticeResponse> pageNotices(AdminNoticeFilterRequest request, int page, int size);
+
+    AdminNoticeStatsResponse noticeStats(AdminNoticeFilterRequest request);
+
+    TargetedNoticeResponse createNotice(AdminNoticeCreateRequest request);
+
+    TargetedNoticeResponse updateNotice(Long id, AdminNoticeCreateRequest request);
+
+    TargetedNoticeResponse toggleNoticePublish(Long id, boolean published);
+
+    void deleteNotice(Long id);
+
+    List<AdminKnowledgeItemResponse> listKnowledgeItems(AuthenticatedUser user);
+
+    PageResponse<AdminKnowledgeItemResponse> pageKnowledgeItems(AuthenticatedUser user, AdminKnowledgeFilterRequest request, int page, int size);
+
+    AdminKnowledgeStatsResponse knowledgeStats(AuthenticatedUser user, AdminKnowledgeFilterRequest request);
+
+    AdminKnowledgeItemResponse createKnowledgeItem(AdminKnowledgeUpsertRequest request);
+
+    AdminKnowledgeItemResponse updateKnowledgeItem(Long id, AdminKnowledgeUpsertRequest request);
+
+    void deleteKnowledgeItem(Long id);
+
+    List<KnowledgeAttachmentResponse> listKnowledgeAttachments(Long knowledgeId);
+
+    KnowledgeAttachmentResponse uploadKnowledgeAttachment(Long knowledgeId, MultipartFile file);
+
+    void deleteKnowledgeAttachment(Long attachmentId);
+
+    List<AdvisorScopeBindingResponse> listAdvisorScopes(String advisorUsername, String grade, String className);
+
+    PageResponse<AdvisorScopeBindingResponse> pageAdvisorScopes(AdvisorScopeFilterRequest request, int page, int size);
+
+    AdvisorScopeStatsResponse advisorScopeStats(AdvisorScopeFilterRequest request);
+
+    AdvisorScopeBindingResponse createAdvisorScope(AdvisorScopeBindingUpsertRequest request);
+
+    AdvisorScopeBindingResponse updateAdvisorScope(Long id, AdvisorScopeBindingUpsertRequest request);
+
+    void deleteAdvisorScope(Long id);
+
+    AdminStatsResponse stats(int pendingApprovals);
+
+    List<AdminOperationLogResponse> listOperationLogs();
+
+    PageResponse<AdminOperationLogResponse> pageOperationLogs(AdminOperationLogFilterRequest request, int page, int size);
+
+    AdminOperationLogStatsResponse operationLogStats(AdminOperationLogFilterRequest request);
+
+    List<DataImportTaskResponse> listImportTasks();
+
+    PageResponse<DataImportTaskResponse> pageImportTasks(DataImportTaskFilterRequest request, int page, int size);
+
+    DataImportTaskStatsResponse importTaskStats(DataImportTaskFilterRequest request);
+
+    DataImportTaskResponse createImportTask(DataImportTaskCreateRequest request);
+
+    DataImportTaskResponse updateImportTask(Long id, DataImportTaskUpdateRequest request);
+
+    List<DataImportErrorItemResponse> listImportErrors(Long taskId);
+
+    PageResponse<DataImportErrorItemResponse> pageImportErrors(Long taskId, DataImportErrorFilterRequest request, int page, int size);
+
+    DataImportErrorItemResponse createImportError(Long taskId, DataImportErrorItemCreateRequest request);
+
+    void replaceImportErrors(Long taskId, List<DataImportErrorItemCreateRequest> requests);
+
+    void recordImportExecutionContext(Long taskId, String executionBatchNo, String callbackSource);
+
+    ImportExecutionContext getImportExecutionContext(Long taskId);
+
+    List<WorkflowDefinitionResponse> listWorkflowDefinitions();
+
+    WorkflowDefinitionResponse createWorkflowDefinition(WorkflowDefinitionUpsertRequest request);
+
+    WorkflowDefinitionResponse updateWorkflowDefinition(Long id, WorkflowDefinitionUpsertRequest request);
+
+    WorkflowDefinitionResponse copyWorkflowDefinition(Long id);
+
+    void deleteWorkflowDefinition(Long id);
+
+    List<WorkflowNodeResponse> listWorkflowNodes(Long workflowId);
+
+    WorkflowNodeResponse createWorkflowNode(Long workflowId, WorkflowNodeUpsertRequest request);
+
+    WorkflowNodeResponse updateWorkflowNode(Long nodeId, WorkflowNodeUpsertRequest request);
+
+    List<WorkflowNodeResponse> moveWorkflowNode(Long nodeId, String direction);
+
+    void deleteWorkflowNode(Long nodeId);
+
+    List<AdminCertTemplateResponse> listCertTemplates();
+
+    AdminCertTemplateResponse createCertTemplate(AdminCertTemplateUpsertRequest request);
+
+    AdminCertTemplateResponse updateCertTemplate(Long id, AdminCertTemplateUpsertRequest request);
+
+    AdminCertTemplateResponse copyCertTemplate(Long id);
+
+    void deleteCertTemplate(Long id);
+
+    List<RoleResponse> listRoles();
+
+    RoleResponse getRole(Long id);
+
+    RoleResponse createRole(RoleUpsertRequest request);
+
+    RoleResponse updateRole(Long id, RoleUpsertRequest request);
+
+    RoleResponse copyRole(Long id);
+
+    RoleResponse toggleRole(Long id);
+
+    void deleteRole(Long id);
+
+    List<WorkflowInstanceResponse> listWorkflowInstances(WorkflowInstanceFilterRequest request);
+
+    PageResponse<WorkflowInstanceResponse> pageWorkflowInstances(WorkflowInstanceFilterRequest request, int page, int size);
+
+    WorkflowInstanceResponse getWorkflowInstance(Long id);
+
+    WorkflowInstanceResponse cancelWorkflowInstance(Long id);
+
+    List<CourseResponse> listCourses(String keyword, String courseType);
+
+    PageResponse<CourseResponse> pageCourses(String keyword, String courseType, int page, int size);
+
+    CourseResponse getCourse(Long id);
+
+    CourseResponse createCourse(CourseUpsertRequest request);
+
+    CourseResponse updateCourse(Long id, CourseUpsertRequest request);
+
+    void deleteCourse(Long id);
+
+    List<TermCourseResponse> listTermCourses(String termCode, String keyword);
+
+    PageResponse<TermCourseResponse> pageTermCourses(String termCode, String keyword, int page, int size);
+
+    TermCourseResponse getTermCourse(Long id);
+
+    TermCourseResponse createTermCourse(TermCourseUpsertRequest request);
+
+    TermCourseResponse updateTermCourse(Long id, TermCourseUpsertRequest request);
+
+    void deleteTermCourse(Long id);
+
+    List<PartyReminderTaskResponse> listPartyReminderTasks(PartyReminderTaskFilterRequest request);
+
+    PageResponse<PartyReminderTaskResponse> pagePartyReminderTasks(PartyReminderTaskFilterRequest request, int page, int size);
+
+    PartyReminderTaskResponse sendPartyReminder(Long id);
+
+    PartyReminderTaskResponse resendPartyReminder(Long id);
+
+    PartyReminderTaskResponse cancelPartyReminder(Long id);
+}

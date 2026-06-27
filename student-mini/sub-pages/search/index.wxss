@@ -1,0 +1,280 @@
+/* sub-pages/search/index.wxss */
+.container {
+  background: #ffffff;
+  min-height: 100vh;
+}
+
+.search-header {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 32rpx;
+  gap: 24rpx;
+}
+
+.search-input-box {
+  flex: 1;
+  background: #f4f7fb;
+  height: 72rpx;
+  border-radius: 36rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 24rpx;
+  gap: 12rpx;
+}
+
+.search-input {
+  flex: 1;
+  font-size: 26rpx;
+  color: #1f2d3d;
+}
+
+.cancel-btn {
+  font-size: 28rpx;
+  color: #1677ff;
+}
+
+.search-entry {
+  padding: 40rpx 32rpx;
+}
+
+.suggestion-panel {
+  padding: 12rpx 32rpx 8rpx;
+}
+
+.suggestion-header {
+  margin-bottom: 18rpx;
+}
+
+.suggestion-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #edf1f6;
+}
+
+.suggestion-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.suggestion-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.suggestion-title {
+  display: block;
+  font-size: 28rpx;
+  color: #1f2d3d;
+  font-weight: 600;
+}
+
+.suggestion-desc {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #7b8ba5;
+  line-height: 1.6;
+}
+
+.suggestion-entry {
+  font-size: 24rpx;
+  color: #1677ff;
+  flex-shrink: 0;
+}
+
+.section {
+  margin-bottom: 60rpx;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1f2d3d;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+}
+
+.tag {
+  background: #f4f7fb;
+  padding: 12rpx 28rpx;
+  border-radius: 32rpx;
+  font-size: 24rpx;
+  color: #58677d;
+}
+
+.result-tabs {
+  display: flex;
+  border-bottom: 1rpx solid #edf1f6;
+  height: 88rpx;
+  align-items: center;
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  font-size: 28rpx;
+  color: #58677d;
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-item.active {
+  color: #1677ff;
+  font-weight: 700;
+}
+
+.tab-line {
+  position: absolute;
+  bottom: 0;
+  width: 40rpx;
+  height: 6rpx;
+  background: #1677ff;
+  border-radius: 3rpx;
+}
+
+.result-list {
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.result-card {
+  display: flex;
+  gap: 24rpx;
+  padding: 30rpx;
+  background: #ffffff;
+  border-bottom: 1rpx solid #edf1f6;
+}
+
+.card-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.card-icon.faq { background: #1677ff; }
+.card-icon.policy { background: #1890ff; }
+.card-icon.notice { background: #2f54eb; }
+.card-icon.template { background: #13c2c2; }
+.card-icon.service,
+.suggestion-icon.service { background: #722ed1; }
+
+.card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.card-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2d3d;
+  line-height: 1.4;
+}
+
+.card-summary {
+  font-size: 24rpx;
+  color: #5b6b82;
+  line-height: 1.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.highlight-text {
+  color: inherit;
+}
+
+.highlight-text.active {
+  color: #1677ff;
+  background: rgba(22, 119, 255, 0.12);
+  border-radius: 6rpx;
+  padding: 0 4rpx;
+}
+
+.card-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 22rpx;
+  color: #8a98aa;
+}
+
+.service-entry {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: 4rpx;
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(114, 46, 209, 0.08);
+  color: #722ed1;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.meta-source,
+.meta-time {
+  min-width: 0;
+  max-width: 300rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 40rpx;
+  background: #f8fafc;
+  border-radius: 24rpx;
+}
+
+.empty-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2d3d;
+}
+
+.empty-desc {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  color: #8a98aa;
+  line-height: 1.7;
+  text-align: center;
+}

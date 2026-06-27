@@ -1,0 +1,119 @@
+<view class="page">
+  <view class="hero">
+    <view>
+      <text class="hero-kicker">POLICY & NOTICE</text>
+      <text class="hero-title">政策通知</text>
+      <text class="hero-subtitle">查看最新政策文件、学院通知并下载常用业务模板</text>
+    </view>
+    <view class="hero-medal">文</view>
+  </view>
+
+  <!-- Tab -->
+  <view class="search-card">
+    <view class="tabs">
+      <view 
+        wx:for="{{tabs}}"
+        wx:key="index"
+        class="tab-item {{activeTab === index ? 'active' : ''}}"
+        bindtap="onTabChange"
+        data-index="{{index}}"
+      >
+        <text>{{item}}</text>
+        <view class="tab-line" wx:if="{{activeTab === index}}"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 列表内容 -->
+  <view class="list">
+    <!-- 政策文件 -->
+    <block wx:if="{{activeTab === 0}}">
+      <view 
+        wx:for="{{policyList}}" 
+        wx:key="id" 
+        class="policy-card" 
+        bindtap="goToDetail" 
+        data-id="{{item.id}}"
+        data-type="policy"
+      >
+        <view class="card-header">
+          <text class="policy-title">{{item.title}}</text>
+          <text class="type-tag">{{item.category || '政策'}}</text>
+        </view>
+        <view class="card-content">
+          <text class="policy-summary">{{item.summary}}</text>
+        </view>
+        <view class="card-footer">
+          <text class="policy-time">{{item.publishTime || item.updatedAt || '-'}}</text>
+          <text class="detail-link">查看详情 ›</text>
+        </view>
+      </view>
+    </block>
+
+    <!-- 通知通告 -->
+    <block wx:if="{{activeTab === 1}}">
+      <view 
+        wx:for="{{noticeList}}" 
+        wx:key="id" 
+        class="policy-card" 
+        bindtap="goToDetail" 
+        data-id="{{item.id}}"
+        data-type="notice"
+      >
+        <view class="card-header">
+          <text class="policy-title">{{item.title}}</text>
+          <text class="type-tag notice">通知</text>
+        </view>
+        <view class="card-content">
+          <text class="policy-summary">{{item.summary}}</text>
+        </view>
+        <view class="card-footer">
+          <text class="policy-time">{{item.publishTime || '-'}}</text>
+          <text class="detail-link">阅读全文 ›</text>
+        </view>
+      </view>
+    </block>
+
+    <!-- 模板下载 -->
+    <block wx:if="{{activeTab === 2}}">
+      <view 
+        wx:for="{{templateList}}" 
+        wx:key="id" 
+        class="policy-card" 
+        bindtap="downloadTemplate" 
+        data-id="{{item.id}}"
+        data-url="{{item.fileUrl}}"
+        data-name="{{item.title}}"
+      >
+        <view class="card-header">
+          <view class="template-info">
+            <text class="template-icon">📄</text>
+            <text class="policy-title">{{item.title}}</text>
+          </view>
+          <text class="type-tag template">模板</text>
+        </view>
+        <view class="card-content">
+          <text class="policy-summary">{{item.description}}</text>
+        </view>
+        <view class="card-footer">
+          <text class="policy-time">文件大小: {{item.fileSize || '-'}}{{item.updatedAt ? ' · 更新：' + item.updatedAt : ''}}</text>
+          <text class="detail-link">查看模板 ›</text>
+        </view>
+      </view>
+    </block>
+
+    <view 
+      wx:if="{{!loading && ((activeTab === 0 && policyList.length === 0) || (activeTab === 1 && noticeList.length === 0) || (activeTab === 2 && templateList.length === 0))}}" 
+      class="empty-state"
+    >
+      <image src="/static/illustrations/policy.svg" class="empty-illustration" mode="aspectFit" />
+      <text class="empty-title">{{errorMessage ? '加载失败' : '暂无相关内容'}}</text>
+      <text class="empty-desc">{{errorMessage || '当前分类下暂无发布的文件或通知'}}</text>
+      <button wx:if="{{errorMessage}}" class="retry-btn" bindtap="retryLoad">重新加载</button>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="loading-state">加载中...</view>
+  <view wx:if="{{!loading && hasMore}}" class="load-more" bindtap="loadList">加载更多</view>
+</view>
