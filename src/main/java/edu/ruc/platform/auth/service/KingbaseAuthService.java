@@ -22,6 +22,7 @@ import edu.ruc.platform.auth.repository.UserAccountRepository;
 import edu.ruc.platform.common.enums.RoleType;
 import edu.ruc.platform.common.exception.BusinessException;
 import edu.ruc.platform.platform.service.PlatformSecurityPolicyService;
+import edu.ruc.platform.student.repository.StudentProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -50,6 +51,7 @@ public class KingbaseAuthService implements AuthApplicationService {
     private final TokenBlocklistService tokenBlocklistService;
     private final UserSessionService userSessionService;
     private final PlatformSecurityPolicyService platformSecurityPolicyService;
+    private final StudentProfileRepository studentProfileRepository;
 
     @Override
     public LoginResponse login(LoginRequest request) {
@@ -197,9 +199,12 @@ public class KingbaseAuthService implements AuthApplicationService {
     }
 
     private AuthenticatedUser buildAuthenticatedUser(LatestUser latestUser, RoleType role, LatestStudentExt ext) {
+        Long studentProfileId = studentProfileRepository.findByStudentNo(latestUser.getStudentNo())
+                .map(profile -> profile.getId())
+                .orElse(latestUser.getId());
         return new AuthenticatedUser(
                 latestUser.getId(),
-                latestUser.getId(), // 在 Kingbase 模式下，目前账号 ID 也是学生 ID（根据 bridge 脚本逻辑）
+                studentProfileId,
                 latestUser.getStudentNo(),
                 role.name(),
                 latestUser.getStudentNo(),

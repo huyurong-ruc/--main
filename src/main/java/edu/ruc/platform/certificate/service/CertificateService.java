@@ -352,7 +352,10 @@ public class CertificateService implements CertificateApplicationService {
     private void validateOperatorPermission(CertificateRequest entity, AuthenticatedUser operator, String action) {
         String normalizedAction = action.trim().toLowerCase();
         if ("withdraw".equals(normalizedAction) || "resubmit".equals(normalizedAction)) {
-            if (!operator.userId().equals(entity.getStudentId())) {
+            boolean isAdmin = RoleType.SUPER_ADMIN.name().equals(operator.role())
+                    || RoleType.COLLEGE_ADMIN.name().equals(operator.role())
+                    || RoleType.COUNSELOR.name().equals(operator.role());
+            if (!operator.userId().equals(entity.getStudentId()) && !isAdmin) {
                 throw new BusinessException("当前账号无权执行该审批动作");
             }
             return;
@@ -381,8 +384,10 @@ public class CertificateService implements CertificateApplicationService {
             }
             return;
         }
-        if ("resubmit".equals(normalizedAction) && !"WITHDRAWN".equalsIgnoreCase(entity.getStatus())) {
-            throw new BusinessException("仅已撤回的申请支持重新提交");
+        if ("resubmit".equals(normalizedAction)
+                && !"WITHDRAWN".equalsIgnoreCase(entity.getStatus())
+                && !"REJECTED".equalsIgnoreCase(entity.getStatus())) {
+            throw new BusinessException("仅已撤回或已驳回的申请支持重新提交");
         }
     }
 

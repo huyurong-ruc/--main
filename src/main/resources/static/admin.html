@@ -1076,6 +1076,35 @@
       return qs.toString();
     }
 
+    function padDatePart(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function formatDateTimeParam(value) {
+      if (!(value instanceof Date) || Number.isNaN(value.getTime())) return "";
+      return value.getFullYear()
+        + "-" + padDatePart(value.getMonth() + 1)
+        + "-" + padDatePart(value.getDate())
+        + "T" + padDatePart(value.getHours())
+        + ":" + padDatePart(value.getMinutes())
+        + ":" + padDatePart(value.getSeconds());
+    }
+
+    function shiftDate(days, base) {
+      const d = base ? new Date(base) : new Date();
+      d.setDate(d.getDate() + days);
+      return d;
+    }
+
+    async function fetchOperationLogTotal(module, startTime, endTime) {
+      const stats = await apiJson("/api/v1/admin/operation-logs/stats?" + buildQuery({
+        module,
+        startTime: formatDateTimeParam(startTime),
+        endTime: formatDateTimeParam(endTime)
+      }));
+      return stats && stats.totalLogs != null ? Number(stats.totalLogs) : 0;
+    }
+
     const KNOWLEDGE_CONTENT_KEY = "ssp_knowledge_contents";
 
     function loadKnowledgeContentMap() {
@@ -1191,7 +1220,7 @@
       return { date: y + "年" + m + "月" + day + "日", weekday: w };
     }
 
-    function renderDashboard(stats, faqStats, notices, operationLogsPage) {
+    function renderDashboard(stats, faqStats, notices, operationLogsPage, dashboardMetrics) {
       const now = formatDateCN(new Date());
       const me = getUser();
       const role = String(me && me.role ? me.role : "").toUpperCase();
@@ -1245,7 +1274,7 @@
             "!",
             "待审批",
             pendingApprovals,
-            suppressPendingApprovals ? null : async () => { await switchView("approvals", { status: "PENDING" }); }
+            suppressPendingApprovals ? null : async () => { await switchView("approvals", { tab: "TODO" }); }
           ),
           todoCard("background: rgba(34,197,94,.14); color: #166534;", "⩍", "FAQ待处理提醒", unpublishedKnowledge, async () => { await switchView("knowledgeFaqs", { published: "false" }); }),
           todoCard("background: rgba(239,68,68,.14); color: #b91c1c;", "✉", "未读通知", unreadNotices, async () => { await switchView("notices"); })
@@ -1332,7 +1361,9 @@
         return num.toLocaleString("en-US");
       }
 
-      const approvalWeek = calcWindowCounts(l => String(l.module || "").toUpperCase() === "APPROVAL");
+      const approvalWeek = dashboardMetrics && dashboardMetrics.approvalWeek
+        ? dashboardMetrics.approvalWeek
+        : calcWindowCounts(l => String(l.module || "").toUpperCase() === "APPROVAL");
       const replyWeek = calcWindowCounts(l => String(l.module || "").toUpperCase() === "KNOWLEDGE");
       const activeStudents = stats && stats.totalStudents != null ? stats.totalStudents : null;
 
@@ -3648,17 +3679,6 @@
           method: "POST",
           body: JSON.stringify({ action: action, comment: comment })
         });
-        if (action === "approve") {
-          const me = getUser();
-          const role = me && me.role ? String(me.role).toUpperCase() : "";
-          const canFinalApprove = role === "SUPER_ADMIN" || role === "COLLEGE_ADMIN";
-          if (canFinalApprove && first && isTodoStatus(first.status)) {
-            await apiJson("/api/v1/admin/approvals/" + item.requestId + "/action", {
-              method: "POST",
-              body: JSON.stringify({ action: action, comment: "" })
-            });
-          }
-        }
         return true;
       }
 
@@ -4016,24 +4036,15 @@
         loading = true;
         render();
         try {
-          const me = getUser();
-          const role = me && me.role ? String(me.role).toUpperCase() : "";
-          const canFinalApprove = role === "SUPER_ADMIN" || role === "COLLEGE_ADMIN";
           let okCount = 0;
           let failCount = 0;
           for (const item of filtered) {
             try {
-              const first = await apiJson("/api/v1/admin/approvals/" + item.requestId + "/action", {
+              await apiJson("/api/v1/admin/approvals/" + item.requestId + "/action", {
                 method: "POST",
                 body: JSON.stringify({ action: "approve", comment: "" })
               });
               okCount += 1;
-              if (canFinalApprove && first && isTodoStatus(first.status)) {
-                await apiJson("/api/v1/admin/approvals/" + item.requestId + "/action", {
-                  method: "POST",
-                  body: JSON.stringify({ action: "approve", comment: "" })
-                });
-              }
             } catch (e) {
               failCount += 1;
             }
@@ -5493,14 +5504,23 @@
       const wrap = el("div", null, [el("div", { class: "card" }, [el("div", { text: "加载中..." })])]);
       content.appendChild(wrap);
       try {
-        const [stats, faqStats, notices, operationLogsPage] = await Promise.all([
+        const now = new Date();
+        const currentStart = shiftDate(-7, now);
+        const previousStart = shiftDate(-14, now);
+        const previousEnd = new Date(currentStart.getTime() - 1000);
+        const [stats, faqStats, notices, operationLogsPage, approvalCurTotal, approvalPrevTotal] = await Promise.all([
           apiJson("/api/v1/admin/stats"),
           apiJson("/api/v1/admin/knowledge/stats?" + buildQuery({ category: "FAQ管理" })).catch(() => null),
           apiJson("/api/v1/admin/notices").catch(() => []),
-          apiJson("/api/v1/admin/operation-logs/page?" + buildQuery({ page: 0, size: 20 })).catch(() => null)
+          apiJson("/api/v1/admin/operation-logs/page?" + buildQuery({ page: 0, size: 20 })).catch(() => null),
+          fetchOperationLogTotal("APPROVAL", currentStart, now).catch(() => null),
+          fetchOperationLogTotal("APPROVAL", previousStart, previousEnd).catch(() => null)
         ]);
+        const dashboardMetrics = approvalCurTotal == null || approvalPrevTotal == null
+          ? null
+          : { approvalWeek: { cur: approvalCurTotal, prev: approvalPrevTotal } };
         content.innerHTML = "";
-        content.appendChild(renderDashboard(stats, faqStats, notices, operationLogsPage));
+        content.appendChild(renderDashboard(stats, faqStats, notices, operationLogsPage, dashboardMetrics));
       } catch (e) {
         content.innerHTML = "";
         content.appendChild(el("div", { class: "card" }, [el("div", { class: "toast", text: e.message })]));

@@ -27,8 +27,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 @Service
 @Profile("kingbase")
@@ -52,9 +54,16 @@ public class KingbaseKnowledgeService implements KnowledgeApplicationService {
             return List.of();
         }
         List<KnowledgeSearchResponse> result = latestKnowledgePolicyRepository.findByIsDeletedAndIsPublished(0, 1).stream()
-                .filter(item -> QueryFilterSupport.containsIgnoreCase(item.getTitle(), normalizedKeyword)
-                        || QueryFilterSupport.containsIgnoreCase(item.getSummary(), normalizedKeyword)
-                        || QueryFilterSupport.containsIgnoreCase(item.getContent(), normalizedKeyword))
+                .map(item -> new java.util.AbstractMap.SimpleEntry<>(item, searchScore(
+                        item.getTitle(),
+                        resolveCategory(item),
+                        firstNonBlank(item.getSummary(), item.getContent()),
+                        normalizedKeyword
+                )))
+                .filter(entry -> entry.getValue() > 0)
+                .sorted(java.util.Map.Entry.<LatestKnowledgePolicy, Integer>comparingByValue().reversed()
+                        .thenComparing(entry -> entry.getKey().getId(), Comparator.nullsLast(Long::compareTo)))
+                .map(java.util.Map.Entry::getKey)
                 .map(this::toSearchResponse)
                 .toList();
         searchQueryLogService.record(normalizedKeyword, result.size());
@@ -73,9 +82,11 @@ public class KingbaseKnowledgeService implements KnowledgeApplicationService {
     @Override
     public List<KnowledgeSearchResponse> listTemplates() {
         return latestCertTemplateRepository.findByIsDeletedAndIsActive(0, 1).stream()
-                .sorted(Comparator.comparing(LatestCertTemplate::getId))
+                .sorted(Comparator.comparing(LatestCertTemplate::getId, Comparator.nullsLast(Long::compareTo)))
                 .map(template -> {
-                    LatestFileObject file = latestFileObjectRepository.findById(template.getFileId()).orElse(null);
+                    LatestFileObject file = template.getFileId() == null
+                            ? null
+                            : latestFileObjectRepository.findById(template.getFileId()).orElse(null);
                     String url = file == null ? null : file.getStoragePath();
                     return new KnowledgeSearchResponse(
                             template.getId(),
@@ -92,7 +103,8 @@ public class KingbaseKnowledgeService implements KnowledgeApplicationService {
 
     @Override
     public KnowledgeDetailResponse getDetail(Long id) {
-        LatestKnowledgePolicy policy = latestKnowledgePolicyRepository.findById(id)
+        Long knowledgeId = java.util.Objects.requireNonNull(id);
+        LatestKnowledgePolicy policy = latestKnowledgePolicyRepository.findById(knowledgeId)
                 .filter(item -> item.getIsDeleted() != null && item.getIsDeleted() == 0)
                 .filter(item -> item.getIsPublished() != null && item.getIsPublished() == 1)
                 .orElseThrow(() -> new BusinessException("知识条目不存在"));
@@ -112,7 +124,7 @@ public class KingbaseKnowledgeService implements KnowledgeApplicationService {
                         LocalDateTime.now()
                 ));
         List<KnowledgeSearchResponse> relatedItems = latestKnowledgePolicyRepository.findByIsDeletedAndIsPublished(0, 1).stream()
-                .filter(item -> !item.getId().equals(id))
+                .filter(item -> !item.getId().equals(knowledgeId))
                 .limit(3)
                 .map(this::toSearchResponse)
                 .toList();
@@ -135,12 +147,13 @@ public class KingbaseKnowledgeService implements KnowledgeApplicationService {
 
     @Override
     public List<KnowledgeSearchResponse> recommendForStudent(Long studentId) {
-        StudentProfile profile = studentProfileRepository.findById(studentId).orElse(null);
+        Long currentStudentId = java.util.Objects.requireNonNull(studentId);
+        StudentProfile profile = studentProfileRepository.findById(currentStudentId).orElse(null);
         List<Notice> notices = noticeRepository.findAllByOrderByPublishTimeDesc();
-        List<String> certificateStatuses = certificateRequestRepository.findByStudentId(studentId).stream()
+        List<String> certificateStatuses = certificateRequestRepository.findByStudentId(currentStudentId).stream()
                 .map(item -> item.getStatus() == null ? "" : item.getStatus())
                 .toList();
-        PartyProgressRecord progress = partyProgressRecordRepository.findByStudentId(studentId).orElse(null);
+        PartyProgressRecord progress = partyProgressRecordRepository.findByStudentId(currentStudentId).orElse(null);
         return latestKnowledgePolicyRepository.findByIsDeletedAndIsPublished(0, 1).stream()
                 .sorted(Comparator
                         .comparingInt((LatestKnowledgePolicy item) -> scoreRecommendation(item, profile, notices, certificateStatuses, progress))
@@ -164,6 +177,9 @@ public class KingbaseKnowledgeService implements KnowledgeApplicationService {
     }
 
     private String resolveCategory(LatestKnowledgePolicy policy) {
+        if (policy == null) {
+            return "政策知识";
+        }
         String extCategory = resolveExtCategory(policy == null ? null : policy.getExtJson());
         if (extCategory != null && extCategory.contains("FAQ管理")) {
             return "FAQ管理";
@@ -285,6 +301,85 @@ public class KingbaseKnowledgeService implements KnowledgeApplicationService {
             score += 1;
         }
         return score;
+    }
+
+    private int searchScore(String title, String category, String body, String keyword) {
+        String normalizedKeyword = QueryFilterSupport.trimToNull(keyword);
+        if (normalizedKeyword == null) {
+            return 0;
+        }
+        String lowerKeyword = normalizedKeyword.toLowerCase(Locale.ROOT);
+        String lowerTitle = safeLower(title);
+        String lowerCategory = safeLower(category);
+        String lowerBody = safeLower(body);
+        int score = 0;
+        if (lowerTitle.equals(lowerKeyword)) {
+            score += 600;
+        }
+        if (lowerTitle.contains(lowerKeyword)) {
+            score += 260;
+        }
+        if (lowerCategory.contains(lowerKeyword)) {
+            score += 160;
+        }
+        if (lowerBody.contains(lowerKeyword)) {
+            score += 120;
+        }
+        for (String token : searchTokens(lowerKeyword)) {
+            score += countHits(lowerTitle, token) * 36;
+            score += countHits(lowerCategory, token) * 24;
+            score += countHits(lowerBody, token) * 12;
+        }
+        return score;
+    }
+
+    private List<String> searchTokens(String keyword) {
+        Set<String> tokens = new LinkedHashSet<>();
+        for (String token : keyword.split("\\s+")) {
+            if (!token.isBlank()) {
+                tokens.add(token);
+            }
+        }
+        if (tokens.size() <= 1 && keyword.length() >= 4) {
+            for (int i = 0; i < keyword.length() - 1; i++) {
+                String bigram = keyword.substring(i, i + 2).trim();
+                if (!bigram.isBlank()) {
+                    tokens.add(bigram);
+                }
+            }
+        }
+        return List.copyOf(tokens);
+    }
+
+    private int countHits(String text, String token) {
+        if (text == null || text.isBlank() || token == null || token.isBlank()) {
+            return 0;
+        }
+        int count = 0;
+        int from = 0;
+        while (from >= 0) {
+            int next = text.indexOf(token, from);
+            if (next < 0) {
+                break;
+            }
+            count += 1;
+            from = next + token.length();
+        }
+        return count;
+    }
+
+    private String safeLower(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT);
+    }
+
+    private String firstNonBlank(String first, String second) {
+        if (first != null && !first.isBlank()) {
+            return first;
+        }
+        if (second != null && !second.isBlank()) {
+            return second;
+        }
+        return "";
     }
 
 }

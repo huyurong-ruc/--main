@@ -65,6 +65,10 @@ Page({
       header: token ? { Authorization: `Bearer ${token}` } : {},
       success: (res) => {
         wx.hideLoading()
+        if (res.statusCode !== 200) {
+          wx.showToast({ title: '下载失败', icon: 'none' })
+          return
+        }
         wx.openDocument({
           filePath: res.tempFilePath,
           success: () => console.log('打开成功'),

@@ -1,6 +1,7 @@
 // sub-pages/apply/list.js
 const app = getApp()
 const applyApi = require('../../api/apply')
+const authApi = require('../../api/auth')
 const { getApplyDisplayTitle } = require('../../api/apply-business')
 const { getApplyStatusMeta, isCompletedStatus } = require('../../api/apply-status')
 
@@ -57,6 +58,33 @@ function normalizeApplyItem(item = {}, displayMeta = {}) {
     sortTime: parseTime(timeValue),
     completed: isCompletedStatus(rawStatus)
   }
+}
+
+async function ensureStudentProfile() {
+  const cached = app.globalData.userInfo || {}
+  if (cached.studentId) {
+    return cached
+  }
+  if (typeof app.syncCurrentUser === 'function') {
+    return app.syncCurrentUser(true)
+  }
+  const res = await authApi.getCurrentUser()
+  const profile = res && res.data ? res.data : null
+  if (!profile) {
+    return cached
+  }
+  const nextUserInfo = {
+    ...cached,
+    id: profile.userId || cached.id || '',
+    studentId: profile.studentId || cached.studentId || '',
+    name: profile.name || profile.username || cached.name || '',
+    studentNo: profile.studentNo || cached.studentNo || '',
+    role: profile.role || cached.role || '',
+    major: profile.major || cached.major || '',
+    grade: profile.grade || cached.grade || ''
+  }
+  app.setLoginData(app.globalData.token, nextUserInfo)
+  return nextUserInfo
 }
 
 async function buildApplyDisplayMeta(sourceList = []) {
@@ -130,8 +158,8 @@ Page({
     this.setData({ loading: true })
 
     try {
-      const profile = app.globalData.userInfo || {}
-      const studentId = Number(profile.studentId || profile.id || 0)
+      const profile = await ensureStudentProfile()
+      const studentId = Number(profile.studentId || 0)
       if (!studentId || Number.isNaN(studentId)) {
         wx.showToast({ title: '登录信息缺少学生ID', icon: 'none' })
         this.setData({ rawList: [], applyList: [] })

@@ -595,9 +595,7 @@ public class AdminService implements AdminApplicationService {
 
     @Override
     public AdminStatsResponse stats(int pendingApprovals) {
-        int pendingCount = pendingApprovals > 0
-                ? pendingApprovals
-                : Math.toIntExact(certificateRequestRepository.countByStatus("PENDING"));
+        int pendingCount = Math.max(pendingApprovals, 0);
         if (isKingbaseProfile()) {
             return new AdminStatsResponse(
                     Math.toIntExact(latestUserRepository.countByIsDeleted(0)),

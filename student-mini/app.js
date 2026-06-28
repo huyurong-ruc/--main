@@ -1,4 +1,6 @@
 // app.js
+const authApi = require('./api/auth')
+
 App({
   globalData: {
     userInfo: null,
@@ -7,7 +9,7 @@ App({
     // 真机测试前，请通过内网穿透工具（如 ngrok / cpolar / 花生壳）将本地 8080 端口暴露为公网 HTTPS 地址，
     // 然后在下方替换为实际可访问的地址，并在小程序后台配置 request 合法域名。
     // TODO: 替换为实际后端 HTTPS 地址，例如: 'https://abc123.ngrok-free.app/api/v1'
-    baseUrl: 'https://repaint-doorman-nutrient.ngrok-free.dev/api/v1',
+    baseUrl: 'http://localhost:8080/api/v1',
     // 对接真实后端时关闭 mock
     USE_MOCK: false,
     // 云开发代理模式开关：true 时通过云函数代理请求，false 时直接请求 baseUrl
@@ -42,6 +44,9 @@ App({
       if (token && userInfo) {
         this.globalData.token = token
         this.globalData.userInfo = userInfo
+        this.syncCurrentUser().catch((e) => {
+          console.warn('同步当前用户信息失败', e)
+        })
       }
     } catch (e) {
       console.error('读取登录状态失败', e)
@@ -53,6 +58,32 @@ App({
     this.globalData.userInfo = userInfo
     wx.setStorageSync('token', token)
     wx.setStorageSync('userInfo', userInfo)
+  },
+
+  async syncCurrentUser(force = false) {
+    if (!this.globalData.token) {
+      return this.globalData.userInfo
+    }
+    const cached = this.globalData.userInfo || {}
+    if (!force && cached.studentId) {
+      return cached
+    }
+    const res = await authApi.getCurrentUser()
+    const profile = res && res.data ? res.data : null
+    if (!profile) {
+      return cached
+    }
+    const nextUserInfo = {
+      id: profile.userId || cached.id || '',
+      studentId: profile.studentId || cached.studentId || '',
+      name: profile.name || profile.username || cached.name || '',
+      studentNo: profile.studentNo || cached.studentNo || '',
+      role: profile.role || cached.role || '',
+      major: profile.major || cached.major || '',
+      grade: profile.grade || cached.grade || ''
+    }
+    this.setLoginData(this.globalData.token, nextUserInfo)
+    return nextUserInfo
   },
 
   clearLoginData() {

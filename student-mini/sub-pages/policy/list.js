@@ -23,7 +23,7 @@ function normalizePolicyItem(item = {}) {
     id: String(item.id || ''),
     title: item.title || '未命名政策',
     category: item.category || '政策',
-    summary: `${item.category || '政策'}相关文件，可进入详情查看完整内容`,
+    summary: item.summary || '暂无摘要',
     publishTime: normalizeTime(item.updatedAt || item.publishTime || ''),
     officialUrl: item.officialUrl || ''
   }

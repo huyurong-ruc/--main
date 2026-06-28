@@ -14,6 +14,12 @@ exports.getPolicyPage = (params) => get('/student/policies/page', params, { show
 exports.getPolicies = (params) => get('/knowledge/search', params, { showLoading: false, useMock: false })
 
 /**
+ * 学生端聚合搜索
+ * @param {Object} params - { keyword }
+ */
+exports.searchAll = (params) => get('/student/search', params, { showLoading: false, useMock: false })
+
+/**
  * 获取政策详情
  * @param {string} id - 知识ID
  */

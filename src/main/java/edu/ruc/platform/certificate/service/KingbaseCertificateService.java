@@ -627,7 +627,11 @@ public class KingbaseCertificateService implements CertificateApplicationService
     private void validateOperatorPermission(LatestAffairRequest affairRequest, AuthenticatedUser operator, String action) {
         String normalizedAction = action.trim().toLowerCase();
         if ("withdraw".equals(normalizedAction) || "resubmit".equals(normalizedAction)) {
-            if (!operator.userId().equals(affairRequest.getRequesterUserId())) {
+            boolean isAdmin = RoleType.SUPER_ADMIN.name().equals(operator.role())
+                    || RoleType.COLLEGE_ADMIN.name().equals(operator.role())
+                    || RoleType.COUNSELOR.name().equals(operator.role());
+            Long operatorStudentId = operator.studentId() != null ? operator.studentId() : operator.userId();
+            if (!operatorStudentId.equals(affairRequest.getRequesterUserId()) && !isAdmin) {
                 throw new BusinessException("当前账号无权执行该审批动作");
             }
             return;
@@ -654,8 +658,10 @@ public class KingbaseCertificateService implements CertificateApplicationService
             }
             return;
         }
-        if ("resubmit".equals(normalizedAction) && !"canceled".equalsIgnoreCase(affairRequest.getStatus())) {
-            throw new BusinessException("仅已撤回的申请支持重新提交");
+        if ("resubmit".equals(normalizedAction)
+                && !"canceled".equalsIgnoreCase(affairRequest.getStatus())
+                && !"rejected".equalsIgnoreCase(affairRequest.getStatus())) {
+            throw new BusinessException("仅已撤回或已驳回的申请支持重新提交");
         }
     }
 
@@ -671,7 +677,8 @@ public class KingbaseCertificateService implements CertificateApplicationService
 
     private void requireCertificateOwner(Long studentId) {
         AuthenticatedUser user = currentUserService.requireCurrentUser();
-        if (!user.userId().equals(studentId)) {
+        Long currentStudentId = user.studentId() != null ? user.studentId() : user.userId();
+        if (!currentStudentId.equals(studentId)) {
             throw new BusinessException("证明申请仅支持学生本人操作");
         }
     }

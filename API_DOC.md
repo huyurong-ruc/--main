@@ -596,6 +596,10 @@
 
 - `GET /api/v1/knowledge/search?keyword=奖学金`
 
+说明：
+- 结果按标题/分类/正文的综合相关度排序，不再是简单命中即返回
+- 当前主要用于知识库条目检索；学生端综合搜索请优先调用 `/api/v1/student/search`
+
 返回字段：
 - `id`
 - `title`
@@ -907,10 +911,41 @@
 - `GET /api/v1/student/party-progress`
 - `GET /api/v1/student/party-progress/reminders`
 - `GET /api/v1/student/knowledge/recommended`
+- `GET /api/v1/student/policies/page`
+- `GET /api/v1/student/search`
 
 说明：
 - 以上接口基于当前登录学生自动定位本人数据
 - 前端无需再自行拼接 `studentId`
+
+### `GET /api/v1/student/policies/page`
+
+返回字段：
+- `id`
+- `title`
+- `category`
+- `summary`
+- `officialUrl`
+- `sourceFileName`
+- `updatedAt`
+
+说明：
+- `summary` 直接返回管理端发布的真实摘要/正文摘要，不再由前端写死占位文案
+
+### `GET /api/v1/student/search?keyword=...`
+
+返回字段：
+- `id`
+- `type`
+- `title`
+- `body`
+- `metaLeft`
+- `metaRight`
+- `aliasText`
+
+说明：
+- 该接口聚合政策、通知、FAQ、模板四类结果
+- 后端负责结果合并、相关度排序与基础召回，前端只负责展示、高亮和跳转
 
 ### `GET /api/v1/student/dashboard`
 

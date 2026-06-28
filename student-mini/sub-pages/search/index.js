@@ -91,6 +91,21 @@ function buildSearchMetrics(title = '', body = '', keyword = '', aliasText = '')
 }
 
 function buildDisplayItem(item = {}) {
+  if (item.title && item.body && item.metaLeft && item.metaRight) {
+    const iconMap = {
+      policy: ['文', 'policy'],
+      notice: ['知', 'notice'],
+      qa: ['问', 'faq'],
+      template: ['模', 'template'],
+      service: ['服', 'service']
+    }
+    const [typeIcon, typeClass] = iconMap[item.type] || ['文', 'policy']
+    return {
+      ...item,
+      typeIcon,
+      typeClass
+    }
+  }
   const type = item.type
   if (type === 'policy') {
     return {
@@ -186,59 +201,6 @@ function isQaCategory(category = '') {
   const raw = String(category || '')
   const lower = raw.toLowerCase()
   return lower.includes('faq') || raw.includes('问答') || raw.includes('FAQ管理') || raw.includes('faq管理')
-}
-
-function normalizeNoticeTime(value = '') {
-  if (!value) return ''
-  const text = String(value)
-  return text.includes('T') ? text.replace('T', ' ').slice(0, 16) : text.slice(0, 16)
-}
-
-function mapKnowledgeResult(item = {}) {
-  const category = item.category || ''
-  if (isQaCategory(category)) {
-    return {
-      id: String(item.id || ''),
-      type: 'qa',
-      category,
-      question: item.title || '',
-      answer: item.answer || '',
-      updatedAt: ''
-    }
-  }
-
-  return {
-    id: String(item.id || ''),
-    type: 'policy',
-    title: item.title || '',
-    department: category || '知识库',
-    publishDate: '',
-    content: item.answer || '',
-    summary: item.answer || ''
-  }
-}
-
-function mapNoticeResult(item = {}) {
-  return {
-    id: String(item.id || ''),
-    type: 'notice',
-    title: item.title || '',
-    summary: item.summary || '',
-    content: item.summary || '',
-    department: '官方',
-    publishTime: normalizeNoticeTime(item.publishTime)
-  }
-}
-
-function mapTemplateResult(item = {}) {
-  return {
-    id: String(item.id || ''),
-    type: 'template',
-    fileName: item.templateName || item.templateCode || '模板文件',
-    description: item.description || `用于${item.certificateType || '证明'}模板下载`,
-    fileType: item.outputFormat || '-',
-    updatedAt: normalizeNoticeTime(item.updatedAt)
-  }
 }
 
 function safeArray(value) {
@@ -358,21 +320,8 @@ Page({
       return
     }
 
-    const tasks = await Promise.allSettled([
-      policyApi.getPolicies({ keyword: normalizedKeyword }),
-      policyApi.getNotices(),
-      policyApi.getTemplates()
-    ])
-
-    const knowledgeList = tasks[0].status === 'fulfilled' ? safeArray(tasks[0].value?.data) : []
-    const noticeList = tasks[1].status === 'fulfilled' ? safeArray(tasks[1].value?.data) : []
-    const templateList = tasks[2].status === 'fulfilled' ? safeArray(tasks[2].value?.data) : []
-
-    const mappedKnowledge = knowledgeList.map(mapKnowledgeResult).filter((item) => item && item.id)
-    const mappedNotices = noticeList.map(mapNoticeResult).filter((item) => item && item.id)
-    const mappedTemplates = templateList.map(mapTemplateResult).filter((item) => item && item.id)
-
-    const mergedRemote = [...mappedKnowledge, ...mappedNotices, ...mappedTemplates]
+    const res = await policyApi.searchAll({ keyword: normalizedKeyword })
+    const mergedRemote = safeArray(res?.data).filter((item) => item && item.id)
     this.remoteCache[normalizedKeyword] = mergedRemote
     await setDataAsync(this, { resultList: mergedRemote })
     this.applyFilter(normalizedKeyword)

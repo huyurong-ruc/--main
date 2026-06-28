@@ -19,8 +19,10 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 @Service
 @Profile("!mock & !kingbase")
@@ -44,9 +46,16 @@ public class KnowledgeService implements KnowledgeApplicationService {
         List<KnowledgeSearchResponse> result = knowledgeDocumentRepository.findAll()
                 .stream()
                 .filter(doc -> Boolean.TRUE.equals(doc.getPublished()))
-                .filter(doc -> QueryFilterSupport.containsIgnoreCase(doc.getTitle(), normalizedKeyword)
-                        || QueryFilterSupport.containsIgnoreCase(doc.getCategory(), normalizedKeyword)
-                        || QueryFilterSupport.containsIgnoreCase(doc.getContent(), normalizedKeyword))
+                .map(doc -> new java.util.AbstractMap.SimpleEntry<>(doc, searchScore(
+                        doc.getTitle(),
+                        doc.getCategory(),
+                        doc.getContent(),
+                        normalizedKeyword
+                )))
+                .filter(entry -> entry.getValue() > 0)
+                .sorted(java.util.Map.Entry.<edu.ruc.platform.knowledge.domain.KnowledgeDocument, Integer>comparingByValue().reversed()
+                        .thenComparing(entry -> entry.getKey().getId(), Comparator.nullsLast(Long::compareTo)))
+                .map(java.util.Map.Entry::getKey)
                 .map(this::toSafeSearchResponse)
                 .toList();
         searchQueryLogService.record(normalizedKeyword, result.size());
@@ -77,10 +86,11 @@ public class KnowledgeService implements KnowledgeApplicationService {
 
     @Override
     public KnowledgeDetailResponse getDetail(Long id) {
-        var doc = knowledgeDocumentRepository.findById(id)
+        Long knowledgeId = java.util.Objects.requireNonNull(id);
+        var doc = knowledgeDocumentRepository.findById(knowledgeId)
                 .filter(item -> Boolean.TRUE.equals(item.getPublished()))
                 .orElseThrow(() -> new BusinessException("知识条目不存在"));
-        List<KnowledgeAttachmentResponse> attachments = knowledgeAttachmentRepository.findByKnowledgeIdOrderByCreatedAtDesc(id).stream()
+        List<KnowledgeAttachmentResponse> attachments = knowledgeAttachmentRepository.findByKnowledgeIdOrderByCreatedAtDesc(knowledgeId).stream()
                 .map(item -> new KnowledgeAttachmentResponse(
                         item.getId(),
                         item.getKnowledgeId(),
@@ -93,7 +103,7 @@ public class KnowledgeService implements KnowledgeApplicationService {
                 ))
                 .toList();
         List<KnowledgeSearchResponse> relatedItems = knowledgeDocumentRepository.findAll().stream()
-                .filter(item -> !item.getId().equals(id))
+                .filter(item -> !item.getId().equals(knowledgeId))
                 .filter(item -> Boolean.TRUE.equals(item.getPublished()))
                 .filter(item -> java.util.Objects.equals(item.getCategory(), doc.getCategory()))
                 .limit(3)
@@ -117,12 +127,13 @@ public class KnowledgeService implements KnowledgeApplicationService {
 
     @Override
     public List<KnowledgeSearchResponse> recommendForStudent(Long studentId) {
-        StudentProfile profile = studentProfileRepository.findById(studentId).orElse(null);
+        Long currentStudentId = java.util.Objects.requireNonNull(studentId);
+        StudentProfile profile = studentProfileRepository.findById(currentStudentId).orElse(null);
         List<Notice> notices = noticeRepository.findAllByOrderByPublishTimeDesc();
-        List<String> certificateStatuses = certificateRequestRepository.findByStudentId(studentId).stream()
+        List<String> certificateStatuses = certificateRequestRepository.findByStudentId(currentStudentId).stream()
                 .map(item -> item.getStatus() == null ? "" : item.getStatus())
                 .toList();
-        PartyProgressRecord progress = partyProgressRecordRepository.findByStudentId(studentId).orElse(null);
+        PartyProgressRecord progress = partyProgressRecordRepository.findByStudentId(currentStudentId).orElse(null);
         return knowledgeDocumentRepository.findAll()
                 .stream()
                 .filter(doc -> Boolean.TRUE.equals(doc.getPublished()))
@@ -172,6 +183,75 @@ public class KnowledgeService implements KnowledgeApplicationService {
         }
         String lower = raw.toLowerCase(Locale.ROOT);
         return lower.contains("faq") || raw.contains("问答") || raw.contains("FAQ管理") || raw.contains("faq管理");
+    }
+
+    private int searchScore(String title, String category, String content, String keyword) {
+        String normalizedKeyword = QueryFilterSupport.trimToNull(keyword);
+        if (normalizedKeyword == null) {
+            return 0;
+        }
+        String lowerKeyword = normalizedKeyword.toLowerCase(Locale.ROOT);
+        String lowerTitle = safeLower(title);
+        String lowerCategory = safeLower(category);
+        String lowerContent = safeLower(content);
+        int score = 0;
+        if (lowerTitle.equals(lowerKeyword)) {
+            score += 600;
+        }
+        if (lowerTitle.contains(lowerKeyword)) {
+            score += 260;
+        }
+        if (lowerCategory.contains(lowerKeyword)) {
+            score += 160;
+        }
+        if (lowerContent.contains(lowerKeyword)) {
+            score += 120;
+        }
+        for (String token : searchTokens(lowerKeyword)) {
+            score += countHits(lowerTitle, token) * 36;
+            score += countHits(lowerCategory, token) * 24;
+            score += countHits(lowerContent, token) * 12;
+        }
+        return score;
+    }
+
+    private List<String> searchTokens(String keyword) {
+        Set<String> tokens = new LinkedHashSet<>();
+        for (String token : keyword.split("\\s+")) {
+            if (!token.isBlank()) {
+                tokens.add(token);
+            }
+        }
+        if (tokens.size() <= 1 && keyword.length() >= 4) {
+            for (int i = 0; i < keyword.length() - 1; i++) {
+                String bigram = keyword.substring(i, i + 2).trim();
+                if (!bigram.isBlank()) {
+                    tokens.add(bigram);
+                }
+            }
+        }
+        return List.copyOf(tokens);
+    }
+
+    private int countHits(String text, String token) {
+        if (text == null || text.isBlank() || token == null || token.isBlank()) {
+            return 0;
+        }
+        int count = 0;
+        int from = 0;
+        while (from >= 0) {
+            int next = text.indexOf(token, from);
+            if (next < 0) {
+                break;
+            }
+            count += 1;
+            from = next + token.length();
+        }
+        return count;
+    }
+
+    private String safeLower(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT);
     }
 
     private KnowledgeSearchResponse toSafeSearchResponse(edu.ruc.platform.knowledge.domain.KnowledgeDocument doc) {

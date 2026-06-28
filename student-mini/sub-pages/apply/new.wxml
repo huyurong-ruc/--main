@@ -63,27 +63,28 @@
         />
       </view>
 
-      <view class="form-item">
-        <view class="form-label">附件材料 <text class="optional">(≤20MB)</text></view>
-        <view class="material-guide" wx:if="{{selectedType.attachmentGuide && selectedType.attachmentGuide.length > 0}}">
-          <text wx:for="{{selectedType.attachmentGuide}}" wx:key="*this" class="material-guide-item">• {{item}}</text>
+    </block>
+
+    <view wx:if="{{selectedType}}" class="form-item">
+      <view class="form-label">附件材料 <text class="optional">(≤20MB)</text></view>
+      <view class="material-guide" wx:if="{{selectedType.attachmentGuide && selectedType.attachmentGuide.length > 0}}">
+        <text wx:for="{{selectedType.attachmentGuide}}" wx:key="*this" class="material-guide-item">• {{item}}</text>
+      </view>
+      <view class="attachment-list">
+        <view
+          wx:for="{{attachments}}"
+          wx:key="index"
+          class="attachment-item"
+        >
+          <text class="attachment-name">{{item.name}}</text>
+          <text class="attachment-remove" bindtap="removeAttachment" data-index="{{index}}">×</text>
         </view>
-        <view class="attachment-list">
-          <view
-            wx:for="{{attachments}}"
-            wx:key="index"
-            class="attachment-item"
-          >
-            <text class="attachment-name">{{item.name}}</text>
-            <text class="attachment-remove" bindtap="removeAttachment" data-index="{{index}}">×</text>
-          </view>
-          <view class="add-attachment" bindtap="chooseFile">
-            <text class="add-icon">+</text>
-            <text class="add-text">添加附件</text>
-          </view>
+        <view class="add-attachment" bindtap="chooseFile">
+          <text class="add-icon">+</text>
+          <text class="add-text">添加附件</text>
         </view>
       </view>
-    </block>
+    </view>
   </view>
   
   <!-- 提示信息 -->

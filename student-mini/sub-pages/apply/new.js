@@ -2,6 +2,7 @@
 const app = getApp()
 const { post } = require('../../api/request')
 const applyApi = require('../../api/apply')
+const authApi = require('../../api/auth')
 const {
   buildFormDefaults,
   getApplyDisplayTitle,
@@ -42,6 +43,33 @@ function buildPurposeFromFields(typeConfig = null, formValues = {}) {
   }
 
   return `${formValues.applyStage || '教师资格认定'} / ${formValues.applicationArea || '待填写认定地区'}`
+}
+
+async function ensureStudentProfile() {
+  const cached = app.globalData.userInfo || {}
+  if (cached.studentId) {
+    return cached
+  }
+  if (typeof app.syncCurrentUser === 'function') {
+    return app.syncCurrentUser(true)
+  }
+  const res = await authApi.getCurrentUser()
+  const profile = res && res.data ? res.data : null
+  if (!profile) {
+    return cached
+  }
+  const nextUserInfo = {
+    ...cached,
+    id: profile.userId || cached.id || '',
+    studentId: profile.studentId || cached.studentId || '',
+    name: profile.name || profile.username || cached.name || '',
+    studentNo: profile.studentNo || cached.studentNo || '',
+    role: profile.role || cached.role || '',
+    major: profile.major || cached.major || '',
+    grade: profile.grade || cached.grade || ''
+  }
+  app.setLoginData(app.globalData.token, nextUserInfo)
+  return nextUserInfo
 }
 
 Page({
@@ -257,7 +285,7 @@ Page({
     }
     
     // 表单验证
-    const { selectedType, formValues, attachments } = this.data
+    const { selectedType, formValues } = this.data
 
     if (!selectedType) {
       wx.showToast({ title: '请选择申请类型', icon: 'none' })
@@ -286,8 +314,8 @@ Page({
   async submitApply() {
     wx.showLoading({ title: '提交中...' })
     try {
-      const profile = app.globalData.userInfo || {}
-      const studentId = Number(profile.studentId || profile.id || 0)
+      const profile = await ensureStudentProfile()
+      const studentId = Number(profile.studentId || 0)
       if (!studentId || Number.isNaN(studentId)) {
         wx.showToast({ title: '登录信息缺少学生ID', icon: 'none' })
         return

@@ -6,6 +6,8 @@ import edu.ruc.platform.admin.dto.QaTicketMessageResponse;
 import edu.ruc.platform.auth.dto.AuthenticatedUser;
 import edu.ruc.platform.auth.service.CurrentUserService;
 import edu.ruc.platform.certificate.dto.CertificateRequestResponse;
+import edu.ruc.platform.certificate.dto.CertificateTemplateResponse;
+import edu.ruc.platform.certificate.service.CertificateTemplateApplicationService;
 import edu.ruc.platform.common.api.ApiResponse;
 import edu.ruc.platform.common.api.PageResponse;
 import edu.ruc.platform.common.enums.RoleType;
@@ -15,6 +17,7 @@ import edu.ruc.platform.knowledge.dto.KnowledgeSearchResponse;
 import edu.ruc.platform.knowledge.repository.KnowledgeQaTicketMessageRepository;
 import edu.ruc.platform.knowledge.repository.KnowledgeQaTicketRepository;
 import edu.ruc.platform.knowledge.repository.LatestKnowledgePolicyRepository;
+import edu.ruc.platform.knowledge.service.KnowledgeApplicationService;
 import edu.ruc.platform.notice.dto.TargetedNoticeResponse;
 import edu.ruc.platform.party.dto.PartyProgressResponse;
 import edu.ruc.platform.party.dto.ReminderResponse;
@@ -41,9 +44,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 @Validated
 @RestController
@@ -57,6 +63,8 @@ public class StudentSelfController {
     private final KnowledgeQaTicketRepository ticketRepository;
     private final KnowledgeQaTicketMessageRepository messageRepository;
     private final LatestKnowledgePolicyRepository latestKnowledgePolicyRepository;
+    private final KnowledgeApplicationService knowledgeService;
+    private final CertificateTemplateApplicationService certificateTemplateService;
     private final ObjectMapper objectMapper;
 
     private static final DateTimeFormatter DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -105,9 +113,21 @@ public class StudentSelfController {
             Long id,
             String title,
             String category,
+            String summary,
             String officialUrl,
             String sourceFileName,
             String updatedAt
+    ) {
+    }
+
+    public record StudentSearchItemResponse(
+            String id,
+            String type,
+            String title,
+            String body,
+            String metaLeft,
+            String metaRight,
+            String aliasText
     ) {
     }
 
@@ -131,12 +151,78 @@ public class StudentSelfController {
                     item.getId(),
                     item.getTitle(),
                     category == null ? "未分类" : category,
+                    summarizePolicy(item.getSummary(), item.getContent()),
                     item.getSourceUrl(),
                     sourceFileName,
                     format(item.getUpdatedAt())
             );
         }).toList();
         return ApiResponse.success(new PageResponse<>(content, all.size(), totalPages, normalizedPage, normalizedSize));
+    }
+
+    @GetMapping("/search")
+    public ApiResponse<List<StudentSearchItemResponse>> search(@RequestParam String keyword) {
+        currentUserService.requireAnyRole(RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT);
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        if (normalizedKeyword.isBlank()) {
+            return ApiResponse.success(List.of());
+        }
+        List<ScoredSearchItem> items = new ArrayList<>();
+        for (KnowledgeSearchResponse item : knowledgeService.search(normalizedKeyword)) {
+            String category = item.category() == null ? "知识库" : item.category();
+            String type = isFaqCategory(category) ? "qa" : "policy";
+            String title = item.title() == null ? "" : item.title();
+            String body = summarizePolicy(item.answer(), null);
+            String metaLeft = isFaqCategory(category) ? "分类：" + category : "部门：" + category;
+            String metaRight = isFaqCategory(category) ? "查看问答" : "查看政策";
+            String aliasText = category + "|" + (item.officialUrl() == null ? "" : item.officialUrl());
+            items.add(scoreItem(
+                    new StudentSearchItemResponse(String.valueOf(item.id()), type, title, body, metaLeft, metaRight, aliasText),
+                    normalizedKeyword
+            ));
+        }
+        for (TargetedNoticeResponse item : studentSelfService.myNotices()) {
+            String title = item.title() == null ? "" : item.title();
+            String body = summarizePolicy(item.summary(), null);
+            String aliasText = String.join("|", item.tags() == null ? List.<String>of() : item.tags());
+            items.add(scoreItem(
+                    new StudentSearchItemResponse(
+                            String.valueOf(item.id()),
+                            "notice",
+                            title,
+                            body,
+                            "来源：" + (item.targetDescription() == null || item.targetDescription().isBlank() ? "官方通知" : item.targetDescription()),
+                            "时间：" + format(item.publishTime()),
+                            aliasText
+                    ),
+                    normalizedKeyword
+            ));
+        }
+        for (CertificateTemplateResponse item : certificateTemplateService.listActive()) {
+            String title = item.templateName() == null ? "模板文件" : item.templateName();
+            String body = item.description() == null ? "模板下载" : item.description();
+            String fileType = item.outputFormat() == null ? "-" : item.outputFormat();
+            String aliasText = (item.certificateType() == null ? "" : item.certificateType()) + "|" + (item.templateCode() == null ? "" : item.templateCode());
+            items.add(scoreItem(
+                    new StudentSearchItemResponse(
+                            String.valueOf(item.id()),
+                            "template",
+                            title,
+                            body,
+                            "类型：" + fileType,
+                            "更新：" + format(item.updatedAt()),
+                            aliasText
+                    ),
+                    normalizedKeyword
+            ));
+        }
+        List<StudentSearchItemResponse> result = items.stream()
+                .filter(item -> item.score() > 0)
+                .sorted(Comparator.comparingInt(ScoredSearchItem::score).reversed()
+                        .thenComparing(item -> item.item().title(), Comparator.nullsLast(String::compareToIgnoreCase)))
+                .map(ScoredSearchItem::item)
+                .toList();
+        return ApiResponse.success(result);
     }
 
     public record StudentQaTicketCreateRequest(
@@ -188,7 +274,8 @@ public class StudentSelfController {
     public ApiResponse<QaTicketDetailResponse> myTicketDetail(@Positive(message = "工单ID必须大于0") @PathVariable Long id) {
         AuthenticatedUser user = currentUserService.requireAnyRole(RoleType.STUDENT, RoleType.LEAGUE_SECRETARY, RoleType.CLASS_LEADER, RoleType.ASSISTANT);
         Long studentId = user.studentId() != null ? user.studentId() : user.userId();
-        KnowledgeQaTicket ticket = ticketRepository.findById(id).orElseThrow(() -> new edu.ruc.platform.common.exception.BusinessException("工单不存在"));
+        Long ticketId = Objects.requireNonNull(id);
+        KnowledgeQaTicket ticket = ticketRepository.findById(ticketId).orElseThrow(() -> new edu.ruc.platform.common.exception.BusinessException("工单不存在"));
         if (ticket.getAskUserId() == null || !ticket.getAskUserId().equals(studentId)) {
             throw new edu.ruc.platform.common.exception.BusinessException("无权查看该工单");
         }
@@ -239,6 +326,18 @@ public class StudentSelfController {
         return t == null ? "" : DTF.format(t);
     }
 
+    private static String summarizePolicy(String summary, String content) {
+        String text = firstNonBlank(summary, content);
+        if (text == null) {
+            return "";
+        }
+        String normalized = text.replace("\r", "").replace('\n', ' ').trim();
+        if (normalized.length() <= 72) {
+            return normalized;
+        }
+        return normalized.substring(0, 72) + "...";
+    }
+
     private static String buildQuestionText(String questionText, String contact) {
         String q = questionText == null ? "" : questionText.trim();
         String c = contact == null ? "" : contact.trim();
@@ -253,13 +352,17 @@ public class StudentSelfController {
         return (value == null || value.isBlank()) ? null : value.trim();
     }
 
-    private boolean isFaqPolicy(edu.ruc.platform.knowledge.domain.LatestKnowledgePolicy item) {
-        String category = resolvePolicyCategory(item == null ? null : item.getExtJson());
-        if (category == null) {
+    private boolean isFaqCategory(String category) {
+        if (category == null || category.isBlank()) {
             return false;
         }
-        String normalized = category.trim().toLowerCase();
+        String normalized = category.trim().toLowerCase(Locale.ROOT);
         return normalized.contains("faq") || category.contains("FAQ管理") || category.contains("问答");
+    }
+
+    private boolean isFaqPolicy(edu.ruc.platform.knowledge.domain.LatestKnowledgePolicy item) {
+        String category = resolvePolicyCategory(item == null ? null : item.getExtJson());
+        return isFaqCategory(category);
     }
 
     private Map<String, String> resolvePolicyMeta(String extJson) {
@@ -279,5 +382,99 @@ public class StudentSelfController {
         } catch (Exception e) {
             return Map.of();
         }
+    }
+
+    private ScoredSearchItem scoreItem(StudentSearchItemResponse item, String keyword) {
+        int score = searchScore(item.title(), item.body(), item.aliasText(), keyword);
+        return new ScoredSearchItem(item, score);
+    }
+
+    private int searchScore(String title, String body, String aliasText, String keyword) {
+        String normalizedKeyword = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
+        if (normalizedKeyword.isBlank()) {
+            return 0;
+        }
+        String lowerTitle = safeLower(title);
+        String lowerBody = safeLower(body);
+        String lowerAlias = safeLower(aliasText);
+        int score = 0;
+        if (lowerTitle.equals(normalizedKeyword)) {
+            score += 600;
+        }
+        if (lowerAlias.equals(normalizedKeyword)) {
+            score += 420;
+        }
+        if (lowerTitle.contains(normalizedKeyword)) {
+            score += 260;
+        }
+        if (lowerAlias.contains(normalizedKeyword)) {
+            score += 180;
+        }
+        if (lowerBody.contains(normalizedKeyword)) {
+            score += 120;
+        }
+        for (String token : keywordTokens(normalizedKeyword)) {
+            score += countHits(lowerTitle, token) * 36;
+            score += countHits(lowerAlias, token) * 24;
+            score += countHits(lowerBody, token) * 12;
+        }
+        return score;
+    }
+
+    private List<String> keywordTokens(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return List.of();
+        }
+        List<String> tokens = new ArrayList<>();
+        for (String token : keyword.split("\\s+")) {
+            if (!token.isBlank()) {
+                tokens.add(token);
+            }
+        }
+        if (tokens.size() <= 1 && keyword.length() >= 4) {
+            for (int i = 0; i < keyword.length() - 1; i++) {
+                String bigram = keyword.substring(i, i + 2).trim();
+                if (!bigram.isBlank()) {
+                    tokens.add(bigram);
+                }
+            }
+        }
+        return tokens.stream().filter(Objects::nonNull).distinct().toList();
+    }
+
+    private int countHits(String text, String token) {
+        if (text == null || text.isBlank() || token == null || token.isBlank()) {
+            return 0;
+        }
+        int count = 0;
+        int fromIndex = 0;
+        while (fromIndex >= 0) {
+            int next = text.indexOf(token, fromIndex);
+            if (next < 0) {
+                break;
+            }
+            count += 1;
+            fromIndex = next + token.length();
+        }
+        return count;
+    }
+
+    private String safeLower(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT);
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private record ScoredSearchItem(StudentSearchItemResponse item, int score) {
     }
 }

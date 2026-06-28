@@ -128,7 +128,7 @@ Page({
       // 保存登录数据
       app.setLoginData(payload.token, {
         id: profile?.userId || userId || studentNo.trim(),
-        studentId: profile?.studentId || profile?.userId || userId || studentNo.trim(),
+        studentId: profile?.studentId || '',
         name: profile?.name || profile?.username || studentNo.trim(),
         studentNo: profile?.studentNo || studentNo.trim(),
         role: profile?.role || role,
