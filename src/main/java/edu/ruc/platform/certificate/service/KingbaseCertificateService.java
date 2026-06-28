@@ -82,7 +82,7 @@ public class KingbaseCertificateService implements CertificateApplicationService
         LatestAffairRequest affairRequest = new LatestAffairRequest();
         affairRequest.setRequesterUserId(request.studentId());
         affairRequest.setRequestType("certificate");
-        affairRequest.setTitle(normalizeCertificateType(request.certificateType()) + "申请");
+        affairRequest.setTitle(normalizeCertificateType(request.certificateType()));
         affairRequest.setPurpose(request.reason() == null || request.reason().isBlank() ? "平台申请" : request.reason().trim());
         affairRequest.setRemark(request.reason());
         affairRequest.setPayloadJson(buildPayloadJson(request));

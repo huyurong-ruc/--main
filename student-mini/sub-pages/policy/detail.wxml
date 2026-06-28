@@ -22,6 +22,7 @@
         bindtap="downloadFile"
         data-id="{{item.id}}"
         data-name="{{item.fileName}}"
+        data-path="{{item.storagePath}}"
       >
         <text class="attachment-icon">📎</text>
         <text class="attachment-name">{{item.fileName}}</text>

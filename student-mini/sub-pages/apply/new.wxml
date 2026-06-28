@@ -23,6 +23,18 @@
       <text wx:for="{{selectedType.tips}}" wx:key="*this" class="type-tip">• {{item}}</text>
     </view>
 
+    <view wx:if="{{selectedType}}" class="form-item">
+      <view class="form-label">申请说明 <text class="optional">(可空)</text></view>
+      <textarea
+        class="form-textarea"
+        placeholder="如有补充说明可填写在这里"
+        value="{{formValues.applicationNote || ''}}"
+        bindinput="onFieldInput"
+        data-key="applicationNote"
+        maxlength="200"
+      />
+    </view>
+
     <block wx:if="{{selectedType && enableExtraFields}}">
       <view
         wx:for="{{renderedFields}}"

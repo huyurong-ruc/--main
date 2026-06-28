@@ -330,7 +330,7 @@ Page({
       const payload = {
         studentId,
         certificateType,
-        reason: '',
+        reason: (this.data.formValues.applicationNote || '').trim(),
         attachments: (this.data.attachments || []).map(item => item && item.id).filter(Boolean)
       }
       const res = await applyApi.submitApply(payload)

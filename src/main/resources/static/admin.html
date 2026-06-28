@@ -3528,7 +3528,7 @@
         el("th", { text: "学生" }),
         el("th", { text: "证明类型" }),
         el("th", { text: "状态" }),
-        el("th", { text: "原因/备注" }),
+        el("th", { text: "申请说明" }),
         el("th", { text: "提交时间" }),
         el("th", { text: "操作" })
       ])]);
@@ -3931,7 +3931,7 @@
           const meta = el("div", { class: "approvalMeta" }, [
             el("div", { text: "申请人：" + (item.studentName || "-") }),
             el("div", { text: "提交时间：" + formatDateTimeText(item.submittedAt) }),
-            el("div", { text: "原因/备注：" + (item.reason || "-") }),
+            el("div", { text: "申请说明：" + (item.reason || "-") }),
             el("div", { text: "附件数：" + String((Array.isArray(item.attachments) ? item.attachments.length : 0)) })
           ]);
           left.appendChild(titleRow);
