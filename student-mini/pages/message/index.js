@@ -64,7 +64,8 @@ Page({
 
       const reminderItems = reminders
         .filter((item) => String(item.channel || '').toLowerCase() === 'miniprogram')
-        .filter((item) => ['sent', 'generated'].includes(String(item.status || '').toLowerCase()))
+        // 只展示真实下发的提醒，避免把后端派生的生成项也渲染出来
+        .filter((item) => String(item.status || '').toLowerCase() === 'sent')
         .map((item) => {
           const { typeClass, icon } = resolveMessageStyle({ kind: 'reminder' })
           const publishTime = item.remindDate ? String(item.remindDate).replace('T', ' ').slice(0, 16) : ''

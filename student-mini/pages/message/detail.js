@@ -81,7 +81,11 @@ Page({
   async loadReminderDetail(taskId) {
     const res = await get('/student/party-progress/reminders')
     const list = Array.isArray(res?.data) ? res.data : []
-    const hit = list.find((item) => String(item.taskId) === String(taskId))
+    const hit = list.find(
+      (item) =>
+        String(item.taskId) === String(taskId) &&
+        String(item.status || '').toLowerCase() === 'sent'
+    )
     if (!hit) {
       wx.showToast({ title: 'Reminder not found', icon: 'none' })
       return
