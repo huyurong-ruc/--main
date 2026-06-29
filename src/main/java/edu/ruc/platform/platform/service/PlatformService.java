@@ -564,9 +564,19 @@ public class PlatformService implements PlatformApplicationService {
         boolean restrictToOwnUpload = isStudentLikeRole(user);
         if (isKingbaseProfile()) {
             LatestFileObject fileObject = latestFileObjectRepository.findById(id)
-                    .filter(item -> "platform_upload".equals(item.getPurpose()) && item.getIsDeleted() != null && item.getIsDeleted() == 0)
+                    .filter(item -> item.getIsDeleted() != null && item.getIsDeleted() == 0)
                     .orElseThrow(() -> new BusinessException("上传记录不存在"));
-            if (restrictToOwnUpload && (fileObject.getUploadedBy() == null || !fileObject.getUploadedBy().equals(user.userId()))) {
+            String purpose = fileObject.getPurpose() == null ? "" : fileObject.getPurpose().trim();
+            PlatformUploadState state = "platform_upload".equals(purpose) ? loadPlatformUploadState(fileObject.getId()) : null;
+            boolean studentReadable = "knowledge_attachment".equals(purpose)
+                    || "cert_template".equals(purpose)
+                    || ("platform_upload".equals(purpose) && isStudentReadablePlatformUpload(state));
+            if (restrictToOwnUpload && !studentReadable) {
+                throw new BusinessException("无权下载该文件");
+            }
+            if (restrictToOwnUpload && "platform_upload".equals(purpose)
+                    && !isStudentReadablePlatformUpload(state)
+                    && (fileObject.getUploadedBy() == null || !fileObject.getUploadedBy().equals(user.userId()))) {
                 throw new BusinessException("无权下载该文件");
             }
             Path path = resolveUploadPath(fileObject.getStoragePath());
@@ -1391,6 +1401,13 @@ public class PlatformService implements PlatformApplicationService {
             }
         }
         return new PlatformUploadState(bizType, bizId, archived);
+    }
+
+    private boolean isStudentReadablePlatformUpload(PlatformUploadState state) {
+        if (state == null || state.bizType() == null) {
+            return false;
+        }
+        return "KNOWLEDGE_SOURCE".equalsIgnoreCase(state.bizType());
     }
 
     private String normalizeUploadFileName(String originalFileName) {

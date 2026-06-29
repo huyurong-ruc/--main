@@ -1,5 +1,6 @@
 const app = getApp()
 const policyApi = require('../../api/policy')
+const { downloadAndOpenDocument } = require('../../utils/file')
 
 function normalizeTemplate(item = {}) {
   const baseUrl = app.globalData?.baseUrl || ''
@@ -221,6 +222,7 @@ Page({
     const { id } = e.currentTarget.dataset
     const target = this.data.templates.find((item) => item.id === id) || this.data.selectedTemplate
     const downloadUrl = target?.downloadUrl || target?.fileUrl || ''
+    const fallbackUrl = target?.fileUrl || ''
 
     if (!target) {
       wx.showToast({ title: '模板信息缺失', icon: 'none' })
@@ -274,45 +276,25 @@ Page({
       return
     }
 
-    wx.downloadFile({
-      url: downloadUrl,
-      header: buildDownloadHeader(),
-      success: (res) => {
-        logTemplateDownload('download-response', {
-          id: target.id,
-          statusCode: res.statusCode,
-          tempFilePath: res.tempFilePath
-        })
-        if (res.statusCode !== 200) {
-          wx.hideLoading()
-          wx.showToast({ title: '下载失败', icon: 'none' })
-          return
-        }
-        wx.openDocument({
-          filePath: res.tempFilePath,
-          showMenu: true,
-          success: () => {
-            wx.hideLoading()
-            wx.showToast({ title: '下载成功', icon: 'success' })
-            logTemplateDownload('open-success', { id: target.id, filePath: res.tempFilePath, mode: 'remote' })
-          },
-          fail: (error) => {
-            wx.hideLoading()
-            console.error('模板预览失败', error)
-            wx.showToast({ title: '预览失败', icon: 'none' })
-            logTemplateDownload('open-fail', { id: target.id, mode: 'remote', error })
-          }
-        })
-      },
-      fail: (error) => {
-        console.error('模板下载失败', error)
+    const tryDownload = (url, canFallback) => {
+      downloadAndOpenDocument({
+        primaryUrl: url,
+        fallbackUrl: canFallback ? fallbackUrl : '',
+        header: buildDownloadHeader(),
+        fileName: target.title || target.templateCode || 'template'
+      }).then(() => {
         wx.hideLoading()
-        wx.showToast({ title: '下载失败', icon: 'none' })
-        logTemplateDownload('download-fail', { id: target.id, error })
-      },
-      complete: () => {
+        wx.showToast({ title: '下载成功', icon: 'success' })
         this.setData({ downloading: false })
-      }
-    })
+        logTemplateDownload('open-success', { id: target.id, mode: 'remote', url })
+      }).catch((error) => {
+        wx.hideLoading()
+        console.error('模板下载失败', error)
+        wx.showToast({ title: '下载失败', icon: 'none' })
+        this.setData({ downloading: false })
+        logTemplateDownload('download-fail', { id: target.id, error, url })
+      })
+    }
+    tryDownload(downloadUrl, true)
   }
 })

@@ -12,6 +12,7 @@ import edu.ruc.platform.party.domain.PartyProgressRecord;
 import edu.ruc.platform.party.repository.PartyProgressRecordRepository;
 import edu.ruc.platform.student.domain.StudentProfile;
 import edu.ruc.platform.student.repository.StudentProfileRepository;
+import edu.ruc.platform.common.support.SearchSynonymService;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -35,6 +36,7 @@ class KnowledgeServiceUnitTest {
         CertificateRequestRepository certificateRequestRepository = mock(CertificateRequestRepository.class);
         PartyProgressRecordRepository partyProgressRecordRepository = mock(PartyProgressRecordRepository.class);
         SearchQueryLogService searchQueryLogService = mock(SearchQueryLogService.class);
+        SearchSynonymService searchSynonymService = mock(SearchSynonymService.class);
 
         KnowledgeService service = new KnowledgeService(
                 knowledgeDocumentRepository,
@@ -43,7 +45,8 @@ class KnowledgeServiceUnitTest {
                 noticeRepository,
                 certificateRequestRepository,
                 partyProgressRecordRepository,
-                searchQueryLogService
+                searchQueryLogService,
+                searchSynonymService
         );
 
         StudentProfile profile = new StudentProfile();

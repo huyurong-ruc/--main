@@ -1,6 +1,7 @@
 // sub-pages/policy/detail.js
 const app = getApp()
 const policyApi = require('../../api/policy')
+const { downloadAndOpenDocument } = require('../../utils/file')
 
 function buildDownloadHeader() {
   const header = {}
@@ -75,38 +76,17 @@ Page({
       ? (/^https?:\/\//.test(path) ? path : `${origin}${path}`)
       : ''
     const primaryUrl = `${baseUrl}/platform/files/${id}/download`
-    const tryDownload = (url, canFallback) => {
-      wx.downloadFile({
-        url,
-        header: buildDownloadHeader(),
-        success: (res) => {
-          if (res.statusCode !== 200) {
-            if (canFallback && fallbackUrl && fallbackUrl !== url) {
-              tryDownload(fallbackUrl, false)
-              return
-            }
-            wx.hideLoading()
-            wx.showToast({ title: '下载失败', icon: 'none' })
-            return
-          }
-          wx.hideLoading()
-          wx.openDocument({
-            filePath: res.tempFilePath,
-            showMenu: true,
-            success: () => console.log('打开成功', name || ''),
-            fail: () => wx.showToast({ title: '打开失败', icon: 'none' })
-          })
-        },
-        fail: () => {
-          if (canFallback && fallbackUrl && fallbackUrl !== url) {
-            tryDownload(fallbackUrl, false)
-            return
-          }
-          wx.hideLoading()
-          wx.showToast({ title: '下载失败', icon: 'none' })
-        }
-      })
-    }
-    tryDownload(primaryUrl, true)
+    downloadAndOpenDocument({
+      primaryUrl,
+      fallbackUrl,
+      header: buildDownloadHeader(),
+      fileName: name || `attachment-${id}`
+    }).then(() => {
+      wx.hideLoading()
+      console.log('打开成功', name || '')
+    }).catch(() => {
+      wx.hideLoading()
+      wx.showToast({ title: '下载失败', icon: 'none' })
+    })
   }
 })

@@ -101,6 +101,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -1898,16 +1902,18 @@ public class AdminService implements AdminApplicationService {
             throw new BusinessException("知识附件大小不能超过 30MB");
         }
         AuthenticatedUser user = currentUserService.requireCurrentUser();
+        String safeFileName = normalizeUploadFileName(file.getOriginalFilename());
         LatestFileObject fileObject = new LatestFileObject();
         fileObject.setPurpose("knowledge_attachment");
-        fileObject.setOriginalName(file.getOriginalFilename() == null ? "unknown-file" : file.getOriginalFilename());
+        fileObject.setOriginalName(safeFileName);
         fileObject.setMimeType(file.getContentType());
         fileObject.setSizeBytes(file.getSize());
         fileObject.setStorageProvider("local");
-        fileObject.setStoragePath("/uploads/knowledge/" + knowledgeId + "/" + System.currentTimeMillis() + "-" + fileObject.getOriginalName());
+        fileObject.setStoragePath("/uploads/knowledge/" + knowledgeId + "/" + System.currentTimeMillis() + "-" + safeFileName);
         fileObject.setUploadedBy(user.userId());
         fileObject.setUploadedAt(LocalDateTime.now());
         fileObject.setIsDeleted(0);
+        persistKnowledgeAttachmentFile(fileObject.getStoragePath(), file);
         fileObject = latestFileObjectRepository.save(fileObject);
         knowledge.setAttachmentFileId(fileObject.getId());
         latestKnowledgePolicyRepository.save(knowledge);
@@ -1925,9 +1931,59 @@ public class AdminService implements AdminApplicationService {
                     item.setAttachmentFileId(null);
                     latestKnowledgePolicyRepository.save(item);
                 });
+        deleteKnowledgeAttachmentFile(fileObject.getStoragePath());
         fileObject.setIsDeleted(1);
         latestFileObjectRepository.save(fileObject);
         writeOperationLog("KNOWLEDGE_ATTACHMENT", "DELETE", "attachment#" + attachmentId, "SUCCESS", fileObject.getOriginalName());
+    }
+
+    private String normalizeUploadFileName(String originalFileName) {
+        String name = org.springframework.util.StringUtils.getFilename(originalFileName);
+        if (name == null || name.isBlank()) {
+            return "unknown-file";
+        }
+        String cleaned = name.replaceAll("[\\r\\n\\t]", " ").trim();
+        cleaned = cleaned.replaceAll("[\\\\/]+", "_");
+        cleaned = cleaned.replaceAll("\\s+", "_");
+        return cleaned.isBlank() ? "unknown-file" : cleaned;
+    }
+
+    private void persistKnowledgeAttachmentFile(String storagePath, MultipartFile file) {
+        Path path = resolveUploadPath(storagePath);
+        try {
+            Files.createDirectories(path.getParent());
+            if (Files.exists(path)) {
+                Files.write(path, new byte[0], StandardOpenOption.TRUNCATE_EXISTING);
+            }
+            file.transferTo(path);
+        } catch (IOException e) {
+            throw new BusinessException("保存知识附件失败");
+        }
+    }
+
+    private void deleteKnowledgeAttachmentFile(String storagePath) {
+        try {
+            Path path = resolveUploadPath(storagePath);
+            Files.deleteIfExists(path);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private Path resolveUploadPath(String storagePath) {
+        String normalized = storagePath == null ? "" : storagePath.trim();
+        if (normalized.isEmpty()) {
+            throw new BusinessException("文件路径为空");
+        }
+        String relative = normalized.startsWith("/") ? normalized.substring(1) : normalized;
+        String home = System.getProperty("user.home");
+        Path base = (home == null || home.isBlank())
+                ? Path.of(System.getProperty("java.io.tmpdir"), "ssp-uploads")
+                : Path.of(home, ".ssp", "uploads");
+        Path resolved = base.resolve(relative).normalize();
+        if (!resolved.startsWith(base)) {
+            throw new BusinessException("文件路径非法");
+        }
+        return resolved;
     }
 
     private DataImportErrorItemResponse toImportErrorResponse(DataImportErrorItem item) {

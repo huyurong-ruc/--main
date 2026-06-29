@@ -40,6 +40,7 @@ import edu.ruc.platform.knowledge.repository.LatestCertTemplateRepository;
 import edu.ruc.platform.knowledge.repository.LatestFileObjectRepository;
 import edu.ruc.platform.student.repository.StudentProfileRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
@@ -196,7 +197,7 @@ public class KingbaseCertificateService implements CertificateApplicationService
         String studentName = studentProfileRepository.findById(affairRequest.getRequesterUserId())
                 .map(profile -> profile.getName())
                 .orElse("待补充");
-        String certificateType = resolveCertificateType(certApplication);
+        String certificateType = resolveCertificateType(certApplication, affairRequest);
         String status = toApprovalStatus(affairRequest.getStatus());
         LocalDateTime withdrawalDeadline = resolveWithdrawalDeadline(affairRequest);
         boolean canWithdraw = withdrawalDeadline != null
@@ -431,7 +432,7 @@ public class KingbaseCertificateService implements CertificateApplicationService
                 certApplication.getId(),
                 affairRequest.getRequesterUserId(),
                 studentName,
-                resolveCertificateType(certApplication),
+                resolveCertificateType(certApplication, affairRequest),
                 toApprovalStatus(affairRequest.getStatus()),
                 affairRequest.getPurpose(),
                 resolveAttachments(affairRequest),
@@ -443,7 +444,7 @@ public class KingbaseCertificateService implements CertificateApplicationService
         return new CertificateRequestResponse(
                 certApplication.getId(),
                 affairRequest.getRequesterUserId(),
-                resolveCertificateType(certApplication),
+                resolveCertificateType(certApplication, affairRequest),
                 toApprovalStatus(affairRequest.getStatus()),
                 buildPreviewUrl(certApplication),
                 resolveAttachments(affairRequest)
@@ -527,16 +528,80 @@ public class KingbaseCertificateService implements CertificateApplicationService
     private LatestCertTemplate resolveTemplate(String certificateType) {
         List<LatestCertTemplate> templates = latestCertTemplateRepository.findByIsDeletedAndIsActive(0, 1);
         return templates.stream()
-                .filter(item -> item.getTemplateName() != null && item.getTemplateName().contains(certificateType.replace("证明", "")))
+                .filter(item -> certificateType.equals(extractTemplateCertificateType(item)))
                 .findFirst()
+                .or(() -> templates.stream()
+                        .filter(item -> item.getTemplateName() != null && item.getTemplateName().contains(certificateType.replace("证明", "")))
+                        .findFirst())
                 .orElseGet(() -> templates.stream().findFirst().orElseThrow(() -> new BusinessException("未配置可用证明模板")));
     }
 
-    private String resolveCertificateType(LatestCertApplication certApplication) {
+    private String resolveCertificateType(LatestCertApplication certApplication, LatestAffairRequest affairRequest) {
+        String payloadCertificateType = extractAffairPayloadField(affairRequest, "certificateType");
+        if (payloadCertificateType != null) {
+            return payloadCertificateType;
+        }
+        String title = normalizeCertificateType(affairRequest.getTitle());
+        if (title != null && List.of("在读证明", "党员身份证明", "困难认定证明", "成绩单", "实习证明").contains(title)) {
+            return title;
+        }
         return latestCertTemplateRepository.findById(certApplication.getTemplateId())
-                .map(LatestCertTemplate::getTemplateName)
-                .map(name -> name.contains("在读") ? "在读证明" : name.contains("党员") ? "党员身份证明" : name.contains("困难") ? "困难认定证明" : name)
+                .map(this::extractTemplateCertificateType)
                 .orElse("证明申请");
+    }
+
+    private String extractTemplateCertificateType(LatestCertTemplate template) {
+        if (template == null) {
+            return "证明申请";
+        }
+        String parsed = extractJsonField(template.getExtJson(), "certificateType");
+        if (parsed != null) {
+            return parsed;
+        }
+        String name = template.getTemplateName();
+        if (name == null) {
+            return "证明申请";
+        }
+        if (name.contains("在读")) {
+            return "在读证明";
+        }
+        if (name.contains("党员")) {
+            return "党员身份证明";
+        }
+        if (name.contains("困难")) {
+            return "困难认定证明";
+        }
+        if (name.contains("成绩")) {
+            return "成绩单";
+        }
+        if (name.contains("实习")) {
+            return "实习证明";
+        }
+        return name.trim();
+    }
+
+    private String extractAffairPayloadField(LatestAffairRequest affairRequest, String fieldName) {
+        if (affairRequest == null) {
+            return null;
+        }
+        return extractJsonField(affairRequest.getPayloadJson(), fieldName);
+    }
+
+    private String extractJsonField(String json, String fieldName) {
+        if (json == null || json.isBlank() || fieldName == null || fieldName.isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode node = objectMapper.readTree(json);
+            JsonNode valueNode = node.get(fieldName);
+            if (valueNode == null || valueNode.isNull()) {
+                return null;
+            }
+            String value = valueNode.asText();
+            return value == null || value.isBlank() ? null : value.trim();
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     private String buildPreviewUrl(LatestCertApplication certApplication) {
