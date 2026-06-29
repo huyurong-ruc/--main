@@ -12,6 +12,7 @@ import edu.ruc.platform.common.api.ApiResponse;
 import edu.ruc.platform.common.api.PageResponse;
 import edu.ruc.platform.common.enums.RoleType;
 import edu.ruc.platform.common.support.SearchRankingSupport;
+import edu.ruc.platform.common.support.SearchSynonymService;
 import edu.ruc.platform.knowledge.domain.KnowledgeQaTicket;
 import edu.ruc.platform.knowledge.domain.KnowledgeQaTicketMessage;
 import edu.ruc.platform.knowledge.dto.KnowledgeSearchResponse;
@@ -66,6 +67,7 @@ public class StudentSelfController {
     private final LatestKnowledgePolicyRepository latestKnowledgePolicyRepository;
     private final KnowledgeApplicationService knowledgeService;
     private final CertificateTemplateApplicationService certificateTemplateService;
+    private final SearchSynonymService searchSynonymService;
     private final ObjectMapper objectMapper;
 
     private static final DateTimeFormatter DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -414,7 +416,7 @@ public class StudentSelfController {
         if (lowerBody.contains(normalizedKeyword)) {
             score += 120;
         }
-        for (String token : SearchRankingSupport.tokenizeKeyword(normalizedKeyword)) {
+        for (String token : searchSynonymService.expandTokens(normalizedKeyword)) {
             score += SearchRankingSupport.countHits(lowerTitle, token) * 36;
             score += SearchRankingSupport.countHits(lowerAlias, token) * 24;
             score += SearchRankingSupport.countHits(lowerBody, token) * 12;

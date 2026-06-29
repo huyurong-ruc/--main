@@ -4,6 +4,8 @@ import edu.ruc.platform.admin.dto.KnowledgeAttachmentResponse;
 import edu.ruc.platform.certificate.repository.CertificateRequestRepository;
 import edu.ruc.platform.common.exception.BusinessException;
 import edu.ruc.platform.common.support.QueryFilterSupport;
+import edu.ruc.platform.common.support.SearchRankingSupport;
+import edu.ruc.platform.common.support.SearchSynonymService;
 import edu.ruc.platform.knowledge.domain.KnowledgeDocument;
 import edu.ruc.platform.knowledge.domain.LatestCertTemplate;
 import edu.ruc.platform.knowledge.domain.LatestFileObject;
@@ -27,10 +29,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 @Service
 @Profile("kingbase")
@@ -46,6 +46,7 @@ public class KingbaseKnowledgeService implements KnowledgeApplicationService {
     private final PartyProgressRecordRepository partyProgressRecordRepository;
     private final edu.ruc.platform.knowledge.service.SearchQueryLogService searchQueryLogService;
     private final ObjectMapper objectMapper;
+    private final SearchSynonymService searchSynonymService;
 
     @Override
     public List<KnowledgeSearchResponse> search(String keyword) {
@@ -325,47 +326,12 @@ public class KingbaseKnowledgeService implements KnowledgeApplicationService {
         if (lowerBody.contains(lowerKeyword)) {
             score += 120;
         }
-        for (String token : searchTokens(lowerKeyword)) {
-            score += countHits(lowerTitle, token) * 36;
-            score += countHits(lowerCategory, token) * 24;
-            score += countHits(lowerBody, token) * 12;
+        for (String token : searchSynonymService.expandTokens(lowerKeyword)) {
+            score += SearchRankingSupport.countHits(lowerTitle, token) * 36;
+            score += SearchRankingSupport.countHits(lowerCategory, token) * 24;
+            score += SearchRankingSupport.countHits(lowerBody, token) * 12;
         }
         return score;
-    }
-
-    private List<String> searchTokens(String keyword) {
-        Set<String> tokens = new LinkedHashSet<>();
-        for (String token : keyword.split("\\s+")) {
-            if (!token.isBlank()) {
-                tokens.add(token);
-            }
-        }
-        if (tokens.size() <= 1 && keyword.length() >= 4) {
-            for (int i = 0; i < keyword.length() - 1; i++) {
-                String bigram = keyword.substring(i, i + 2).trim();
-                if (!bigram.isBlank()) {
-                    tokens.add(bigram);
-                }
-            }
-        }
-        return List.copyOf(tokens);
-    }
-
-    private int countHits(String text, String token) {
-        if (text == null || text.isBlank() || token == null || token.isBlank()) {
-            return 0;
-        }
-        int count = 0;
-        int from = 0;
-        while (from >= 0) {
-            int next = text.indexOf(token, from);
-            if (next < 0) {
-                break;
-            }
-            count += 1;
-            from = next + token.length();
-        }
-        return count;
     }
 
     private String safeLower(String value) {

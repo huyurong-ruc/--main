@@ -17,7 +17,14 @@ function tokenizeKeyword(keyword = '') {
   const normalized = String(keyword || '').trim()
   if (!normalized) return []
   const parts = normalized.split(/\s+/).filter(Boolean)
-  return [...new Set(parts)]
+  const tokens = [...new Set(parts)]
+  if (tokens.length <= 1 && normalized.length >= 4) {
+    for (let i = 0; i < normalized.length - 1; i++) {
+      const bigram = normalized.slice(i, i + 2).trim()
+      if (bigram) tokens.push(bigram)
+    }
+  }
+  return [...new Set(tokens)]
 }
 
 function splitTextWithHighlight(text = '', keywords = []) {

@@ -6,6 +6,7 @@ import edu.ruc.platform.certificate.repository.CertificateRequestRepository;
 import edu.ruc.platform.common.exception.BusinessException;
 import edu.ruc.platform.common.support.QueryFilterSupport;
 import edu.ruc.platform.common.support.SearchRankingSupport;
+import edu.ruc.platform.common.support.SearchSynonymService;
 import edu.ruc.platform.knowledge.dto.KnowledgeDetailResponse;
 import edu.ruc.platform.knowledge.dto.KnowledgeSearchResponse;
 import edu.ruc.platform.knowledge.repository.KnowledgeDocumentRepository;
@@ -35,6 +36,7 @@ public class KnowledgeService implements KnowledgeApplicationService {
     private final CertificateRequestRepository certificateRequestRepository;
     private final PartyProgressRecordRepository partyProgressRecordRepository;
     private final SearchQueryLogService searchQueryLogService;
+    private final SearchSynonymService searchSynonymService;
 
     @Override
     public List<KnowledgeSearchResponse> search(String keyword) {
@@ -207,7 +209,7 @@ public class KnowledgeService implements KnowledgeApplicationService {
         if (lowerContent.contains(lowerKeyword)) {
             score += 120;
         }
-        for (String token : SearchRankingSupport.tokenizeKeyword(lowerKeyword)) {
+        for (String token : searchSynonymService.expandTokens(lowerKeyword)) {
             score += SearchRankingSupport.countHits(lowerTitle, token) * 36;
             score += SearchRankingSupport.countHits(lowerCategory, token) * 24;
             score += SearchRankingSupport.countHits(lowerContent, token) * 12;
