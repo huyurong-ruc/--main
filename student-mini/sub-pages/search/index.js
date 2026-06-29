@@ -20,12 +20,6 @@ function tokenizeKeyword(keyword = '') {
   return [...new Set(parts)]
 }
 
-function countOccurrences(text = '', keyword = '') {
-  if (!text || !keyword) return 0
-  const matches = String(text).match(new RegExp(escapeRegExp(keyword), 'ig'))
-  return matches ? matches.length : 0
-}
-
 function splitTextWithHighlight(text = '', keywords = []) {
   const content = String(text || '')
   const validKeywords = (keywords || []).filter(Boolean).sort((a, b) => b.length - a.length)
@@ -54,33 +48,19 @@ function buildSearchMetrics(title = '', body = '', keyword = '', aliasText = '')
   const lowerAlias = String(aliasText || '').toLowerCase()
   const lowerKeyword = normalizedKeyword.toLowerCase()
 
-  const titleHits = tokens.reduce((sum, token) => sum + countOccurrences(lowerTitle, token.toLowerCase()), 0)
-  const bodyHits = tokens.reduce((sum, token) => sum + countOccurrences(lowerBody, token.toLowerCase()), 0)
-  const aliasHits = tokens.reduce((sum, token) => sum + countOccurrences(lowerAlias, token.toLowerCase()), 0)
-  const titleFullMatch = lowerKeyword ? countOccurrences(lowerTitle, lowerKeyword) : 0
-  const bodyFullMatch = lowerKeyword ? countOccurrences(lowerBody, lowerKeyword) : 0
-  const aliasFullMatch = lowerKeyword ? countOccurrences(lowerAlias, lowerKeyword) : 0
+  const titleHits = tokens.reduce((sum, token) => sum + (lowerTitle.includes(token.toLowerCase()) ? 1 : 0), 0)
+  const bodyHits = tokens.reduce((sum, token) => sum + (lowerBody.includes(token.toLowerCase()) ? 1 : 0), 0)
+  const aliasHits = tokens.reduce((sum, token) => sum + (lowerAlias.includes(token.toLowerCase()) ? 1 : 0), 0)
+  const titleFullMatch = lowerKeyword && lowerTitle.includes(lowerKeyword) ? 1 : 0
+  const bodyFullMatch = lowerKeyword && lowerBody.includes(lowerKeyword) ? 1 : 0
+  const aliasFullMatch = lowerKeyword && lowerAlias.includes(lowerKeyword) ? 1 : 0
   const exactTitleMatch = lowerKeyword && lowerTitle === lowerKeyword
   const exactBodyMatch = lowerKeyword && lowerBody === lowerKeyword
   const exactAliasMatch = lowerKeyword && lowerAlias.split('|').some((item) => item === lowerKeyword)
   const matched = !normalizedKeyword || titleHits > 0 || bodyHits > 0 || aliasHits > 0 || titleFullMatch > 0 || bodyFullMatch > 0 || aliasFullMatch > 0
 
-  const score = (
-    (exactTitleMatch ? 500 : 0) +
-    (exactBodyMatch ? 300 : 0) +
-    (exactAliasMatch ? 420 : 0) +
-    (titleFullMatch * 180) +
-    (bodyFullMatch * 110) +
-    (aliasFullMatch * 150) +
-    (titleHits * 45) +
-    (aliasHits * 38) +
-    (bodyHits * 18) +
-    (normalizedKeyword ? normalizedKeyword.length : 0)
-  )
-
   return {
     matched,
-    score,
     titleHits,
     bodyHits,
     aliasHits,
@@ -174,11 +154,6 @@ function buildSuggestionList(keyword = '', list = []) {
   if (!normalizedKeyword) return []
 
   return list
-    .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score
-      if (b.aliasHits !== a.aliasHits) return b.aliasHits - a.aliasHits
-      return 0
-    })
     .slice(0, 4)
     .map((item) => ({
       id: item.id,
@@ -388,13 +363,6 @@ Page({
         }
       })
       .filter((item) => !normalizedKeyword || item.matched)
-      .sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score
-        if (b.aliasHits !== a.aliasHits) return b.aliasHits - a.aliasHits
-        if (b.titleHits !== a.titleHits) return b.titleHits - a.titleHits
-        if (b.bodyHits !== a.bodyHits) return b.bodyHits - a.bodyHits
-        return String(a.title || '').length - String(b.title || '').length
-      })
 
     const filteredList = filterByTab(list, this.data.activeTab)
     this.setData({

@@ -11,6 +11,7 @@ import edu.ruc.platform.certificate.service.CertificateTemplateApplicationServic
 import edu.ruc.platform.common.api.ApiResponse;
 import edu.ruc.platform.common.api.PageResponse;
 import edu.ruc.platform.common.enums.RoleType;
+import edu.ruc.platform.common.support.SearchRankingSupport;
 import edu.ruc.platform.knowledge.domain.KnowledgeQaTicket;
 import edu.ruc.platform.knowledge.domain.KnowledgeQaTicketMessage;
 import edu.ruc.platform.knowledge.dto.KnowledgeSearchResponse;
@@ -390,13 +391,13 @@ public class StudentSelfController {
     }
 
     private int searchScore(String title, String body, String aliasText, String keyword) {
-        String normalizedKeyword = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
+        String normalizedKeyword = SearchRankingSupport.normalizeKeyword(keyword);
         if (normalizedKeyword.isBlank()) {
             return 0;
         }
-        String lowerTitle = safeLower(title);
-        String lowerBody = safeLower(body);
-        String lowerAlias = safeLower(aliasText);
+        String lowerTitle = SearchRankingSupport.safeLower(title);
+        String lowerBody = SearchRankingSupport.safeLower(body);
+        String lowerAlias = SearchRankingSupport.safeLower(aliasText);
         int score = 0;
         if (lowerTitle.equals(normalizedKeyword)) {
             score += 600;
@@ -413,54 +414,12 @@ public class StudentSelfController {
         if (lowerBody.contains(normalizedKeyword)) {
             score += 120;
         }
-        for (String token : keywordTokens(normalizedKeyword)) {
-            score += countHits(lowerTitle, token) * 36;
-            score += countHits(lowerAlias, token) * 24;
-            score += countHits(lowerBody, token) * 12;
+        for (String token : SearchRankingSupport.tokenizeKeyword(normalizedKeyword)) {
+            score += SearchRankingSupport.countHits(lowerTitle, token) * 36;
+            score += SearchRankingSupport.countHits(lowerAlias, token) * 24;
+            score += SearchRankingSupport.countHits(lowerBody, token) * 12;
         }
         return score;
-    }
-
-    private List<String> keywordTokens(String keyword) {
-        if (keyword == null || keyword.isBlank()) {
-            return List.of();
-        }
-        List<String> tokens = new ArrayList<>();
-        for (String token : keyword.split("\\s+")) {
-            if (!token.isBlank()) {
-                tokens.add(token);
-            }
-        }
-        if (tokens.size() <= 1 && keyword.length() >= 4) {
-            for (int i = 0; i < keyword.length() - 1; i++) {
-                String bigram = keyword.substring(i, i + 2).trim();
-                if (!bigram.isBlank()) {
-                    tokens.add(bigram);
-                }
-            }
-        }
-        return tokens.stream().filter(Objects::nonNull).distinct().toList();
-    }
-
-    private int countHits(String text, String token) {
-        if (text == null || text.isBlank() || token == null || token.isBlank()) {
-            return 0;
-        }
-        int count = 0;
-        int fromIndex = 0;
-        while (fromIndex >= 0) {
-            int next = text.indexOf(token, fromIndex);
-            if (next < 0) {
-                break;
-            }
-            count += 1;
-            fromIndex = next + token.length();
-        }
-        return count;
-    }
-
-    private String safeLower(String value) {
-        return value == null ? "" : value.toLowerCase(Locale.ROOT);
     }
 
     private static String firstNonBlank(String... values) {

@@ -5,6 +5,7 @@ import edu.ruc.platform.admin.repository.KnowledgeAttachmentRepository;
 import edu.ruc.platform.certificate.repository.CertificateRequestRepository;
 import edu.ruc.platform.common.exception.BusinessException;
 import edu.ruc.platform.common.support.QueryFilterSupport;
+import edu.ruc.platform.common.support.SearchRankingSupport;
 import edu.ruc.platform.knowledge.dto.KnowledgeDetailResponse;
 import edu.ruc.platform.knowledge.dto.KnowledgeSearchResponse;
 import edu.ruc.platform.knowledge.repository.KnowledgeDocumentRepository;
@@ -19,10 +20,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 @Service
 @Profile("!mock & !kingbase")
@@ -43,19 +42,20 @@ public class KnowledgeService implements KnowledgeApplicationService {
         if (normalizedKeyword == null) {
             return List.of();
         }
+        String lowerKeyword = SearchRankingSupport.safeLower(normalizedKeyword);
         List<KnowledgeSearchResponse> result = knowledgeDocumentRepository.findAll()
                 .stream()
                 .filter(doc -> Boolean.TRUE.equals(doc.getPublished()))
-                .map(doc -> new java.util.AbstractMap.SimpleEntry<>(doc, searchScore(
+                .map(doc -> new ScoredKnowledgeDocument(doc, searchScore(
                         doc.getTitle(),
                         doc.getCategory(),
                         doc.getContent(),
-                        normalizedKeyword
+                        lowerKeyword
                 )))
-                .filter(entry -> entry.getValue() > 0)
-                .sorted(java.util.Map.Entry.<edu.ruc.platform.knowledge.domain.KnowledgeDocument, Integer>comparingByValue().reversed()
-                        .thenComparing(entry -> entry.getKey().getId(), Comparator.nullsLast(Long::compareTo)))
-                .map(java.util.Map.Entry::getKey)
+                .filter(entry -> entry.score() > 0)
+                .sorted(Comparator.comparingInt(ScoredKnowledgeDocument::score).reversed()
+                        .thenComparing(entry -> entry.doc().getId(), Comparator.nullsLast(Long::compareTo)))
+                .map(ScoredKnowledgeDocument::doc)
                 .map(this::toSafeSearchResponse)
                 .toList();
         searchQueryLogService.record(normalizedKeyword, result.size());
@@ -207,51 +207,16 @@ public class KnowledgeService implements KnowledgeApplicationService {
         if (lowerContent.contains(lowerKeyword)) {
             score += 120;
         }
-        for (String token : searchTokens(lowerKeyword)) {
-            score += countHits(lowerTitle, token) * 36;
-            score += countHits(lowerCategory, token) * 24;
-            score += countHits(lowerContent, token) * 12;
+        for (String token : SearchRankingSupport.tokenizeKeyword(lowerKeyword)) {
+            score += SearchRankingSupport.countHits(lowerTitle, token) * 36;
+            score += SearchRankingSupport.countHits(lowerCategory, token) * 24;
+            score += SearchRankingSupport.countHits(lowerContent, token) * 12;
         }
         return score;
     }
 
-    private List<String> searchTokens(String keyword) {
-        Set<String> tokens = new LinkedHashSet<>();
-        for (String token : keyword.split("\\s+")) {
-            if (!token.isBlank()) {
-                tokens.add(token);
-            }
-        }
-        if (tokens.size() <= 1 && keyword.length() >= 4) {
-            for (int i = 0; i < keyword.length() - 1; i++) {
-                String bigram = keyword.substring(i, i + 2).trim();
-                if (!bigram.isBlank()) {
-                    tokens.add(bigram);
-                }
-            }
-        }
-        return List.copyOf(tokens);
-    }
-
-    private int countHits(String text, String token) {
-        if (text == null || text.isBlank() || token == null || token.isBlank()) {
-            return 0;
-        }
-        int count = 0;
-        int from = 0;
-        while (from >= 0) {
-            int next = text.indexOf(token, from);
-            if (next < 0) {
-                break;
-            }
-            count += 1;
-            from = next + token.length();
-        }
-        return count;
-    }
-
     private String safeLower(String value) {
-        return value == null ? "" : value.toLowerCase(Locale.ROOT);
+        return SearchRankingSupport.safeLower(value);
     }
 
     private KnowledgeSearchResponse toSafeSearchResponse(edu.ruc.platform.knowledge.domain.KnowledgeDocument doc) {
@@ -264,6 +229,9 @@ public class KnowledgeService implements KnowledgeApplicationService {
                 resolveResponseStrategy(doc),
                 isOfficialLinkOnly(doc)
         );
+    }
+
+    private record ScoredKnowledgeDocument(edu.ruc.platform.knowledge.domain.KnowledgeDocument doc, int score) {
     }
 
     private String resolveAnswer(edu.ruc.platform.knowledge.domain.KnowledgeDocument doc) {
