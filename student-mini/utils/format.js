@@ -57,10 +57,28 @@ const maskStudentNo = (studentNo) => {
   return studentNo.slice(0, 2) + '*'.repeat(len - 4) + studentNo.slice(-2)
 }
 
+/**
+ * 时间显示格式化
+ * 统一收口后端 LocalDateTime / ISO 字符串，避免直接展示秒和微秒
+ * @param {string} value 时间字符串
+ */
+const formatDateTimeDisplay = (value) => {
+  if (!value) return ''
+  const text = String(value).trim()
+  if (!text) return ''
+  const normalized = text.replace('T', ' ')
+  const matched = normalized.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/)
+  if (matched) {
+    return `${matched[1]} ${matched[2]}`
+  }
+  return normalized.slice(0, 16)
+}
+
 module.exports = {
   formatFileSize,
   maskPhone,
   maskIdCard,
   maskName,
-  maskStudentNo
+  maskStudentNo,
+  formatDateTimeDisplay
 }

@@ -4,6 +4,7 @@ const { get } = require('../../api/request')
 const { getPartyFlowState } = require('../../api/party-flow')
 const applyApi = require('../../api/apply')
 const { isCompletedStatus, getApplyStatusMeta } = require('../../api/apply-status')
+const { formatDateTimeDisplay } = require('../../utils/format')
 
 function buildApplyPendingCard(item = {}) {
   const statusMeta = getApplyStatusMeta(item.statusCode || item.status)
@@ -113,7 +114,7 @@ Page({
             id: n.id,
             title: n.title,
             source: n.source || '官方',
-            time: n.publishTime || n.time || ''
+            time: formatDateTimeDisplay(n.publishTime || n.time || '')
           }))
         })
       }

@@ -1,6 +1,7 @@
 const app = getApp()
 const policyApi = require('../../api/policy')
 const { downloadAndOpenDocument } = require('../../utils/file')
+const { formatDateTimeDisplay } = require('../../utils/format')
 
 function normalizeTemplate(item = {}) {
   const baseUrl = app.globalData?.baseUrl || ''
@@ -19,7 +20,7 @@ function normalizeTemplate(item = {}) {
     description: item.description || `用于${item.certificateType || '证明'}模板下载`,
     fileSize: item.fileSize || '-',
     fileType: item.fileType || item.outputFormat || '文件',
-    updatedAt: item.updatedAt || '',
+    updatedAt: formatDateTimeDisplay(item.updatedAt || ''),
     department: item.department || '学院服务平台',
     fileUrl,
     downloadUrl,

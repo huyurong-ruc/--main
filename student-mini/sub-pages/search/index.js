@@ -1,5 +1,6 @@
 // sub-pages/search/index.js
 const policyApi = require('../../api/policy')
+const { formatDateTimeDisplay } = require('../../utils/format')
 
 const TAB_TYPE_MAP = {
   0: 'all',
@@ -113,7 +114,7 @@ function buildDisplayItem(item = {}) {
       title: item.title,
       body: item.summary || item.content || `${item.department || '发布单位'}通知`,
       metaLeft: `来源：${item.department || '-'}`,
-      metaRight: `时间：${item.publishTime || '-'}`
+      metaRight: `时间：${formatDateTimeDisplay(item.publishTime || '') || '-'}`
     }
   }
   if (type === 'qa') {
@@ -124,7 +125,7 @@ function buildDisplayItem(item = {}) {
       title: item.question,
       body: item.answer || '暂无问答说明',
       metaLeft: `分类：${item.category || '问答'}`,
-      metaRight: `更新：${item.updatedAt || '-'}`
+      metaRight: `更新：${formatDateTimeDisplay(item.updatedAt || '') || '-'}`
     }
   }
   if (type === 'template') {
@@ -135,7 +136,7 @@ function buildDisplayItem(item = {}) {
       title: item.fileName,
       body: item.description || `${item.fileType || '文件'} 模板，可下载后填写`,
       metaLeft: `类型：${item.fileType || '-'}`,
-      metaRight: `更新：${item.updatedAt || '-'}`
+      metaRight: `更新：${formatDateTimeDisplay(item.updatedAt || '') || '-'}`
     }
   }
   if (type === 'service') {
