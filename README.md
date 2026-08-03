@@ -1,521 +1,160 @@
-# 学院学生综合服务与党团管理平台后端
+# 学院学生综合服务与党团管理平台
 
-## 项目定位
+面向学院学生工作场景的一体化课程项目，包含 Spring Boot 后端、Vue 管理后台和原生微信小程序学生端。平台围绕政策检索、通知触达、证明申请、党团流程、学业分析和学生信息管理等需求，提供统一的业务接口与演示流程。
 
-本项目基于需求文档《学院学生综合服务与党团管理平台》及课堂增补需求搭建后端框架，服务对象包括：
+> 本项目由团队协作完成，用于课程展示与功能验证，不代表学校正式业务系统。
 
-- 学生端微信小程序
-- 管理员端 Web 后台
+## 功能概览
+
+- 账号登录、JWT 鉴权与多级角色权限；
+- 学生信息、状态轨迹与画像管理；
+- 政策知识库、模板下载和站内检索；
+- 通知公告、标签化分发与阅读状态；
+- 证明申请、审批、撤回和进度查询；
+- 党团流程、时间线与待办提醒；
+- 学业分析、预警与人工复核提示；
+- 数据导入、错误明细、操作日志与平台审计。
+
+## 系统组成
+
+```text
+.
+├── src/                    # Spring Boot 后端
+├── frontend/               # Vue 3 管理后台
+├── student-mini/           # 原生微信小程序学生端
+├── db/                     # 数据库结构、迁移与桥接脚本
+├── scripts/                # 初始化与冒烟验证脚本
+├── images/                 # 项目界面截图
+└── 需求整合/               # 课程需求与阶段性说明
+```
+
+```mermaid
+flowchart LR
+    A["微信小程序学生端"] --> C["Spring Boot REST API"]
+    B["Vue 管理后台"] --> C
+    C --> D["认证与权限"]
+    C --> E["知识库与检索"]
+    C --> F["通知、证明与党团流程"]
+    C --> G["学业与学生信息"]
+    D --> H["PostgreSQL / KingbaseES"]
+    E --> H
+    F --> H
+    G --> H
+```
+
+## 界面示例
+
+| 学生端首页 | 知识检索 |
+| --- | --- |
+| ![学生端首页](images/image-20260527152301808.png) | ![知识检索](images/image-20260527113702021.png) |
+
+更多页面截图见 [`images/`](images/)。
 
 ## 技术栈
 
-- Java 17+
-- Spring Boot 3
-- Spring Web / Validation / Security / JPA
-- Flyway
-- PostgreSQL 驱动
-- KingbaseES 通过 PostgreSQL 协议兼容接入
+- 后端：Java 17、Spring Boot 3、Spring Security、Spring Data JPA、Flyway；
+- 数据库：PostgreSQL；通过 PostgreSQL 协议兼容 KingbaseES；
+- 管理后台：Vue 3、Vue Router、Pinia、Element Plus；
+- 学生端：原生微信小程序；
+- 接口文档：Springdoc OpenAPI / Swagger UI；
+- 测试：JUnit、Spring Boot Test、MockMvc。
 
-## 模块划分
+## 快速运行
 
-- `auth`: 登录认证、学校账号/微信绑定预留
-- `student`: 学生基本信息管理
-- `knowledge`: 智能问答与政策知识库
-- `party`: 党团事务流程管理
-- `notice`: 信息聚类与精准推送
-- `certificate`: 电子证明生成与审批流程
-- `academic`: 学业分析与预警
-- `common`: 公共返回体、异常、基础模型、通用筛选/校验辅助
-- `config`: 安全与文档配置
+### 1. 后端 Mock 模式
 
-## 需求落地状态
-
-结合 `需求整合` 中 2026-03-23 需求差异文档，当前后端已明确落地的需求包括：
-
-- 多级角色与账号权限模型
-- 学生数据范围控制与班主任负责范围收敛
-- 知识库管理、附件上传、模板下载
-- 审批流、审批历史、管理员操作日志
-- 导入任务、导入错误明细、导入结果回执
-- 导入执行结果整批回填、错误快照替换、执行批次号/回调来源留痕
-- 学生状态字段、状态历史、学生画像元数据
-- 平台安全策略、上传策略、文件上传与通知发送记录
-- 电子证明“仅学生本人申请/查询/学生端撤回重提”的权限校验
-- Kingbase 真实数据联调与桥接脚本落库验收
-- 学业分析已补充结构化人工复核提示，后续仍可继续细化规则，但不输出高风险自动毕业判断
-- 部分平台/管理能力的真实数据闭环验证，而不只是 mock 联调
-
-## 已提供接口
-
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/wechat-login`
-- `GET /api/v1/auth/me`
-- `POST /api/v1/auth/change-password`
-- `POST /api/v1/auth/logout`
-- `GET /api/v1/knowledge/search?keyword=`
-- `GET /api/v1/knowledge/{id}`
-- `GET /api/v1/knowledge/templates`
-- `GET /api/v1/party-progress/{studentId}`
-- `GET /api/v1/party-progress/{studentId}/timeline`
-- `GET /api/v1/party-progress/{studentId}/reminders`
-- `GET /api/v1/notices/student/{studentId}`
-- `POST /api/v1/certificates/requests`
-- `GET /api/v1/certificates/requests/student/{studentId}`
-- `GET /api/v1/certificates/requests/{requestId}/history`
-- `GET /api/v1/certificates/requests/{requestId}/preview`
-- `POST /api/v1/certificates/requests/{requestId}/action`
-- `GET /api/v1/student/me`
-- `GET /api/v1/student/dashboard`
-- `GET /api/v1/student/growth-suggestions`
-- `GET /api/v1/student/notices`
-- `GET /api/v1/student/certificates/requests`
-- `GET /api/v1/student/party-progress`
-- `GET /api/v1/student/party-progress/reminders`
-- `GET /api/v1/student/knowledge/recommended`
-- `GET /api/v1/academic/analysis/{studentId}`
-- `POST /api/v1/worklogs`
-- `PUT /api/v1/worklogs/{id}`
-- `DELETE /api/v1/worklogs/{id}`
-- `GET /api/v1/worklogs/student/{studentId}`
-- `GET /api/v1/worklogs/student/{studentId}/summary`
-- `GET /api/v1/worklogs/{id}/actions`
-- `GET /api/v1/worklogs/overview`
-- `GET /api/v1/worklogs/admin/filter`
-- `GET /api/v1/worklogs/admin/stats`
-- `GET /api/v1/worklogs/admin/page`
-- `GET /api/v1/worklogs/admin/export-metadata`
-- `GET /api/v1/admin/notices`
-- `GET /api/v1/admin/notices/page`
-- `GET /api/v1/admin/notices/stats`
-- `POST /api/v1/admin/notices`
-- `GET /api/v1/admin/knowledge`
-- `GET /api/v1/admin/knowledge/page`
-- `GET /api/v1/admin/knowledge/stats`
-- `POST /api/v1/admin/knowledge`
-- `PUT /api/v1/admin/knowledge/{id}`
-- `GET /api/v1/admin/knowledge/{id}/attachments`
-- `POST /api/v1/admin/knowledge/{id}/attachments`
-- `DELETE /api/v1/admin/knowledge/attachments/{attachmentId}`
-- `GET /api/v1/admin/advisor-scopes`
-- `GET /api/v1/admin/advisor-scopes/page`
-- `GET /api/v1/admin/advisor-scopes/stats`
-- `POST /api/v1/admin/advisor-scopes`
-- `PUT /api/v1/admin/advisor-scopes/{id}`
-- `DELETE /api/v1/admin/advisor-scopes/{id}`
-- `GET /api/v1/admin/students`
-- `GET /api/v1/admin/students/page`
-- `GET /api/v1/admin/students/stats`
-- `GET /api/v1/admin/students/{id}`
-- `POST /api/v1/admin/students`
-- `PUT /api/v1/admin/students/{id}`
-- `GET /api/v1/admin/students/{id}/status-history`
-- `POST /api/v1/admin/students/{id}/status-history`
-- `GET /api/v1/admin/students/{id}/portrait`
-- `PUT /api/v1/admin/students/{id}/portrait`
-- `GET /api/v1/admin/students/portraits/page`
-- `GET /api/v1/admin/students/portraits/stats`
-- `GET /api/v1/admin/approvals`
-- `GET /api/v1/admin/approvals/page`
-- `GET /api/v1/admin/approvals/stats`
-- `GET /api/v1/admin/approvals/{requestId}/history`
-- `POST /api/v1/admin/approvals/{requestId}/action`
-- `GET /api/v1/admin/operation-logs`
-- `GET /api/v1/admin/operation-logs/page`
-- `GET /api/v1/admin/operation-logs/stats`
-- `GET /api/v1/admin/import-tasks`
-- `GET /api/v1/admin/import-tasks/page`
-- `GET /api/v1/admin/import-tasks/stats`
-- `POST /api/v1/admin/import-tasks`
-- `PUT /api/v1/admin/import-tasks/{id}`
-- `GET /api/v1/admin/import-tasks/{id}/errors`
-- `GET /api/v1/admin/import-tasks/{id}/errors/page`
-- `POST /api/v1/admin/import-tasks/{id}/errors`
-- `GET /api/v1/admin/stats`
-- `GET /api/v1/platform/contracts`
-- `GET /api/v1/platform/student-ui-contract`
-- 平台导入任务状态统一使用 `CREATED / RUNNING / SUCCESS / PARTIAL_SUCCESS / FAILED`
-- `GET /api/v1/platform/users/me/permissions`
-- `GET /api/v1/platform/users/me/student-scope`
-- `GET /api/v1/platform/users/me/student-scope/check-student`
-- `GET /api/v1/platform/users/me/student-scope/check-range`
-- `GET /api/v1/platform/roles`
-- `GET /api/v1/platform/security-policy`
-- `PUT /api/v1/platform/security-policy`
-- 平台安全策略已落到 `platform_system_setting`，更新后可供认证登录、用户创建、重置密码统一复用
-- `GET /api/v1/platform/upload-policy`
-- `PUT /api/v1/platform/upload-policy`
-- 平台上传策略同样落到 `platform_system_setting`，统一约束 `/api/v1/platform/files/upload` 的大小与内容类型校验
-- `GET /api/v1/platform/users`
-- `GET /api/v1/platform/users/{userId}`
-- `POST /api/v1/platform/users`
-- `PUT /api/v1/platform/users/{userId}`
-- `POST /api/v1/platform/users/{userId}/enabled`
-- `POST /api/v1/platform/users/{userId}/unlock`
-- `POST /api/v1/platform/users/{userId}/reset-password`
-- `GET /api/v1/platform/users/page`
-- `GET /api/v1/platform/users/stats`
-- `GET /api/v1/platform/sessions/page`
-- `POST /api/v1/platform/sessions/{sessionId}/revoke`
-- `GET /api/v1/platform/students/{studentId}`
-- `GET /api/v1/platform/students/page`
-- `POST /api/v1/platform/files/upload`
-- `GET /api/v1/platform/files/page`
-- `POST /api/v1/platform/files/{id}/archive`
-- `DELETE /api/v1/platform/files/{id}`
-- 上传接口统一复用平台上传策略，返回格式保持 `PlatformFileUploadResponse`
-- `GET /api/v1/platform/audit/login-logs/page`
-- `POST /api/v1/platform/import-tasks`
-- `PUT /api/v1/platform/import-tasks/{taskId}`
-- `GET /api/v1/platform/import-tasks/page`
-- `GET /api/v1/platform/import-tasks/{taskId}/receipt`
-- `POST /api/v1/platform/import-tasks/{taskId}/execution-result`
-- `POST /api/v1/platform/import-tasks/{taskId}/errors`
-- `GET /api/v1/platform/import-tasks/{taskId}/errors/page`
-- 平台侧已支持“导入任务创建 -> 执行结果整批回填 -> 错误快照替换 -> 结果回执查询”的完整后端链路
-- 执行结果回填现已要求 `executionBatchNo`、`callbackSource`，并且仅允许任务负责人、`COLLEGE_ADMIN`、`SUPER_ADMIN` 回填
-- `GET /api/v1/platform/audit/admin-operation-logs/page`
-- 管理操作日志分页结果包含 `detail`，安全策略更新会记录修改前后值
-- `GET /api/v1/platform/audit/approval-logs/{requestId}`
-- `GET /api/v1/platform/notifications/send-records`
-- `POST /api/v1/platform/notifications/send`
-- `GET /api/v1/platform/notifications/send-records/page`
-- 通知发送记录已落表到 `platform_notification_send_record`，与业务公告 `notice` 解耦
-- 通知渠道统一使用 `IN_APP / EMAIL / WECHAT`，目标类型统一使用 `ALL / GRADE / CLASS / SELF`
-
-其中学生端已提供两类聚合能力：
-
-- `GET /api/v1/student/dashboard`：学生首页聚合数据，包含 `focusItems`
-- `GET /api/v1/student/growth-suggestions`：学生成长建议清单，独立输出学业、画像、工作记录、证明待办建议
-
-## 平台统一约定
-
-- 用户标识字段统一为 `userId`，学生标识字段统一为 `studentId`，学号字段统一为 `studentNo`
-- 角色枚举统一复用 `RoleType`：`STUDENT`、`CLASS_LEADER`、`LEAGUE_SECRETARY`、`COUNSELOR`、`CLASS_ADVISOR`、`COLLEGE_ADMIN`、`SUPER_ADMIN`、`ASSISTANT`
-- 权限校验统一通过 `CurrentUserService`，学生数据范围能力对内复用 `StudentDataScopeService`
-- 通用返回统一为 `ApiResponse<T>`，分页统一为 `ApiResponse<PageResponse<T>>`
-
-## 最新数据库对接
-
-`db/kingbase_schema.sql` 是 2026-03-27 新更新的统一数据库模型，表命名已经切到：
-
-- `sys_*`：统一用户/认证/权限
-- `kb_*`：知识库
-- `notice_*`：通知公告
-- `party_*`：党团流程
-- `affair_* / cert_*`：办事与证明
-- `aca_*`：学业审核
-
-而当前后端非 mock 模式仍然围绕历史 JPA 表：
-
-- `user_account`
-- `student_profile`
-- `knowledge_document`
-- `notice`
-- `certificate_request`
-- `academic_warning_record`
-- 以及审批、画像、工作日志、平台审计等扩展表
-
-为避免一次性大改 Java 服务层，仓库新增了桥接脚本：
-
-- [db/kingbase_backend_bridge.sql](/home/skyone/spec/student-service-platform-backend/db/kingbase_backend_bridge.sql)
-
-它做两件事：
-
-- 在 `campus` schema 下补齐当前后端依赖但新总库中不存在的扩展表
-- 将 `sys_* / kb_* / notice_* / party_* / cert_* / aca_*` 中可直接映射的数据导入到当前后端使用的旧表
-
-建议接入顺序：
-
-1. 先执行 `db/kingbase_schema.sql`
-2. 再执行 `db/kingbase_backend_bridge.sql`
-3. 启动应用时切换到 `kingbase` profile：`--spring.profiles.active=kingbase`
-
-也可以直接用初始化脚本：
-
-- [scripts/init-kingbase-bridge.sh](/home/skyone/spec/student-service-platform-backend/scripts/init-kingbase-bridge.sh)
-
-示例：
+需要 JDK 17 或更高版本以及 Maven。
 
 ```bash
-cd /home/skyone/spec/student-service-platform-backend
-DB_HOST=127.0.0.1 DB_PORT=54321 DB_NAME=student_service_platform DB_USER=postgres DB_PASSWORD=postgres LOAD_SAMPLE_DATA=true \
-  bash scripts/init-kingbase-bridge.sh
-java -jar target/student-service-platform-backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=kingbase
+mvn spring-boot:run -Dspring-boot.run.profiles=mock
 ```
-
-说明：
-
-- `LOAD_SAMPLE_DATA=true` 时会先执行 [db/campus_sample_data.sql](/home/skyone/spec/student-service-platform-backend/db/campus_sample_data.sql)
-- 桥接脚本会把最新样例库里的用户、学生档案、知识库、通知、审批、学业审核、导入任务、操作日志同步到当前后端依赖表
-- 对于最新样例库里无法直接用于 BCrypt 校验的占位密码，桥接脚本会统一回填演示密码 `123456`
-
-对应配置文件：
-
-- [src/main/resources/application-kingbase.yml](/home/skyone/spec/student-service-platform-backend/src/main/resources/application-kingbase.yml)
-
-当前桥接策略说明：
-
-- 这是“先跑通后端”的兼容层，不是最终态领域模型
-- 新库到旧表是初始化导入，不做双向同步
-- 如果后续要彻底统一到 `sys_* / kb_* / notice_* ...`，需要继续把 JPA 实体和 Service 改成新模型
-- `application-dev.yml` 已补 `hibernate.default_schema=campus`，避免非 mock 模式默认查到 `public` schema
-
-当前已开始原生接最新库的模块：
-
-- 认证模块在 `kingbase` profile 下优先直连 `sys_user / sys_user_auth / sys_user_role / sys_student_ext`
-- 知识库学生侧接口在 `kingbase` profile 下优先直连 `kb_policy / cert_template / file_object`
-- 证明申请学生侧主流程在 `kingbase` profile 下优先直连 `affair_request / cert_application / workflow_*`
-- 证明审批列表/统计/处理与申请预览在 `kingbase` profile 下优先直连 `affair_request / cert_application / workflow_*`
-- 学生档案核心信息在 `kingbase` profile 下优先直连 `sys_user / sys_student_ext`
-- 学生通知列表在 `kingbase` profile 下优先直连 `notice_item / notice_item_tag / notice_tag_dict`
-- 党团进度与提醒在 `kingbase` profile 下优先直连 `party_student_progress / party_flow_node / party_reminder_task`
-- 管理端通知列表/分页/统计/创建在 `kingbase` profile 下优先直连 `notice_item / notice_item_tag / notice_tag_dict / notice_delivery`
-- 管理端知识库列表/分页/统计/增改/附件管理在 `kingbase` profile 下优先直连 `kb_policy / file_object`
-- 学业分析与预警在 `kingbase` profile 下优先直连 `aca_audit_report / aca_audit_missing / aca_course_recommendation / aca_term_course`
-- 平台统计、管理操作日志、导入任务主表在 `kingbase` profile 下优先直连 `sys_user / notice_item / kb_policy / sys_operation_log / audit_import_job`
-- 平台服务侧产生的操作日志在 `kingbase` profile 下同步写入 `sys_operation_log`
-- 导入错误明细在 `kingbase` profile 下优先内嵌到 `audit_import_job.result_json.errors`
-- 平台上传记录在 `kingbase` profile 下优先使用 `file_object` 存储文件元数据，并通过 `sys_operation_log` 回放 `bizType / bizId / archived`
-- 登录失败次数、锁定时间、会话黑名单等平台安全辅助状态仍复用现有后端表
-
-当前仍通过桥接表运行的模块：
-
-- 学生画像、状态轨迹等扩展档案，当前仍复用 `student_portrait / student_status_history`
-- 班主任负责范围，当前仍复用 `advisor_scope_binding`
-- 学生工作日志，当前仍复用 `student_work_log / student_work_log_action_log`
-- 平台安全与会话辅助状态，当前仍复用 `user_account / login_audit_log / user_session_record / revoked_token_record`
-- 平台通知发送记录与平台系统配置，当前仍复用 `platform_notification_send_record / platform_system_setting`
-- 文件上传统一返回 `PlatformFileUploadResponse`
-- 审批状态统一复用 `ApprovalStatus`：`PENDING`、`COUNSELOR_APPROVED`、`APPROVED`、`REJECTED`、`WITHDRAWN`
-- 审批日志字段统一为 `operatorId`、`operatorName`、`operatorRole`、`action`、`fromStatus`、`toStatus`、`comment`、`operatedAt`
-- 管理操作日志字段统一为 `operatorId`、`operatorName`、`operatorRole`、`module`、`action`、`target`、`result`、`detail`
-- 学生端动作类型、优先级、默认跳转路径统一由 `/api/v1/platform/contracts` 和 `/api/v1/platform/student-ui-contract` 对外提供
-
-## 演示账号
-
-- 管理员：`admin / 123456`
-- 辅导员：`teacher01 / 123456`
-- 团支书：`2023100002 / 123456`
-- 学生：`2023100001 / 123456`
-
-在非 `mock` 模式下，如果数据库已执行 Flyway migration，也会自动写入以上种子账号与基础演示数据。
-
-## 数据库说明
-
-默认配置使用 PostgreSQL URL：
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:54321/student_service_platform
-```
-
-如果你后续直接切到 Kingbase，请按实际驱动与连接串调整：
-
-- 驱动
-- JDBC URL
-- Hibernate dialect
-
-切换到真实数据库模式时，不要启用 `mock` profile。例如：
-
-```bash
-cd /home/skyone/spec/student-service-platform-backend
-mvn spring-boot:run -Dspring-boot.run.profiles=dev
-```
-
-或直接运行打包后的 jar：
-
-```bash
-java -jar target/student-service-platform-backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
-```
-
-只要不是 `mock`，应用就会启用数据源、JPA、Flyway 和数据库实现。
-
-## 当前限制
-
-- `mock` profile 下已接入 JWT 登录与 Bearer Token 鉴权，但用户数据仍来自演示账号
-- 非 `mock` profile 下已支持 JWT 签发与 Bearer Token 校验，微信登录仍未接入
-- 非 `mock` profile 下部分业务仍是基础版实现，复杂审批流、精准筛选、统计口径仍需继续细化
-- 已新增 `advisor_scope_binding` 负责范围结构；`advisorScope` 仍保留为兼容字段，后续可逐步下线
-- 已新增 `student_work_log_action_log`，用于保留工作记录新增/修改/删除的审计轨迹
-- 已新增知识附件接口，支持老师持续上传政策文件附件元数据
-- 已新增导入错误明细接口，支持把 Excel 校验失败结果绑定到具体导入任务
-- 未实现 Excel/Word/PDF 导入导出服务
-- 未实现成绩单 PDF 解析与课程匹配逻辑
-- 未实现消息推送调度
-
-## 启动方式
-
-```bash
-cd /home/skyone/spec/student-service-platform-backend
-mvn spring-boot:run
-```
-
-如果你的环境可以正常访问 Maven Central，也可以直接使用：
-
-```bash
-cd /home/skyone/spec/student-service-platform-backend
-mvn spring-boot:run
-```
-
-## Maven 构建说明
-
-项目内已提供以下构建辅助配置：
-
-- `.mvn/jvm.config`：固定 Maven 的 TLS 协议并优先使用 IPv4，降低 HTTPS 握手失败概率
-- `settings.xml.example`：示例 Maven 仓库配置，按顺序声明 Maven Central、阿里云、华为云多个公共仓库
-- `.m2/repository`：建议作为项目本地仓库目录使用，避免默认用户目录权限或环境差异影响构建
-
-首次构建建议使用：
-
-```bash
-cd /home/skyone/spec/student-service-platform-backend
-mkdir -p .m2/repository
-mvn clean package
-```
-
-如果出现：
-
-- `error: release version 17 not supported`
-
-说明 Maven 当前实际使用的 JDK 低于 17。先检查：
-
-```bash
-mvn -version
-java -version
-echo "$JAVA_HOME"
-which java
-which javac
-```
-
-如果 `mvn -version` 显示的 Java 不是 17 或更高，需要修正环境变量。例如：
-
-```bash
-export JAVA_HOME=/path/to/jdk-17
-export PATH="$JAVA_HOME/bin:$PATH"
-mvn -version
-```
-
-在 Ubuntu / Debian 上也可以用：
-
-```bash
-sudo update-alternatives --config java
-sudo update-alternatives --config javac
-```
-
-修正后再重新构建：
-
-```bash
-mvn -s settings.xml.example -Dmaven.repo.local=.m2/repository clean package
-```
-
-项目已通过 [.mvn/maven.config](/home/skyone/spec/student-service-platform-backend/.mvn/maven.config) 固化以下 Maven 参数：
-
-- `-s settings.xml.example`
-- `-Dmaven.repo.local=.m2/repository`
-
-因此在项目目录下，后续直接执行 `mvn clean package`、`mvn spring-boot:run` 即可。
-
-如果仍然报下面这类错误：
-
-- `Remote host terminated the handshake: SSL peer shut down incorrectly`
-- `Unknown host ... Temporary failure in name resolution`
-
-说明问题在当前机器的外网访问、DNS、代理或证书链，而不是 `pom.xml` 依赖声明本身。可优先检查：
-
-- 是否能访问 `https://repo.maven.apache.org/maven2`
-- 是否能解析 `maven.aliyun.com`
-- 是否能解析 `repo.huaweicloud.com`
-- 是否需要配置系统代理或 Maven 代理
-- 公司/校园网络是否拦截了 HTTPS 下载
-- 系统 CA 证书是否完整
 
 启动后可访问：
 
-- Swagger UI: `http://localhost:8080/swagger-ui.html`
-- 健康检查: `http://localhost:8080/actuator/health`
+- Swagger UI：<http://localhost:8080/swagger-ui.html>
+- 健康检查：<http://localhost:8080/actuator/health>
 
-## 鉴权说明
+演示账号：
 
-登录成功后会返回 JWT token。后续访问除登录、微信登录、健康检查、Swagger 外的大多数接口时，需要携带：
+| 身份 | 用户名 | 密码 |
+| --- | --- | --- |
+| 管理员 | `admin` | `123456` |
+| 辅导员 | `teacher01` | `123456` |
+| 团支书 | `2023100002` | `123456` |
+| 学生 | `2023100001` | `123456` |
+
+### 2. Vue 管理后台
 
 ```bash
-Authorization: Bearer <token>
+cd frontend
+npm install
+npm run serve
 ```
+
+前端环境变量示例见 [`frontend/.env.example`](frontend/.env.example)。
+
+### 3. 微信小程序
+
+使用微信开发者工具打开 `student-mini/`，配置自己的 AppID 和后端合法域名后编译运行。详细说明见 [`student-mini/README.md`](student-mini/README.md)。
+
+## 真实数据库模式
+
+项目默认配置面向 KingbaseES 联调。相关文件包括：
+
+- [`db/kingbase_schema.sql`](db/kingbase_schema.sql)：统一数据库结构；
+- [`db/kingbase_backend_bridge.sql`](db/kingbase_backend_bridge.sql)：新旧领域表的初始化兼容桥接；
+- [`scripts/init-kingbase-bridge.sh`](scripts/init-kingbase-bridge.sh)：数据库初始化脚本；
+- [`src/main/resources/application-kingbase.yml`](src/main/resources/application-kingbase.yml)：Kingbase profile 配置。
 
 示例：
 
 ```bash
-curl -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"123456"}' \
-  http://localhost:8080/api/v1/auth/login
+DB_HOST=127.0.0.1 \
+DB_PORT=54321 \
+DB_NAME=student_service_platform \
+DB_USER=postgres \
+DB_PASSWORD=postgres \
+LOAD_SAMPLE_DATA=true \
+bash scripts/init-kingbase-bridge.sh
+
+mvn spring-boot:run -Dspring-boot.run.profiles=kingbase
 ```
 
-取到返回中的 `token` 后，可继续访问：
+桥接脚本用于课程项目阶段的兼容联调，是从统一新表向现有后端依赖表进行初始化导入，不提供双向同步。
 
-```bash
-curl -H "Authorization: Bearer <token>" \
-  http://localhost:8080/api/v1/auth/me
+## 检索模块
+
+站内检索对查询进行中文分词、同义词扩展和规则加权，并结合内容类型、关键词覆盖度等信号排序。示例同义词组包括：
+
+```text
+保研 / 推免 / 推荐免试
+综测 / 综合测评 / 德育分
+在读证明 / 盖章申请 / 开证明
+辅导员 / 导员 / 班主任
 ```
 
-## 冒烟验证
-
-项目已提供一键冒烟脚本：
-
-```bash
-cd /home/skyone/spec/student-service-platform-backend
-./scripts/smoke-test.sh
-```
-
-默认会使用：
-
-- 地址：`http://localhost:8080`
-- 账号：`admin`
-- 密码：`123456`
-
-也可以通过环境变量覆盖：
-
-```bash
-BASE_URL=http://localhost:8080 \
-SMOKE_USERNAME=2023100001 \
-SMOKE_PASSWORD=123456 \
-./scripts/smoke-test.sh
-```
+相关配置位于 [`src/main/resources/application.yml`](src/main/resources/application.yml)，排序支持代码位于 `src/main/java/edu/ruc/platform/common/support/`。
 
 ## 测试
 
-已补充基于 `MockMvc` 的认证集成测试：
-
-- `src/test/java/edu/ruc/platform/AuthIntegrationTest.java`
-- `src/test/java/edu/ruc/platform/BusinessFlowIntegrationTest.java`
-- `src/test/java/edu/ruc/platform/StudentFeatureIntegrationTest.java`
-- `src/test/java/edu/ruc/platform/PartyAcademicIntegrationTest.java`
-- `src/test/java/edu/ruc/platform/ErrorFlowIntegrationTest.java`
-
-当前覆盖：
-
-- 登录签发 JWT
-- `/api/v1/auth/me`
-- 受保护接口未登录拒绝访问
-- 管理端统计、审批动作
-- 学生通知列表
-- 知识库搜索与模板列表
-- 证明申请创建与学生侧查询
-- 党团进度、时间线、提醒
-- 学业分析接口
-- 错误登录、非法 Token、错误审批动作
-
-执行：
-
 ```bash
-cd /home/skyone/spec/student-service-platform-backend
 mvn test
 ```
 
-如果首次执行测试时卡在 `surefire-junit-platform` 下载，说明仍是当前机器的 Maven 仓库网络问题，不是测试代码本身的问题。
+现有集成测试覆盖认证与非法 Token、管理端统计与审批、学生通知、知识库检索、证明申请、党团进度、学业分析及部分异常流程。
 
-## 目前适合联调的范围
+已启动服务时，也可以执行：
 
-- 人员 1：学生端小程序页面
-- 人员 3：管理后台页面
-- 你自己：接口联调、流程演示、答辩演示
+```bash
+./scripts/smoke-test.sh
+```
+
+## 当前边界
+
+- 微信登录尚未接入学校真实身份系统；
+- 部分模块在 Mock 模式下使用演示数据；
+- KingbaseES 桥接属于阶段性兼容方案，部分扩展模块仍依赖历史表；
+- 精准推送调度、复杂统计口径和部分文件解析能力仍需继续完善；
+- 学业分析只提供辅助提示，不输出自动毕业判断等高风险结论。
+
+更完整的接口、数据库和团队协作资料保留在仓库内的专项文档中，根 README 只提供项目概览与最小运行路径。
